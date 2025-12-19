@@ -15,9 +15,11 @@ async function loadAmplifyConfig() {
     try {
         // The amplify_outputs.json is in the app root (copied from shared-backend)
         const outputs = await import('../../amplify_outputs.json');
+        console.log('✅ ampliify_outputs.json loaded successfully');
         return outputs.default || outputs;
     } catch (e) {
-        console.error('Failed to load amplify_outputs.json - run npm run sync-amplify first');
+        console.error('❌ Failed to load amplify_outputs.json:', e);
+        console.error('Run npm run sync-amplify first');
         return null;
     }
 }
@@ -34,11 +36,16 @@ export function AmplifyProvider({ children }: AmplifyProviderProps) {
     useEffect(() => {
         async function configure() {
             if (!configured) {
+                console.log('🔧 Loading Amplify configuration...');
                 const config = await loadAmplifyConfig();
                 if (config) {
                     configureAmplifyAuth(config);
                     configured = true;
+                } else {
+                    console.error('❌ Failed to configure Amplify - config is null');
                 }
+            } else {
+                console.log('ℹ️ Amplify already configured');
             }
             setIsReady(true);
         }
