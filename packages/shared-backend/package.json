@@ -1,0 +1,20 @@
+{
+    "name": "@njaz/shared-backend",
+    "version": "0.0.1",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "sandbox": "npx ampx sandbox",
+        "sandbox:delete": "npx ampx sandbox delete"
+    },
+    "dependencies": {
+        "aws-amplify": "^6.0.0"
+    },
+    "devDependencies": {
+        "@aws-amplify/backend": "^1.0.0",
+        "@aws-amplify/backend-cli": "^1.0.0",
+        "aws-cdk-lib": "^2.170.0",
+        "constructs": "^10.4.2",
+        "typescript": "^5.3.0"
+    }
+}

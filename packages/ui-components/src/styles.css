@@ -1,0 +1,301 @@
+/* =====================================================
+   NJAZ UI COMPONENTS - Shared Styles
+   ===================================================== */
+
+/* Suite Navigation Styles */
+.suite-nav-container {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.suite-nav-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: none;
+  background: transparent;
+  border-radius: 50%;
+  cursor: pointer;
+  color: inherit;
+  transition: background-color 0.2s ease, transform 0.15s ease;
+}
+
+.suite-nav-trigger:hover {
+  background: rgba(255, 255, 255, 0.1);
+  transform: scale(1.05);
+}
+
+.suite-nav-trigger:active {
+  transform: scale(0.95);
+}
+
+.suite-nav-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 320px;
+  background: rgba(15, 23, 42, 0.95);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  box-shadow: 
+    0 25px 50px -12px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(255, 255, 255, 0.05);
+  overflow: hidden;
+  animation: suiteMenuSlideIn 0.2s ease-out;
+  z-index: 9999;
+}
+
+@keyframes suiteMenuSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.suite-nav-header {
+  padding: 16px 20px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.suite-nav-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.suite-nav-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+  padding: 12px;
+}
+
+.suite-nav-app {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 8px;
+  border: none;
+  background: transparent;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.suite-nav-app:hover {
+  background: rgba(255, 255, 255, 0.08);
+  transform: translateY(-2px);
+}
+
+.suite-nav-app:active {
+  transform: translateY(0);
+}
+
+.suite-nav-app.active {
+  background: rgba(99, 102, 241, 0.2);
+}
+
+.suite-nav-app-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.suite-nav-app:hover .suite-nav-app-icon {
+  transform: scale(1.08);
+  box-shadow: 0 8px 24px -8px rgba(0, 0, 0, 0.4);
+}
+
+.suite-nav-app-name {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.9);
+  text-align: center;
+  line-height: 1.3;
+}
+
+.suite-nav-footer {
+  padding: 12px 20px 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  text-align: center;
+}
+
+.suite-nav-link {
+  font-size: 0.8rem;
+  color: #6366f1;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.suite-nav-link:hover {
+  color: #818cf8;
+}
+
+/* Header Component Styles */
+.njaz-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  background: rgba(15, 23, 42, 0.8);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  z-index: 1000;
+}
+
+.njaz-header-logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-decoration: none;
+}
+
+.njaz-header-logo-text {
+  font-size: 1.5rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.njaz-header-nav {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+}
+
+.njaz-header-nav-links {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.njaz-header-nav-link {
+  padding: 8px 16px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.7);
+  text-decoration: none;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.njaz-header-nav-link:hover {
+  color: white;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.njaz-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.njaz-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 20px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+}
+
+.njaz-btn-primary {
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  color: white;
+  box-shadow: 0 4px 15px -3px rgba(99, 102, 241, 0.4);
+}
+
+.njaz-btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px -5px rgba(99, 102, 241, 0.5);
+}
+
+.njaz-btn-ghost {
+  background: transparent;
+  color: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.njaz-btn-ghost:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+/* Light mode overrides */
+@media (prefers-color-scheme: light) {
+  .suite-nav-menu {
+    background: rgba(255, 255, 255, 0.95);
+    border-color: rgba(0, 0, 0, 0.1);
+  }
+  
+  .suite-nav-title {
+    color: rgba(0, 0, 0, 0.5);
+  }
+  
+  .suite-nav-app:hover {
+    background: rgba(0, 0, 0, 0.05);
+  }
+  
+  .suite-nav-app-name {
+    color: rgba(0, 0, 0, 0.9);
+  }
+}
+
+/* Mobile responsiveness */
+@media (max-width: 640px) {
+  .suite-nav-menu {
+    width: 280px;
+    right: -10px;
+  }
+  
+  .suite-nav-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2px;
+    padding: 8px;
+  }
+  
+  .suite-nav-app {
+    padding: 12px 4px;
+  }
+  
+  .suite-nav-app-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+  }
+  
+  .suite-nav-app-icon span {
+    font-size: 1.5rem !important;
+  }
+  
+  .njaz-header-nav-links {
+    display: none;
+  }
+}

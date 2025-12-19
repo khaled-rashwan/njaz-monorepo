@@ -1,0 +1,21 @@
+{
+  "name": "njaz-platform",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "dev:landing": "turbo run dev --filter=landing",
+    "dev:app-selector": "turbo run dev --filter=app-selector",
+    "build:landing": "turbo run build --filter=landing",
+    "sync-amplify": "node scripts/sync-amplify-config.js"
+  },
+  "devDependencies": {
+    "turbo": "^2.3.3"
+  },
+  "packageManager": "npm@10.2.0"
+}
