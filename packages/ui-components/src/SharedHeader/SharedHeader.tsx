@@ -15,19 +15,23 @@ interface User {
     email?: string;
 }
 
-const DASHBOARD_URL = process.env.NEXT_PUBLIC_DASHBOARD_URL || 'https://dashboard.njaz.org';
-const DASHBOARD_URL_DEV = 'http://localhost:3001';
-
+/**
+ * Get dashboard URL - uses environment variable first for SSR compatibility
+ */
 function getDashboardUrl() {
+    // Environment variable takes priority (works in SSR)
+    if (process.env.NEXT_PUBLIC_DASHBOARD_URL) {
+        return process.env.NEXT_PUBLIC_DASHBOARD_URL;
+    }
+    // Fallback: Check hostname on client
     if (typeof window !== 'undefined') {
         const hostname = window.location.hostname;
-        // Use production URL if on njaz.org domains
         if (hostname.endsWith('.njaz.org') || hostname === 'njaz.org') {
-            return DASHBOARD_URL;
+            return 'https://dashboard.njaz.org';
         }
     }
-    // Use localhost in development
-    return DASHBOARD_URL_DEV;
+    // Development default
+    return 'http://localhost:3001';
 }
 
 /**
