@@ -1,7 +1,7 @@
 'use client';
 
-import { Amplify } from 'aws-amplify';
 import { ReactNode, useEffect, useState } from 'react';
+import { configureAmplifyAuth } from '@njaz/shared-auth';
 
 // Configure Amplify at module level
 let configured = false;
@@ -25,7 +25,7 @@ async function loadAmplifyConfig() {
 /**
  * Amplify Provider for Next.js apps
  * 
- * Configures Amplify with the outputs from the shared backend.
+ * Configures Amplify with cookie-based storage for cross-domain SSO.
  * This component should wrap your app's root layout.
  */
 export function AmplifyProvider({ children }: AmplifyProviderProps) {
@@ -36,7 +36,7 @@ export function AmplifyProvider({ children }: AmplifyProviderProps) {
             if (!configured) {
                 const config = await loadAmplifyConfig();
                 if (config) {
-                    Amplify.configure(config);
+                    configureAmplifyAuth(config);
                     configured = true;
                 }
             }

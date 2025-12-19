@@ -13,6 +13,7 @@
         "react": "^18.3.0",
         "react-dom": "^18.3.0",
         "@njaz/ui-components": "*",
+        "@njaz/shared-auth": "*",
         "aws-amplify": "^6.0.0"
     },
     "devDependencies": {

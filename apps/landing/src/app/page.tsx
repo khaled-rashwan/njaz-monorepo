@@ -2,7 +2,8 @@
 
 import Image from 'next/image';
 import { useLanguage, LanguageSwitcher } from '@/components/LanguageContext';
-import { SuiteNavigation } from '@njaz/ui-components';
+import { SharedHeader } from '@njaz/ui-components';
+import { getDashboardUrl } from '@njaz/shared-auth';
 
 // Platform apps data with accent colors and logo images
 const apps = [
@@ -75,53 +76,12 @@ const features = [
 
 export default function LandingPage() {
     const { t, language, direction } = useLanguage();
+    const dashboardUrl = getDashboardUrl();
 
     return (
         <main className="min-h-screen">
-            {/* Navigation */}
-            <nav className="nav-container">
-                <div className="max-w-7xl mx-auto flex items-center justify-between">
-                    {/* Logo */}
-                    <a href="/" className="flex items-center gap-3">
-                        <Image
-                            src="/images/logo.svg"
-                            alt="Njaz"
-                            width={40}
-                            height={40}
-                            className="w-10 h-10"
-                        />
-                        <span className="text-xl font-bold text-white">
-                            {t('Njaz', 'إنجاز')}
-                        </span>
-                    </a>
-
-                    {/* Nav Links - Desktop */}
-                    <div className="hidden md:flex items-center gap-8">
-                        <a href="#apps" className="text-white/60 hover:text-white transition-colors font-medium">
-                            {t('Our Suite', 'منتجاتنا')}
-                        </a>
-                        <a href="#features" className="text-white/60 hover:text-white transition-colors font-medium">
-                            {t('Why Njaz?', 'لماذا إنجاز؟')}
-                        </a>
-                    </div>
-
-                    {/* Actions */}
-                    <div className="flex items-center gap-3">
-                        {/* Language Switcher */}
-                        <LanguageSwitcher />
-
-                        {/* Suite Navigation - Waffle Menu */}
-                        <SuiteNavigation />
-
-                        <a href="http://localhost:3001" className="btn-outline hidden sm:flex">
-                            {t('Login', 'دخول')}
-                        </a>
-                        <a href="http://localhost:3001" className="bg-amber-500 hover:bg-amber-400 text-[#0a0f1a] text-sm font-semibold py-2 px-4 rounded-md transition-all">
-                            {t('Register', 'تسجيل')}
-                        </a>
-                    </div>
-                </div>
-            </nav>
+            {/* Shared Header */}
+            <SharedHeader showLanguageSwitcher={true} LanguageSwitcher={LanguageSwitcher} />
 
             {/* Hero Section */}
             <section className="hero-section">
@@ -171,7 +131,7 @@ export default function LandingPage() {
 
                         {/* CTA Buttons */}
                         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-8">
-                            <a href="http://localhost:3001" className="btn-gold">
+                            <a href={dashboardUrl} className="btn-gold">
                                 {t('Get Started Free', 'ابدأ مجاناً')}
                             </a>
                         </div>
@@ -320,7 +280,7 @@ export default function LandingPage() {
                             'انضم إلى المهندسين والمصممين الذين يثقون بإنجاز في عملهم اليومي.'
                         )}
                     </p>
-                    <a href="http://localhost:3001" className="btn-gold text-lg">
+                    <a href={dashboardUrl} className="btn-gold text-lg">
                         {t('Create Free Account', 'أنشئ حساباً مجانياً')}
                     </a>
                 </div>

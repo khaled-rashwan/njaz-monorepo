@@ -1,0 +1,9 @@
+{
+    "name": "@njaz/shared-assets",
+    "version": "0.0.1",
+    "private": true,
+    "description": "Shared assets (images, fonts, etc.) for Njaz platform",
+    "files": [
+        "public/**/*"
+    ]
+}

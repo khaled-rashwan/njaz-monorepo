@@ -49,25 +49,25 @@ export function AuthForm({ onSuccess }: AuthFormProps) {
 
     return (
         <div className="w-full max-w-md mx-auto">
-            <div className="p-8 rounded-2xl bg-slate-800/50 border border-slate-700/50 backdrop-blur-xl">
+            <div className="glass-card glass-card-cyan p-6 animate-fade-in">
                 {/* Header */}
-                <div className="text-center mb-8">
-                    <h1 className="text-2xl font-bold gradient-text mb-2">
+                <div className="text-center mb-6">
+                    <h2 className="text-xl font-bold text-white mb-1">
                         {mode === 'signin' && 'Welcome Back'}
                         {mode === 'signup' && 'Create Account'}
                         {mode === 'confirm' && 'Verify Email'}
-                    </h1>
-                    <p className="text-slate-400 text-sm">
-                        {mode === 'signin' && 'Sign in to access your Njaz apps'}
-                        {mode === 'signup' && 'Join Njaz to access engineering tools'}
+                    </h2>
+                    <p className="text-slate-400 text-xs">
+                        {mode === 'signin' && 'Sign in to access your apps'}
+                        {mode === 'signup' && 'Join the platform'}
                         {mode === 'confirm' && 'Enter the code sent to your email'}
                     </p>
                 </div>
 
                 {/* Error Message */}
                 {error && (
-                    <div className="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
-                        {error}
+                    <div className="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm flex items-center gap-2">
+                        <span>⚠️</span> {error}
                     </div>
                 )}
 
@@ -84,7 +84,7 @@ export function AuthForm({ onSuccess }: AuthFormProps) {
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
                                     required
-                                    className="w-full px-4 py-3 rounded-xl bg-slate-900/50 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all"
+                                    className="w-full px-4 py-3 rounded-xl bg-surface-900/50 border border-white/10 text-white placeholder-slate-500 focus:outline-none focus:border-njaz-500 focus:ring-2 focus:ring-njaz-500/20 transition-all"
                                     placeholder="you@example.com"
                                 />
                             </div>
@@ -99,7 +99,7 @@ export function AuthForm({ onSuccess }: AuthFormProps) {
                                     onChange={(e) => setPassword(e.target.value)}
                                     required
                                     minLength={8}
-                                    className="w-full px-4 py-3 rounded-xl bg-slate-900/50 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all"
+                                    className="w-full px-4 py-3 rounded-xl bg-surface-900/50 border border-white/10 text-white placeholder-slate-500 focus:outline-none focus:border-njaz-500 focus:ring-2 focus:ring-njaz-500/20 transition-all"
                                     placeholder={mode === 'signup' ? 'Min 8 characters' : '••••••••'}
                                 />
                             </div>
@@ -116,7 +116,7 @@ export function AuthForm({ onSuccess }: AuthFormProps) {
                                 value={confirmCode}
                                 onChange={(e) => setConfirmCode(e.target.value)}
                                 required
-                                className="w-full px-4 py-3 rounded-xl bg-slate-900/50 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all text-center text-2xl tracking-widest"
+                                className="w-full px-4 py-3 rounded-xl bg-surface-900/50 border border-white/10 text-white placeholder-slate-500 focus:outline-none focus:border-njaz-500 focus:ring-2 focus:ring-njaz-500/20 transition-all text-center text-2xl tracking-widest font-mono"
                                 placeholder="000000"
                                 maxLength={6}
                             />
@@ -126,7 +126,7 @@ export function AuthForm({ onSuccess }: AuthFormProps) {
                     <button
                         type="submit"
                         disabled={isLoading}
-                        className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-semibold shadow-lg shadow-purple-500/30 hover:shadow-purple-500/50 hover:scale-[1.02] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                        className="w-full btn-gold shadow-lg shadow-amber-500/20 hover:shadow-amber-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
                     >
                         {isLoading ? (
                             <span className="flex items-center justify-center gap-2">
@@ -153,7 +153,7 @@ export function AuthForm({ onSuccess }: AuthFormProps) {
                             Don't have an account?{' '}
                             <button
                                 onClick={() => setMode('signup')}
-                                className="text-purple-400 hover:text-purple-300 font-medium"
+                                className="text-njaz-400 hover:text-njaz-300 font-medium transition-colors"
                             >
                                 Sign up
                             </button>
@@ -164,7 +164,7 @@ export function AuthForm({ onSuccess }: AuthFormProps) {
                             Already have an account?{' '}
                             <button
                                 onClick={() => setMode('signin')}
-                                className="text-purple-400 hover:text-purple-300 font-medium"
+                                className="text-njaz-400 hover:text-njaz-300 font-medium transition-colors"
                             >
                                 Sign in
                             </button>
@@ -173,7 +173,7 @@ export function AuthForm({ onSuccess }: AuthFormProps) {
                     {mode === 'confirm' && (
                         <button
                             onClick={() => setMode('signin')}
-                            className="text-purple-400 hover:text-purple-300 font-medium"
+                            className="text-njaz-400 hover:text-njaz-300 font-medium transition-colors"
                         >
                             Back to sign in
                         </button>
