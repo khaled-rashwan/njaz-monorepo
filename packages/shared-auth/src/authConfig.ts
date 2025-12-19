@@ -1,4 +1,4 @@
-import { Amplify, ResourcesConfig } from 'aws-amplify';
+import { Amplify } from 'aws-amplify';
 import { cognitoUserPoolsTokenProvider } from 'aws-amplify/auth/cognito';
 import { CookieStorage } from './cookieStorage';
 
@@ -23,7 +23,7 @@ export function getAuthDomain(): string {
 /**
  * Configure Amplify with cookie-based storage for cross-domain auth
  */
-export function configureAmplifyAuth(config: ResourcesConfig) {
+export function configureAmplifyAuth(config: any) {
     const cookieDomain = process.env.NEXT_PUBLIC_COOKIE_DOMAIN || getAuthDomain();
 
     // Create cookie storage instance
