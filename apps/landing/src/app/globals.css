@@ -423,6 +423,14 @@ html[dir="rtl"] .suite-nav-menu {
     animation: pulse-glow 3s ease-in-out infinite;
 }
 
+/* Futuristic grid background */
+.futuristic-bg {
+    background-image:
+        linear-gradient(rgba(56, 205, 223, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(56, 205, 223, 0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+}
+
 /* Arabic font */
 .font-arabic {
     font-family: 'Noto Sans Arabic', system-ui, sans-serif;

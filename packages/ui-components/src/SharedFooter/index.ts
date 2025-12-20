@@ -1,0 +1,1 @@
+export { SharedFooter } from './SharedFooter';

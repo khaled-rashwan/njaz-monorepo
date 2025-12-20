@@ -2,36 +2,50 @@
 
 import { useAuth } from '../components/AuthContext';
 import { AuthForm } from '../components/AuthForm';
-import { NJAZ_APPS } from '@njaz/ui-components';
+import {
+    NJAZ_APPS,
+    FuturisticPanel,
+    BigNumber,
+    MiniBarChart,
+    MiniLineChart,
+    ActionButton,
+    ActivityItem,
+} from '@njaz/ui-components';
 import { getLandingUrl } from '@njaz/shared-auth';
 
 // Quick actions for the dashboard
 const quickActions = [
-    { id: 'new-survey', label: 'New Survey', icon: '📝', app: 'estebian' },
-    { id: 'new-controller', label: 'New Controller', icon: '🔧', app: 'pid' },
-    { id: 'new-project', label: 'New Project', icon: '📁', app: 'dev' },
-    { id: 'upload-design', label: 'Upload Design', icon: '🎨', app: 'interior' },
+    { id: 'new-survey', label: 'Survey', icon: '📝', color: 'purple' as const },
+    { id: 'new-controller', label: 'Controller', icon: '⚙️', color: 'gold' as const },
+    { id: 'new-project', label: 'Project', icon: '📁', color: 'cyan' as const },
+    { id: 'upload-design', label: 'Design', icon: '🎨', color: 'green' as const },
 ];
 
 // Recent activity mock data
 const recentActivity = [
-    { id: 1, action: 'Created survey', item: 'Employee Satisfaction Q4', app: 'Estebian', time: '2 hours ago', icon: '📊' },
-    { id: 2, action: 'Updated controller', item: 'Temperature Control PID', app: 'PID', time: '5 hours ago', icon: '🔧' },
-    { id: 3, action: 'Completed project', item: 'E-commerce Platform', app: 'Dev Hub', time: '1 day ago', icon: '💻' },
-    { id: 4, action: 'Added photos', item: 'Villa Modern Design', app: 'Interior', time: '2 days ago', icon: '🏠' },
+    { timestamp: '03:08:20', action: 'Survey completed: Employee Satisfaction', status: 'completed' as const },
+    { timestamp: '03:06:15', action: 'Controller tuned: Temperature PID', status: 'completed' as const },
+    { timestamp: '03:03:26', action: 'Project created: E-commerce Platform', status: 'completed' as const },
+    { timestamp: '02:58:13', action: 'Design uploaded: Villa Modern', status: 'pending' as const },
+    { timestamp: '02:45:08', action: 'Survey started: Customer Feedback', status: 'completed' as const },
 ];
+
+// Mock chart data
+const barChartData = [30, 55, 40, 80, 65, 45, 70];
+const lineChartData = [20, 35, 28, 45, 38, 52, 48, 55, 62, 58, 72, 68];
 
 export default function AppSelectorDashboard() {
     const { user, isLoading, isAuthenticated, signOut } = useAuth();
     const landingUrl = getLandingUrl();
+    const initial = user?.email?.charAt(0).toUpperCase() || 'U';
 
     // Loading state
     if (isLoading) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-[#0a0f1a]">
                 <div className="text-center">
-                    <div className="w-16 h-16 mx-auto mb-4 border-4 border-njaz-500 border-t-transparent rounded-full animate-spin" />
-                    <p className="text-slate-400">Loading Njaz Platform...</p>
+                    <div className="w-16 h-16 mx-auto mb-4 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin" />
+                    <p className="text-slate-400">Initializing Command Center...</p>
                 </div>
             </div>
         );
@@ -40,26 +54,15 @@ export default function AppSelectorDashboard() {
     // Not authenticated - show auth form
     if (!isAuthenticated) {
         return (
-            <div className="min-h-screen flex flex-col items-center justify-center p-6 hero-section">
-                {/* Compact Logo + Branding */}
+            <div className="auth-page min-h-screen flex flex-col items-center justify-center p-6 hero-section">
                 <div className="mb-6 flex items-center gap-4 animate-fade-in">
-                    <div className="w-14 h-14 bg-surface-900/50 rounded-2xl p-3 border border-white/10 backdrop-blur-md shadow-lg shadow-njaz-500/20">
-                        <img
-                            src="/images/logo.svg"
-                            alt="Njaz"
-                            className="w-full h-full object-contain drop-shadow-[0_0_10px_rgba(56,205,223,0.4)]"
-                        />
+                    <div className="w-14 h-14 bg-surface-900/50 rounded-2xl p-3 border border-white/10 backdrop-blur-md shadow-lg shadow-cyan-500/20">
+                        <img src="/images/logo.svg" alt="Njaz" className="w-full h-full object-contain drop-shadow-[0_0_10px_rgba(56,205,223,0.4)]" />
                     </div>
                     <h1 className="text-3xl font-extrabold gradient-text tracking-tight">Njaz</h1>
                 </div>
-
                 <AuthForm />
-
-                {/* Back to landing */}
-                <a
-                    href={landingUrl}
-                    className="mt-6 text-sm text-slate-500 hover:text-njaz-400 transition-colors"
-                >
+                <a href={landingUrl} className="mt-6 text-sm text-slate-500 hover:text-cyan-400 transition-colors">
                     ← Back to njaz.org
                 </a>
             </div>
@@ -75,191 +78,159 @@ export default function AppSelectorDashboard() {
     );
 
     return (
-        <div className="min-h-screen flex hero-section">
-            {/* Sidebar */}
-            <aside className="sidebar hidden lg:flex flex-col w-72 border-r border-white/5 bg-surface-900/60 backdrop-blur-xl p-6">
-                {/* Logo */}
-                <a href={landingUrl} className="mb-10 flex items-center gap-3 group">
-                    <div className="w-10 h-10 bg-surface-900/50 rounded-xl p-2 border border-white/10 group-hover:border-njaz-500/50 transition-all">
-                        <img src="/images/logo.svg" alt="Njaz" className="w-full h-full object-contain" />
-                    </div>
-                    <span className="text-2xl font-bold gradient-text">Njaz</span>
-                </a>
-
-                {/* Navigation */}
-                <nav className="space-y-2">
-                    <a href="#" className="flex items-center gap-3 px-4 py-3 rounded-xl bg-njaz-500/10 border border-njaz-500/20 text-njaz-400 font-medium">
-                        <span>🏠</span>
-                        <span>Dashboard</span>
-                    </a>
-                    <a href="#apps" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 text-slate-400 hover:text-white transition-all">
-                        <span>📱</span>
-                        <span>Apps</span>
-                    </a>
-                    <a href="#activity" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 text-slate-400 hover:text-white transition-all">
-                        <span>📋</span>
-                        <span>Activity</span>
-                    </a>
-                    <a href="#settings" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 text-slate-400 hover:text-white transition-all">
-                        <span>⚙️</span>
-                        <span>Settings</span>
-                    </a>
-                </nav>
-
-                {/* Spacer */}
-                <div className="flex-1" />
-
-                {/* User Profile at bottom */}
-                <div className="mt-auto pt-6 border-t border-white/5">
-                    <div className="p-4 rounded-xl bg-white/5 border border-white/5">
-                        <div className="flex items-center gap-3 mb-4">
-                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-njaz-500 to-blue-600 flex items-center justify-center text-white font-bold shadow-lg shadow-njaz-500/20">
-                                {user?.email?.charAt(0).toUpperCase() || 'U'}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium text-white truncate">
-                                    {user?.email?.split('@')[0] || 'User'}
-                                </p>
-                                <p className="text-xs text-slate-400 truncate">{user?.email}</p>
-                            </div>
+        <div className="min-h-screen hero-section futuristic-bg flex flex-col">
+            {/* Fixed Header Bar */}
+            <header className="sticky top-0 z-50 flex items-center justify-between px-6 py-4 bg-slate-900/80 backdrop-blur-xl border-b border-cyan-500/20">
+                {/* Left - Logo & Title */}
+                <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-3">
+                        <img src="/images/logo.svg" alt="Njaz" className="w-10 h-10 drop-shadow-[0_0_8px_rgba(56,205,223,0.4)]" />
+                        <div>
+                            <span className="text-xl font-bold gradient-text tracking-wide">NJAZ</span>
+                            <span className="hidden sm:inline text-xs text-cyan-400/60 ml-2 tracking-widest">COMMAND CENTER</span>
                         </div>
-                        <button
-                            onClick={() => signOut()}
-                            className="w-full py-2 text-sm text-slate-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors border border-transparent hover:border-white/10"
-                        >
-                            Sign Out
-                        </button>
                     </div>
                 </div>
-            </aside>
 
-            {/* Main Content */}
-            <main className="flex-1 p-6 lg:p-10 overflow-auto">
-                {/* Mobile Header */}
-                <div className="lg:hidden flex items-center justify-between mb-8">
-                    <div className="flex items-center gap-2">
-                        <img src="/images/logo.svg" alt="Njaz" className="w-8 h-8" />
-                        <span className="text-2xl font-bold gradient-text">Njaz</span>
+                {/* Right - User Info */}
+                <div className="flex items-center gap-4">
+                    {/* User Avatar & Name */}
+                    <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-cyan-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm border border-cyan-400/30 shadow-lg shadow-cyan-500/20">
+                            {initial}
+                        </div>
+                        <div className="hidden md:block">
+                            <div className="text-sm font-medium text-white">{user?.email?.split('@')[0]}</div>
+                            <div className="text-xs text-slate-400">{user?.groups?.length || 0} groups</div>
+                        </div>
                     </div>
+                    {/* Disconnect Button */}
                     <button
                         onClick={() => signOut()}
-                        className="px-3 py-1.5 text-sm text-slate-400 border border-white/10 rounded-lg bg-surface-900/50"
+                        className="px-4 py-2 text-xs font-medium text-cyan-400 border border-cyan-500/30 rounded-lg hover:bg-cyan-500/10 hover:border-cyan-400/50 transition-all tracking-wide"
                     >
-                        Sign Out
+                        DISCONNECT
                     </button>
                 </div>
+            </header>
 
+            {/* Main Content */}
+            <main className="flex-1 p-6 lg:p-8 overflow-auto">
                 <div className="max-w-7xl mx-auto">
-                    {/* Welcome Section */}
-                    <div className="mb-12 animate-fade-in">
-                        <h1 className="text-3xl lg:text-4xl font-bold text-white mb-2">
-                            Welcome back, <span className="gradient-text">{user?.email?.split('@')[0]}</span>
-                        </h1>
-                        <p className="text-slate-400 text-lg">Access your engineering tools and manage your projects.</p>
 
-                        {/* User Groups Badge */}
-                        <div className="mt-4 flex flex-wrap gap-2">
-                            {user?.groups.map((group) => (
-                                <span
-                                    key={group}
-                                    className="px-3 py-1 text-xs rounded-full bg-njaz-500/10 text-njaz-300 border border-njaz-500/20"
-                                >
-                                    {group}
-                                </span>
-                            ))}
-                        </div>
+                    {/* Top Row - Stats */}
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                        <FuturisticPanel title="Active Projects" glowColor="purple" size="sm">
+                            <div className="flex items-end justify-between">
+                                <BigNumber value={accessibleApps.length} color="purple" />
+                                <div className="flex-1 ml-4">
+                                    <MiniBarChart data={barChartData} color="purple" />
+                                </div>
+                            </div>
+                        </FuturisticPanel>
+
+                        <FuturisticPanel title="Total Surveys" glowColor="cyan" size="sm">
+                            <div className="flex items-end justify-between">
+                                <BigNumber value={24} color="cyan" />
+                                <div className="flex-1 ml-4">
+                                    <MiniLineChart data={lineChartData} color="green" />
+                                </div>
+                            </div>
+                        </FuturisticPanel>
+
+                        <FuturisticPanel title="Controllers" glowColor="gold" size="sm">
+                            <div className="flex items-end justify-between">
+                                <BigNumber value={6} color="gold" />
+                                <div className="flex items-center gap-2 text-sm text-emerald-400">
+                                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                                    3 active
+                                </div>
+                            </div>
+                        </FuturisticPanel>
+
+                        <FuturisticPanel title="Team Size" glowColor="green" size="sm">
+                            <div className="flex items-end justify-between">
+                                <BigNumber value={user?.groups?.length || 0} color="green" />
+                                <div className="flex-1 ml-4">
+                                    <MiniLineChart data={[3, 5, 4, 6, 8, 7, 9]} color="cyan" />
+                                </div>
+                            </div>
+                        </FuturisticPanel>
                     </div>
 
-                    {/* Quick Actions */}
-                    <section className="mb-12">
-                        <div className="flex flex-wrap gap-3">
-                            {quickActions.map((action) => (
-                                <button
-                                    key={action.id}
-                                    className="glass-card flex items-center gap-3 py-3 px-5 !p-3 !rounded-xl hover:!scale-105"
-                                >
-                                    <span className="text-xl">{action.icon}</span>
-                                    <span className="text-sm font-medium text-slate-200">{action.label}</span>
-                                </button>
-                            ))}
-                        </div>
-                    </section>
+                    {/* Middle Row - Quick Actions & Apps */}
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+                        {/* Quick Actions */}
+                        <FuturisticPanel title="Quick Actions" glowColor="cyan">
+                            <div className="grid grid-cols-4 gap-2">
+                                {quickActions.map((action) => (
+                                    <ActionButton
+                                        key={action.id}
+                                        icon={action.icon}
+                                        label={action.label}
+                                        color={action.color}
+                                    />
+                                ))}
+                            </div>
+                        </FuturisticPanel>
 
-                    {/* Apps Grid */}
-                    <section id="apps" className="mb-12">
-                        <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
-                            <span className="text-njaz-400">⚡</span> Your Apps
-                        </h2>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                            {accessibleApps.map((app) => (
-                                <a
-                                    key={app.id}
-                                    href={app.href}
-                                    className="glass-card glass-card-cyan !p-6 group cursor-pointer"
-                                >
-                                    <div className="relative">
-                                        {/* App Icon */}
+                        {/* Your Apps - Takes 2 columns */}
+                        <FuturisticPanel title="Your Apps" glowColor="purple" className="lg:col-span-2">
+                            <div className="grid grid-cols-3 sm:grid-cols-5 gap-4">
+                                {accessibleApps.map((app) => (
+                                    <a
+                                        key={app.id}
+                                        href={app.href}
+                                        className="group flex flex-col items-center gap-2 p-3 rounded-xl hover:bg-white/5 transition-all"
+                                    >
                                         <div
-                                            className="w-16 h-16 rounded-2xl flex items-center justify-center mb-6 transition-transform group-hover:scale-110 duration-300 shadow-lg"
-                                            style={{ backgroundColor: `${app.color}15` }}
+                                            className="w-14 h-14 rounded-xl flex items-center justify-center transition-all group-hover:scale-110 group-hover:shadow-lg"
+                                            style={{
+                                                backgroundColor: `${app.color}15`,
+                                                boxShadow: `0 0 20px ${app.color}20`
+                                            }}
                                         >
-                                            <div className="w-10 h-10 relative">
-                                                <img
-                                                    src={app.icon}
-                                                    alt={app.name}
-                                                    className="w-full h-full object-contain drop-shadow-md"
-                                                />
-                                            </div>
+                                            <img src={app.icon} alt={app.name} className="w-9 h-9 object-contain" />
                                         </div>
-
-                                        {/* App Info */}
-                                        <h3 className="text-xl font-bold text-white mb-1 group-hover:text-njaz-400 transition-colors">
+                                        <span className="text-xs text-slate-400 group-hover:text-white text-center transition-colors">
                                             {app.name}
-                                        </h3>
-                                        {app.nameAr && (
-                                            <p className="text-sm text-slate-500 font-arabic mb-3">{app.nameAr}</p>
-                                        )}
-                                        <p className="text-sm text-slate-400 leading-relaxed">{app.description}</p>
+                                        </span>
+                                    </a>
+                                ))}
+                            </div>
+                        </FuturisticPanel>
+                    </div>
 
-                                        {/* Open indicator */}
-                                        <div className="absolute top-0 right-0 w-8 h-8 rounded-full bg-white/5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 translate-x-2 -translate-y-2 group-hover:translate-x-0 group-hover:translate-y-0 text-njaz-400">
-                                            ↗
-                                        </div>
-                                    </div>
-                                </a>
-                            ))}
-                        </div>
-                    </section>
-
-                    {/* Recent Activity */}
-                    <section id="activity">
-                        <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
-                            <span className="text-amber-400">🕒</span> Recent Activity
-                        </h2>
-                        <div className="glass-card !p-0 overflow-hidden">
-                            {recentActivity.map((activity, index) => (
-                                <div
-                                    key={activity.id}
-                                    className={`flex items-center gap-4 p-5 hover:bg-white/5 transition-colors ${index !== recentActivity.length - 1 ? 'border-b border-white/5' : ''
-                                        }`}
-                                >
-                                    <div className="w-10 h-10 rounded-xl bg-surface-800 flex items-center justify-center text-lg border border-white/5">
-                                        {activity.icon}
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-sm text-white">
-                                            <span className="font-medium text-njaz-400">{activity.action}</span>{' '}
-                                            <span className="text-slate-500 mx-1">·</span>{' '}
-                                            <span className="text-slate-300">{activity.item}</span>
-                                        </p>
-                                        <p className="text-xs text-slate-500 mt-0.5">{activity.app} · {activity.time}</p>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </section>
+                    {/* Bottom Row - Activity */}
+                    <div className="grid grid-cols-1 gap-6">
+                        <FuturisticPanel title="Recent Activity" glowColor="cyan">
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-1">
+                                {recentActivity.map((activity, i) => (
+                                    <ActivityItem
+                                        key={i}
+                                        timestamp={activity.timestamp}
+                                        action={activity.action}
+                                        status={activity.status}
+                                    />
+                                ))}
+                            </div>
+                        </FuturisticPanel>
+                    </div>
                 </div>
             </main>
+
+            {/* Decorative Connection Lines */}
+            <svg className="fixed inset-0 pointer-events-none z-0 opacity-10 hidden lg:block" style={{ width: '100%', height: '100%' }}>
+                <defs>
+                    <linearGradient id="lineGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <stop offset="0%" stopColor="transparent" />
+                        <stop offset="50%" stopColor="#38CDDF" />
+                        <stop offset="100%" stopColor="transparent" />
+                    </linearGradient>
+                </defs>
+                <line x1="10%" y1="20%" x2="30%" y2="40%" stroke="url(#lineGradient)" strokeWidth="1" />
+                <line x1="70%" y1="40%" x2="90%" y2="20%" stroke="url(#lineGradient)" strokeWidth="1" />
+            </svg>
         </div>
     );
 }
