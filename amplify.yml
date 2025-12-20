@@ -41,3 +41,20 @@ applications:
           - .next/cache/**/*
           - node_modules/**/*
     appRoot: apps/app-selector
+  - frontend:
+      phases:
+        preBuild:
+          commands:
+            - npm ci
+        build:
+          commands:
+            - npm run build
+      artifacts:
+        baseDirectory: .next
+        files:
+          - '**/*'
+      cache:
+        paths:
+          - .next/cache/**/*
+          - node_modules/**/*
+    appRoot: apps/estebian
