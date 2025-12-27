@@ -7,6 +7,7 @@ import { useLanguage, LanguageSwitcher } from '@/components/LanguageContext';
 import { SharedHeader, SharedFooter, FuturisticPanel } from '@njaz/ui-components';
 import { Survey, Report } from '@/lib/types';
 import { getSurveys, getResponses, getReports } from '@/lib/storage';
+import { getDashboardUrl, getCurrentUrl } from '@njaz/shared-auth';
 
 export default function ReportsPage() {
     const { t, language, direction } = useLanguage();
@@ -29,7 +30,8 @@ export default function ReportsPage() {
             setSurveys(userSurveys);
             setReports(userReports);
         } catch {
-            window.location.href = 'https://dashboard.njaz.org';
+            // User not authenticated - that's okay
+            setUserId(null);
         } finally {
             setIsLoading(false);
         }
@@ -128,6 +130,33 @@ export default function ReportsPage() {
                             <div className="text-center py-8">
                                 <div className="w-10 h-10 border-4 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin mx-auto mb-4" />
                                 <p className="text-slate-400">{t('Loading...', 'جاري التحميل...')}</p>
+                            </div>
+                        ) : !userId ? (
+                            // Not authenticated
+                            <div className="text-center py-12 px-6">
+                                <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-amber-500/10 flex items-center justify-center">
+                                    <svg className="w-10 h-10 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                    </svg>
+                                </div>
+                                <h2 className="text-2xl font-bold text-white mb-3">
+                                    {t('Authentication Required', 'المصادقة مطلوبة')}
+                                </h2>
+                                <p className="text-slate-400 mb-6 max-w-md mx-auto">
+                                    {t(
+                                        'Please sign in to view and generate reports.',
+                                        'يرجى تسجيل الدخول لعرض وإنشاء التقارير.'
+                                    )}
+                                </p>
+                                <a
+                                    href={getDashboardUrl(getCurrentUrl())}
+                                    className="futuristic-btn-primary inline-flex items-center gap-2"
+                                >
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+                                    </svg>
+                                    {t('Sign In', 'تسجيل الدخول')}
+                                </a>
                             </div>
                         ) : publishedSurveys.length === 0 ? (
                             <div className="text-center py-12">

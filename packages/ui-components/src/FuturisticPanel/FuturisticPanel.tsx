@@ -7,7 +7,7 @@ interface FuturisticPanelProps {
     title?: string;
     className?: string;
     size?: 'sm' | 'md' | 'lg';
-    glowColor?: 'cyan' | 'purple' | 'gold' | 'green';
+    glowColor?: 'cyan' | 'purple' | 'gold' | 'green' | 'pink';
 }
 
 const glowColors = {
@@ -34,6 +34,12 @@ const glowColors = {
         shadow: 'shadow-emerald-500/20',
         text: 'text-emerald-400',
         glow: 'rgba(16, 185, 129, 0.3)',
+    },
+    pink: {
+        border: 'border-pink-500/30',
+        shadow: 'shadow-pink-500/20',
+        text: 'text-pink-400',
+        glow: 'rgba(236, 72, 153, 0.3)',
     },
 };
 

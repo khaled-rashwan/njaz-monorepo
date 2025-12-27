@@ -7,6 +7,7 @@ import { useLanguage, LanguageSwitcher } from '@/components/LanguageContext';
 import { SharedHeader, SharedFooter, FuturisticPanel } from '@njaz/ui-components';
 import { Survey } from '@/lib/types';
 import { getSurveys, getResponses, deleteSurvey } from '@/lib/storage';
+import { getDashboardUrl, getCurrentUrl } from '@njaz/shared-auth';
 
 export default function SurveysPage() {
     const { t, language, direction } = useLanguage();
@@ -25,7 +26,8 @@ export default function SurveysPage() {
             const userSurveys = getSurveys(user.username);
             setSurveys(userSurveys);
         } catch {
-            window.location.href = 'https://dashboard.njaz.org';
+            // User not authenticated - that's okay
+            setUserId(null);
         } finally {
             setIsLoading(false);
         }
@@ -82,11 +84,43 @@ export default function SurveysPage() {
                         </Link>
                     </div>
 
+
                     {/* Surveys List */}
                     {isLoading ? (
                         <div className="text-center py-12">
                             <div className="w-12 h-12 border-4 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin mx-auto mb-4" />
                             <p className="text-slate-400">{t('Loading surveys...', 'جاري تحميل الاستبيانات...')}</p>
+                        </div>
+                    ) : !userId ? (
+                        // Not authenticated
+                        <div className="flex items-center justify-center min-h-[50vh]">
+                            <FuturisticPanel glowColor="purple" size="lg">
+                                <div className="text-center py-12 px-6">
+                                    <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-purple-500/10 flex items-center justify-center">
+                                        <svg className="w-10 h-10 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                        </svg>
+                                    </div>
+                                    <h2 className="text-2xl font-bold text-white mb-3">
+                                        {t('Authentication Required', 'المصادقة مطلوبة')}
+                                    </h2>
+                                    <p className="text-slate-400 mb-6 max-w-md mx-auto">
+                                        {t(
+                                            'Please sign in to view and manage your surveys.',
+                                            'يرجى تسجيل الدخول لعرض وإدارة استبياناتك.'
+                                        )}
+                                    </p>
+                                    <a
+                                        href={getDashboardUrl(getCurrentUrl())}
+                                        className="futuristic-btn-primary inline-flex items-center gap-2"
+                                    >
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+                                        </svg>
+                                        {t('Sign In', 'تسجيل الدخول')}
+                                    </a>
+                                </div>
+                            </FuturisticPanel>
                         </div>
                     ) : surveys.length === 0 ? (
                         <FuturisticPanel glowColor="purple" size="lg">
@@ -126,8 +160,8 @@ export default function SurveysPage() {
                                                     </h3>
                                                     {/* Language badge */}
                                                     <span className={`text-xs px-2 py-1 rounded ${survey.language === 'ar'
-                                                            ? 'bg-blue-500/20 text-blue-400'
-                                                            : 'bg-orange-500/20 text-orange-400'
+                                                        ? 'bg-blue-500/20 text-blue-400'
+                                                        : 'bg-orange-500/20 text-orange-400'
                                                         }`}>
                                                         {survey.language === 'ar' ? 'عربي' : 'EN'}
                                                     </span>

@@ -56,3 +56,8 @@ Thumbs.db
 *.log
 *.tsbuildinfo
 next-env.d.ts
+# Synced assets
+apps/*/public/images/njaz-logo.svg
+apps/*/public/images/estebian-logo.png
+apps/*/public/images/dev-logo.png
+apps/*/public/images/process-logo.png

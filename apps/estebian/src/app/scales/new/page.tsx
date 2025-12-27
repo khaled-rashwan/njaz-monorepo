@@ -8,6 +8,7 @@ import { useLanguage, LanguageSwitcher } from '@/components/LanguageContext';
 import { SharedHeader, SharedFooter, FuturisticPanel } from '@njaz/ui-components';
 import { Scale, Dimension, Statement, ScaleOption, getDefaultOptions } from '@/lib/types';
 import { saveScale, generateId } from '@/lib/storage';
+import { getDashboardUrl, getCurrentUrl } from '@njaz/shared-auth';
 
 export default function NewScalePage() {
     const { t, language: uiLanguage, direction } = useLanguage();
@@ -40,7 +41,8 @@ export default function NewScalePage() {
             const user = await getCurrentUser();
             setUserId(user.username);
         } catch {
-            window.location.href = 'https://dashboard.njaz.org';
+            // User not authenticated - that's okay
+            setUserId(null);
         } finally {
             setIsLoading(false);
         }
@@ -216,8 +218,8 @@ export default function NewScalePage() {
                             <button
                                 onClick={() => setScaleLanguage('ar')}
                                 className={`flex-1 py-3 px-4 rounded-lg border transition-all ${scaleLanguage === 'ar'
-                                        ? 'bg-cyan-500/20 border-cyan-500 text-cyan-400'
-                                        : 'border-slate-600 text-slate-400 hover:border-slate-500'
+                                    ? 'bg-cyan-500/20 border-cyan-500 text-cyan-400'
+                                    : 'border-slate-600 text-slate-400 hover:border-slate-500'
                                     }`}
                             >
                                 <span className="text-lg font-bold">العربية</span>
@@ -226,8 +228,8 @@ export default function NewScalePage() {
                             <button
                                 onClick={() => setScaleLanguage('en')}
                                 className={`flex-1 py-3 px-4 rounded-lg border transition-all ${scaleLanguage === 'en'
-                                        ? 'bg-cyan-500/20 border-cyan-500 text-cyan-400'
-                                        : 'border-slate-600 text-slate-400 hover:border-slate-500'
+                                    ? 'bg-cyan-500/20 border-cyan-500 text-cyan-400'
+                                    : 'border-slate-600 text-slate-400 hover:border-slate-500'
                                     }`}
                             >
                                 <span className="text-lg font-bold">English</span>

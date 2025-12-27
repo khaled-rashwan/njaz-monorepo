@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
+import { getAppUrl } from '@njaz/shared-auth';
 
 interface NjazApp {
     id: string;
@@ -18,10 +19,22 @@ interface NjazApp {
 
 const NJAZ_APPS: NjazApp[] = [
     {
+        id: 'dashboard',
+        name: 'Dashboard',
+        nameAr: 'لوحة التحكم',
+        icon: '/images/njaz-logo.svg',
+        href: 'https://dashboard.njaz.org',
+        color: '#38CDDF',
+        accentClass: 'cyan',
+        description: 'Command center to manage all your Njaz applications and activity.',
+        descriptionAr: 'مركز القيادة لإدارة جميع تطبيقات إنجاز ونشاطاتك.',
+        shortDescription: 'Command Center',
+    },
+    {
         id: 'estebian',
         name: 'Estebian',
         nameAr: 'استبيان',
-        icon: '/images/estebian.png',
+        icon: '/images/estebian-logo.png',
         href: 'https://estebian.njaz.org',
         color: '#6366f1',
         accentClass: 'cyan',
@@ -31,56 +44,30 @@ const NJAZ_APPS: NjazApp[] = [
         requiredGroup: 'estebian-access',
     },
     {
-        id: 'pid',
-        name: 'PID Controller',
-        nameAr: 'التحكم الصناعي',
-        icon: '/images/process.png',
-        href: 'https://pid.njaz.org',
-        color: '#10b981',
-        accentClass: 'gold',
-        description: 'Industrial process control simulation with real-time monitoring and tuning.',
-        descriptionAr: 'محاكاة التحكم في العمليات الصناعية مع المراقبة والضبط في الوقت الفعلي.',
-        shortDescription: 'Industrial Control',
-        requiredGroup: 'pid-access',
-    },
-    {
         id: 'dev',
-        name: 'Dev Platform',
-        nameAr: 'منصة التطوير',
-        icon: '/images/dev.png',
+        name: 'Dev',
+        nameAr: 'تطوير',
+        icon: '/images/dev-logo.png',
         href: 'https://dev.njaz.org',
-        color: '#f59e0b',
-        accentClass: 'purple',
-        description: 'Digital transformation solutions and modern web development services.',
-        descriptionAr: 'حلول التحول الرقمي وخدمات تطوير الويب الحديثة.',
-        shortDescription: 'Digital Transformation',
-        requiredGroup: 'devplatform-access',
+        color: '#0ea5e9',
+        accentClass: 'cyan',
+        description: 'Developer workspace for building and managing projects.',
+        descriptionAr: 'مساحة المطورين لبناء وإدارة المشاريع.',
+        shortDescription: 'Developer Hub',
+        requiredGroup: 'dev-access',
     },
     {
-        id: 'interior',
-        name: 'Interior Design',
-        nameAr: 'التصميم الداخلي',
-        icon: '/images/interior.png',
-        href: 'https://interior.njaz.org',
-        color: '#ec4899',
-        accentClass: 'pink',
-        description: 'Design visualization and project management for interior designers.',
-        descriptionAr: 'تصور التصميم وإدارة المشاريع للمصممين الداخليين.',
-        shortDescription: 'Design Platform',
-        requiredGroup: 'interior-access',
-    },
-    {
-        id: 'admin',
-        name: 'Admin',
-        nameAr: 'الإدارة',
-        icon: '/images/logo.svg',
-        href: 'https://admin.njaz.org',
-        color: '#64748b',
-        accentClass: 'slate',
-        description: 'Platform administration and user management.',
-        descriptionAr: 'إدارة المنصة وإدارة المستخدمين.',
-        shortDescription: 'Platform Admin',
-        requiredGroup: 'admins',
+        id: 'process',
+        name: 'Process',
+        nameAr: 'عمليات',
+        icon: '/images/process-logo.png',
+        href: 'https://process.njaz.org',
+        color: '#10b981',
+        accentClass: 'cyan',
+        description: 'Process management and automation tools.',
+        descriptionAr: 'أدوات إدارة العمليات والأتمتة.',
+        shortDescription: 'Process Automation',
+        requiredGroup: 'process-access',
     },
 ];
 
@@ -119,7 +106,7 @@ export function SuiteNavigation({
     // Filter apps based on user groups
     const visibleApps =
         userGroups.length === 0
-            ? NJAZ_APPS.filter((app) => app.id !== 'admin')
+            ? NJAZ_APPS.filter((app) => !['admin', 'dashboard'].includes(app.id))
             : NJAZ_APPS.filter(
                 (app) =>
                     !app.requiredGroup ||
@@ -127,11 +114,20 @@ export function SuiteNavigation({
                     userGroups.includes('admins')
             );
 
+    // Ensure Dashboard is always first if authenticated (userGroups.length > 0)
+    // or just add it to the visible list if we want it there for everyone
+    const dashboardApp = NJAZ_APPS.find(app => app.id === 'dashboard');
+    if (dashboardApp && !visibleApps.find(app => app.id === 'dashboard')) {
+        visibleApps.unshift(dashboardApp);
+    }
+
     const handleAppClick = (app: NjazApp) => {
         if (onNavigate) {
             onNavigate(app);
         } else {
-            window.location.href = app.href;
+            // Use centralized URL helper
+            const finalHref = getAppUrl(app.id) || app.href;
+            window.location.href = finalHref;
         }
         setIsOpen(false);
     };
@@ -172,7 +168,7 @@ export function SuiteNavigation({
                         ref={menuRef}
                         className="fixed md:absolute inset-x-4 md:inset-x-auto top-20 md:top-full md:mt-2 z-[150] w-auto md:w-80 ltr:md:right-0 rtl:md:left-0"
                         style={{
-                            background: 'linear-gradient(180deg, rgba(20, 28, 40, 0.98) 0%, rgba(10, 15, 26, 0.99) 100%)',
+                            background: 'linear-gradient(180deg, rgba(20, 40, 60, 0.98) 0%, rgba(10, 15, 26, 0.99) 100%)',
                             borderRadius: '12px',
                             border: '1px solid rgba(56, 205, 223, 0.2)',
                             boxShadow: '0 20px 50px rgba(0, 0, 0, 0.5), 0 0 30px rgba(56, 205, 223, 0.1)',
@@ -181,7 +177,7 @@ export function SuiteNavigation({
                         {/* Header */}
                         <div className="flex items-center justify-between p-4 border-b border-cyan-500/10">
                             <span className="text-xs font-semibold uppercase tracking-widest text-cyan-400/70">
-                                Njaz Apps
+                                Njaz Ecosystem
                             </span>
                             <button
                                 onClick={() => setIsOpen(false)}
@@ -194,43 +190,50 @@ export function SuiteNavigation({
                         </div>
 
                         {/* Apps Grid */}
-                        <div className="p-3 grid grid-cols-2 gap-2">
+                        <div className="p-3 grid grid-cols-2 gap-2 max-h-[60vh] overflow-y-auto custom-scrollbar">
                             {visibleApps.map((app) => (
                                 <button
                                     key={app.id}
                                     onClick={() => handleAppClick(app)}
                                     className={`
-                                        flex flex-col items-center gap-2 p-3 rounded-xl 
+                                        flex flex-col items-start gap-2 p-3 rounded-xl 
                                         transition-all duration-200 
-                                        hover:bg-cyan-500/10 hover:scale-105
-                                        ${currentApp === app.id ? 'bg-cyan-500/20 border border-cyan-500/30' : 'border border-transparent'}
+                                        hover:bg-cyan-500/10 group
+                                        ${currentApp === app.id ? 'bg-cyan-500/20 border border-cyan-500/30' : 'border border-transparent hover:border-cyan-500/20'}
                                     `}
                                 >
                                     <div
-                                        className="w-12 h-12 rounded-xl flex items-center justify-center"
+                                        className="w-10 h-10 rounded-lg flex items-center justify-center transition-transform group-hover:scale-110"
                                         style={{
                                             backgroundColor: `${app.color}15`,
-                                            boxShadow: `0 0 20px ${app.color}20`,
+                                            boxShadow: `0 0 15px ${app.color}15`,
                                         }}
                                     >
                                         <img
                                             src={app.icon}
                                             alt={app.name}
-                                            className="w-8 h-8 object-contain"
+                                            className="w-7 h-7 object-contain"
                                         />
                                     </div>
-                                    <span className="text-xs text-slate-300 text-center">{app.name}</span>
+                                    <div className="text-start">
+                                        <div className="text-xs font-bold text-slate-200 group-hover:text-cyan-400 transition-colors uppercase tracking-wider">{app.name}</div>
+                                        <div className="text-[10px] text-slate-500 line-clamp-1">{app.shortDescription}</div>
+                                    </div>
                                 </button>
                             ))}
                         </div>
 
-                        {/* Footer */}
-                        <div className="p-3 border-t border-cyan-500/10 text-center">
+                        {/* Footer - Unified Command Hub link */}
+                        <div className="p-3 border-t border-cyan-500/10">
                             <a
-                                href="https://njaz.org"
-                                className="text-xs text-cyan-400 hover:text-cyan-300 transition-colors"
+                                href={getAppUrl('landing') || 'https://njaz.org'}
+                                className="flex items-center justify-center gap-2 py-2 px-4 rounded-lg bg-cyan-500/5 text-xs text-cyan-400 hover:bg-cyan-500/10 hover:text-cyan-300 transition-all border border-cyan-500/10"
                             >
-                                More from Njaz →
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                                    <polyline points="9 22 9 12 15 12 15 22" />
+                                </svg>
+                                Return to njaz.org
                             </a>
                         </div>
                     </div>

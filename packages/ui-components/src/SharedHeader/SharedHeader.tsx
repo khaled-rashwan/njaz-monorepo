@@ -1,13 +1,16 @@
-'use client';
-
 import { useState, useEffect } from 'react';
 import { getCurrentUser, signOut } from 'aws-amplify/auth';
 import { SuiteNavigation, NJAZ_APPS } from '../SuiteNavigation/SuiteNavigation';
+import { getDashboardUrl, getCurrentUrl } from '@njaz/shared-auth';
 
 interface SharedHeaderProps {
     currentApp?: string;
     showLanguageSwitcher?: boolean;
     LanguageSwitcher?: React.ComponentType<{ className?: string }>;
+    // Allow external auth state for apps like Dashboard
+    externalUser?: User | null;
+    externalLogout?: () => Promise<void>;
+    userAvatar?: string;
 }
 
 interface User {
@@ -16,43 +19,41 @@ interface User {
 }
 
 /**
- * Get dashboard URL - uses environment variable first for SSR compatibility
- */
-function getDashboardUrl() {
-    if (process.env.NEXT_PUBLIC_DASHBOARD_URL) {
-        return process.env.NEXT_PUBLIC_DASHBOARD_URL;
-    }
-    if (typeof window !== 'undefined') {
-        const hostname = window.location.hostname;
-        if (hostname.endsWith('.njaz.org') || hostname === 'njaz.org') {
-            return 'https://dashboard.njaz.org';
-        }
-    }
-    return 'http://localhost:3001';
-}
-
-/**
  * Shared Header Component - Futuristic Command Center Style
  * Supports RTL layout and displays current app logo in center
  */
-export function SharedHeader({ currentApp, showLanguageSwitcher = false, LanguageSwitcher }: SharedHeaderProps) {
-    const [user, setUser] = useState<User | null>(null);
+export function SharedHeader({
+    currentApp,
+    showLanguageSwitcher = false,
+    LanguageSwitcher,
+    externalUser,
+    externalLogout,
+    userAvatar
+}: SharedHeaderProps) {
+    const [internalUser, setInternalUser] = useState<User | null>(null);
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
 
+    // Use external user if provided, otherwise internal
+    const user = externalUser !== undefined ? externalUser : internalUser;
+
     useEffect(() => {
-        checkAuthState();
-    }, []);
+        if (externalUser === undefined) {
+            checkAuthState();
+        } else {
+            setIsLoading(false);
+        }
+    }, [externalUser]);
 
     async function checkAuthState() {
         try {
             const currentUser = await getCurrentUser();
-            setUser({
+            setInternalUser({
                 username: currentUser.username,
                 email: currentUser.signInDetails?.loginId,
             });
         } catch {
-            setUser(null);
+            setInternalUser(null);
         } finally {
             setIsLoading(false);
         }
@@ -60,16 +61,22 @@ export function SharedHeader({ currentApp, showLanguageSwitcher = false, Languag
 
     async function handleSignOut() {
         try {
-            await signOut();
-            setUser(null);
+            if (externalLogout) {
+                await externalLogout();
+            } else {
+                await signOut();
+                setInternalUser(null);
+                window.location.href = '/';
+            }
             setIsMenuOpen(false);
-            window.location.href = '/';
         } catch (error) {
             console.error('Error signing out:', error);
         }
     }
 
-    const dashboardUrl = getDashboardUrl();
+    // Get current URL for redirection
+    const currentUrl = getCurrentUrl();
+    const dashboardUrl = getDashboardUrl(currentUrl);
 
     // Get current app info for center logo
     const currentAppInfo = currentApp ? NJAZ_APPS.find(app => app.id === currentApp) : null;
@@ -101,56 +108,22 @@ export function SharedHeader({ currentApp, showLanguageSwitcher = false, Languag
                     {/* Logo - Left Side (RTL: appears on right) */}
                     <a href="/" className="flex items-center gap-3 group">
                         <div
-                            className="w-10 h-10 sm:w-11 sm:h-11 rounded-full p-2 flex items-center justify-center flex-shrink-0"
+                            className="w-10 h-10 sm:w-11 sm:h-11 rounded-full p-2 flex items-center justify-center flex-shrink-0 transition-all duration-300"
                             style={{
                                 background: 'linear-gradient(135deg, rgba(30, 40, 55, 0.9) 0%, rgba(15, 22, 35, 0.95) 100%)',
-                                border: '2px solid rgba(56, 205, 223, 0.4)',
-                                boxShadow: '0 0 15px rgba(56, 205, 223, 0.2), inset 0 0 10px rgba(56, 205, 223, 0.1)',
+                                border: `2px solid ${currentAppInfo?.color ? `${currentAppInfo.color}60` : 'rgba(56, 205, 223, 0.4)'}`,
+                                boxShadow: `0 0 15px ${currentAppInfo?.color ? `${currentAppInfo.color}30` : 'rgba(56, 205, 223, 0.2)'}, inset 0 0 10px ${currentAppInfo?.color ? `${currentAppInfo.color}20` : 'rgba(56, 205, 223, 0.1)'}`,
                             }}
                         >
                             <img
-                                src="/images/logo.svg"
-                                alt="Njaz"
+                                src={currentAppInfo?.icon || "/images/njaz-logo.svg"}
+                                alt={currentAppInfo?.name || "Njaz"}
                                 className="w-full h-full object-contain drop-shadow-[0_0_8px_rgba(56,205,223,0.5)]"
                             />
                         </div>
                     </a>
 
-                    {/* Center - Current App Logo & Name (if on an app page) */}
-                    {currentAppInfo && (
-                        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-2">
-                            {currentAppInfo.id === 'estebian' ? (
-                                <div className="flex items-center">
-                                    {/* Custom Estebian Logo Presentation */}
-                                    <div className="relative h-10 w-10 flex items-center justify-center">
-                                        <img
-                                            src="/images/estebian-e.png"
-                                            alt="Estebian"
-                                            className="w-full h-full object-contain"
-                                        />
-                                    </div>
-                                </div>
-                            ) : (
-                                <>
-                                    <div
-                                        className="w-8 h-8 rounded-lg flex items-center justify-center"
-                                        style={{
-                                            backgroundColor: `${currentAppInfo.color}20`,
-                                        }}
-                                    >
-                                        <img
-                                            src={currentAppInfo.icon}
-                                            alt={currentAppInfo.name}
-                                            className="w-6 h-6 object-contain"
-                                        />
-                                    </div>
-                                    <span className="hidden sm:block text-sm font-medium text-white">
-                                        {currentAppInfo.name}
-                                    </span>
-                                </>
-                            )}
-                        </div>
-                    )}
+
 
                     {/* Right Side Controls (RTL: appears on left) */}
                     <div className="flex items-center gap-2 sm:gap-4">
@@ -187,8 +160,12 @@ export function SharedHeader({ currentApp, showLanguageSwitcher = false, Languag
                                             }}
                                         >
                                             {/* User Avatar */}
-                                            <div className="w-7 h-7 rounded-full bg-gradient-to-br from-cyan-400 to-cyan-600 flex items-center justify-center text-white font-semibold text-xs">
-                                                {user.username.charAt(0).toUpperCase()}
+                                            <div className="w-7 h-7 rounded-full bg-gradient-to-br from-cyan-400 to-cyan-600 flex items-center justify-center text-white font-semibold text-xs overflow-hidden border border-cyan-400/30">
+                                                {userAvatar ? (
+                                                    <img src={userAvatar} alt={user.username} className="w-full h-full object-cover" />
+                                                ) : (
+                                                    user.username.charAt(0).toUpperCase()
+                                                )}
                                             </div>
                                             {/* Truncated Username */}
                                             <span className="hidden sm:block text-sm text-slate-300 max-w-24 truncate">

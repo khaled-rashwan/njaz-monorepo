@@ -1,5 +1,7 @@
 'use client';
 
+import { useEffect } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { useAuth } from '../components/AuthContext';
 import { AuthForm } from '../components/AuthForm';
 import {
@@ -10,6 +12,8 @@ import {
     MiniLineChart,
     ActionButton,
     ActivityItem,
+    SharedHeader,
+    SharedFooter
 } from '@njaz/ui-components';
 import { getLandingUrl } from '@njaz/shared-auth';
 
@@ -36,8 +40,21 @@ const lineChartData = [20, 35, 28, 45, 38, 52, 48, 55, 62, 58, 72, 68];
 
 export default function AppSelectorDashboard() {
     const { user, isLoading, isAuthenticated, signOut } = useAuth();
+    const searchParams = useSearchParams();
+    const router = useRouter();
     const landingUrl = getLandingUrl();
     const initial = user?.email?.charAt(0).toUpperCase() || 'U';
+
+    const redirectUrl = searchParams.get('redirect_url');
+
+    // Auto-redirect if authenticated and redirect_url exists
+    useEffect(() => {
+        if (!isLoading && isAuthenticated && redirectUrl) {
+            // Check if redirectUrl is valid to prevent open redirect vulnerabilities
+            // For now, we trust it if it's within our domain or relative
+            window.location.href = redirectUrl;
+        }
+    }, [isLoading, isAuthenticated, redirectUrl]);
 
     // Loading state
     if (isLoading) {
@@ -57,11 +74,13 @@ export default function AppSelectorDashboard() {
             <div className="auth-page min-h-screen flex flex-col items-center justify-center p-6 hero-section">
                 <div className="mb-6 flex items-center gap-4 animate-fade-in">
                     <div className="w-14 h-14 bg-surface-900/50 rounded-2xl p-3 border border-white/10 backdrop-blur-md shadow-lg shadow-cyan-500/20">
-                        <img src="/images/logo.svg" alt="Njaz" className="w-full h-full object-contain drop-shadow-[0_0_10px_rgba(56,205,223,0.4)]" />
+                        <img src="/images/njaz-logo.svg" alt="Njaz" className="w-full h-full object-contain drop-shadow-[0_0_10px_rgba(56,205,223,0.4)]" />
                     </div>
                     <h1 className="text-3xl font-extrabold gradient-text tracking-tight">Njaz</h1>
                 </div>
-                <AuthForm />
+                <AuthForm onSuccess={() => {
+                    if (redirectUrl) window.location.href = redirectUrl;
+                }} />
                 <a href={landingUrl} className="mt-6 text-sm text-slate-500 hover:text-cyan-400 transition-colors">
                     ← Back to njaz.org
                 </a>
@@ -77,42 +96,20 @@ export default function AppSelectorDashboard() {
             user?.groups.includes('admins')
     );
 
-    return (
-        <div className="min-h-screen hero-section futuristic-bg flex flex-col">
-            {/* Fixed Header Bar */}
-            <header className="sticky top-0 z-50 flex items-center justify-between px-6 py-4 bg-slate-900/80 backdrop-blur-xl border-b border-cyan-500/20">
-                {/* Left - Logo & Title */}
-                <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-3">
-                        <img src="/images/logo.svg" alt="Njaz" className="w-10 h-10 drop-shadow-[0_0_8px_rgba(56,205,223,0.4)]" />
-                        <div>
-                            <span className="text-xl font-bold gradient-text tracking-wide">NJAZ</span>
-                            <span className="hidden sm:inline text-xs text-cyan-400/60 ml-2 tracking-widest">COMMAND CENTER</span>
-                        </div>
-                    </div>
-                </div>
+    // Prepare external user for SharedHeader
+    const sharedUser = user && user.email ? {
+        username: user.email.split('@')[0],
+        email: user.email
+    } : null;
 
-                {/* Right - User Info */}
-                <div className="flex items-center gap-4">
-                    {/* User Avatar & Name */}
-                    <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-cyan-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm border border-cyan-400/30 shadow-lg shadow-cyan-500/20">
-                            {initial}
-                        </div>
-                        <div className="hidden md:block">
-                            <div className="text-sm font-medium text-white">{user?.email?.split('@')[0]}</div>
-                            <div className="text-xs text-slate-400">{user?.groups?.length || 0} groups</div>
-                        </div>
-                    </div>
-                    {/* Disconnect Button */}
-                    <button
-                        onClick={() => signOut()}
-                        className="px-4 py-2 text-xs font-medium text-cyan-400 border border-cyan-500/30 rounded-lg hover:bg-cyan-500/10 hover:border-cyan-400/50 transition-all tracking-wide"
-                    >
-                        DISCONNECT
-                    </button>
-                </div>
-            </header>
+    return (
+        <div className="min-h-screen hero-section futuristic-bg flex flex-col pt-20">
+            {/* Shared Header Implementation */}
+            <SharedHeader
+                currentApp="dashboard"
+                externalUser={sharedUser}
+                externalLogout={signOut}
+            />
 
             {/* Main Content */}
             <main className="flex-1 p-6 lg:p-8 overflow-auto">
@@ -180,7 +177,7 @@ export default function AppSelectorDashboard() {
                                 {accessibleApps.map((app) => (
                                     <a
                                         key={app.id}
-                                        href={app.href}
+                                        href={app.id === 'estebian' && typeof window !== 'undefined' && window.location.hostname === 'localhost' ? 'http://localhost:3002' : app.href}
                                         className="group flex flex-col items-center gap-2 p-3 rounded-xl hover:bg-white/5 transition-all"
                                     >
                                         <div
@@ -218,6 +215,9 @@ export default function AppSelectorDashboard() {
                     </div>
                 </div>
             </main>
+
+            {/* Shared Footer Integration */}
+            <SharedFooter />
 
             {/* Decorative Connection Lines */}
             <svg className="fixed inset-0 pointer-events-none z-0 opacity-10 hidden lg:block" style={{ width: '100%', height: '100%' }}>

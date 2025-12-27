@@ -3,6 +3,7 @@
 import Image from 'next/image';
 import { useLanguage, LanguageSwitcher } from '@/components/LanguageContext';
 import { SharedHeader, SharedFooter, NJAZ_APPS, FuturisticPanel } from '@njaz/ui-components';
+import { getAppUrl } from '@njaz/shared-auth';
 
 export default function LandingPage() {
     const { t, language, direction } = useLanguage();
@@ -40,7 +41,7 @@ export default function LandingPage() {
                     <div className="relative z-10 grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
 
                         {/* Top Left App */}
-                        <a href={displayApps[0]?.href} className="group">
+                        <a href={getAppUrl(displayApps[0]?.id) || displayApps[0]?.href} className="group">
                             <FuturisticPanel glowColor="cyan" size="sm">
                                 <div className="flex items-center gap-3">
                                     <div className="w-12 h-12 rounded-lg bg-white/5 flex items-center justify-center group-hover:scale-110 transition-transform">
@@ -73,13 +74,13 @@ export default function LandingPage() {
                                         boxShadow: '0 0 30px rgba(56,205,223,0.3)',
                                     }}
                                 >
-                                    <Image src="/images/logo.svg" alt="Njaz" width={52} height={52} className="drop-shadow-[0_0_15px_rgba(56,205,223,0.5)]" />
+                                    <Image src="/images/njaz-logo.svg" alt="Njaz" width={52} height={52} className="drop-shadow-[0_0_15px_rgba(56,205,223,0.5)]" />
                                 </div>
                             </div>
                         </div>
 
                         {/* Top Right App */}
-                        <a href={displayApps[1]?.href} className="group">
+                        <a href={getAppUrl(displayApps[1]?.id) || displayApps[1]?.href} className="group">
                             <FuturisticPanel glowColor="gold" size="sm">
                                 <div className="flex items-center gap-3">
                                     <div className="w-12 h-12 rounded-lg bg-white/5 flex items-center justify-center group-hover:scale-110 transition-transform">
@@ -94,7 +95,7 @@ export default function LandingPage() {
                         </a>
 
                         {/* Bottom Left App */}
-                        <a href={displayApps[2]?.href} className="group">
+                        <a href={getAppUrl(displayApps[2]?.id) || displayApps[2]?.href} className="group">
                             <FuturisticPanel glowColor="purple" size="sm">
                                 <div className="flex items-center gap-3">
                                     <div className="w-12 h-12 rounded-lg bg-white/5 flex items-center justify-center group-hover:scale-110 transition-transform">
@@ -112,7 +113,7 @@ export default function LandingPage() {
                         <div className="hidden md:block" />
 
                         {/* Bottom Right App */}
-                        <a href={displayApps[3]?.href} className="group">
+                        <a href={getAppUrl(displayApps[3]?.id) || displayApps[3]?.href} className="group">
                             <FuturisticPanel glowColor="green" size="sm">
                                 <div className="flex items-center gap-3">
                                     <div className="w-12 h-12 rounded-lg bg-white/5 flex items-center justify-center group-hover:scale-110 transition-transform">
