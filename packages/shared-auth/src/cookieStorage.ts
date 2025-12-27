@@ -47,7 +47,14 @@ export class CookieStorage implements KeyValueStorageInterface {
 
     async getItem(key: string): Promise<string | null> {
         try {
-            return Cookies.get(key) || null;
+            const value = Cookies.get(key) || null;
+
+            // Debug logging for auth tokens
+            if (key.includes('CognitoIdentityServiceProvider')) {
+                console.log(`🔍 Cookie lookup: ${key.substring(0, 50)}... = ${value ? 'FOUND' : 'NOT FOUND'}`);
+            }
+
+            return value;
         } catch (error) {
             console.error('Error getting cookie:', error);
             return null;

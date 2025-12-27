@@ -3,11 +3,6 @@
 import { ReactNode, useEffect, useState } from 'react';
 import { configureAmplifyAuth } from '@njaz/shared-auth';
 
-// Global configuration state - shared across all instances
-if (typeof window !== 'undefined') {
-    (window as any).__AMPLIFY_CONFIGURED__ = (window as any).__AMPLIFY_CONFIGURED__ || false;
-}
-
 interface AmplifyProviderProps {
     children: ReactNode;
 }
@@ -17,7 +12,7 @@ async function loadAmplifyConfig() {
     try {
         // The amplify_outputs.json is in the app root (copied from shared-backend)
         const outputs = await import('../../amplify_outputs.json');
-        console.log('✅ ampliify_outputs.json loaded successfully');
+        console.log('✅ amplify_outputs.json loaded successfully');
         return outputs.default || outputs;
     } catch (e) {
         console.error('❌ Failed to load amplify_outputs.json:', e);
@@ -31,25 +26,22 @@ async function loadAmplifyConfig() {
  * 
  * Configures Amplify with cookie-based storage for cross-domain SSO.
  * This component should wrap your app's root layout.
+ * 
+ * NOTE: We intentionally reconfigure Amplify on every page load to ensure
+ * the cookie storage is properly initialized for cross-subdomain auth.
  */
 export function AmplifyProvider({ children }: AmplifyProviderProps) {
     const [isReady, setIsReady] = useState(false);
 
     useEffect(() => {
         async function configure() {
-            // Check global flag
-            if (typeof window !== 'undefined' && !(window as any).__AMPLIFY_CONFIGURED__) {
-                console.log('🔧 Configuring Amplify for the first time...');
-                const config = await loadAmplifyConfig();
-                if (config) {
-                    configureAmplifyAuth(config);
-                    (window as any).__AMPLIFY_CONFIGURED__ = true;
-                    console.log('✅ Amplify configured successfully');
-                } else {
-                    console.error('❌ Failed to configure Amplify - config is null');
-                }
+            console.log('🔧 Configuring Amplify...');
+            const config = await loadAmplifyConfig();
+            if (config) {
+                configureAmplifyAuth(config);
+                console.log('✅ Amplify configured successfully');
             } else {
-                console.log('ℹ️ Amplify already configured globally');
+                console.error('❌ Failed to configure Amplify - config is null');
             }
             setIsReady(true);
         }
@@ -62,3 +54,4 @@ export function AmplifyProvider({ children }: AmplifyProviderProps) {
 
     return <>{children}</>;
 }
+

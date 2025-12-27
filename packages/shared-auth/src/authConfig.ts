@@ -1,6 +1,7 @@
 import { Amplify } from 'aws-amplify';
 import { cognitoUserPoolsTokenProvider } from 'aws-amplify/auth/cognito';
 import { CookieStorage } from './cookieStorage';
+import Cookies from 'js-cookie';
 
 /**
  * Get the appropriate cookie domain based on environment
@@ -43,6 +44,18 @@ export function configureAmplifyAuth(config: any) {
         isProduction = hostname.endsWith('.njaz.org') || hostname === 'njaz.org';
     }
 
+    // Debug: Log all available cookies on page load
+    if (typeof window !== 'undefined') {
+        const allCookies = Cookies.get();
+        const cognitoCookies = Object.keys(allCookies).filter(k => k.includes('Cognito'));
+        console.log('🍪 Available cookies on page load:', {
+            total: Object.keys(allCookies).length,
+            cognitoRelated: cognitoCookies.length,
+            cognitoKeys: cognitoCookies.map(k => k.substring(0, 40) + '...'),
+            hostname: window.location.hostname,
+        });
+    }
+
     // Create cookie storage instance with proper cross-subdomain settings
     const cookieStorage = new CookieStorage({
         domain: cookieDomain,
@@ -66,3 +79,4 @@ export function configureAmplifyAuth(config: any) {
         hostname: typeof window !== 'undefined' ? window.location.hostname : 'SSR',
     });
 }
+
