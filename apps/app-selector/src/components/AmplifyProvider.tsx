@@ -3,8 +3,10 @@
 import { ReactNode, useEffect, useState } from 'react';
 import { configureAmplifyAuth } from '@njaz/shared-auth';
 
-// Configure Amplify at module level
-let configured = false;
+// Global configuration state - shared across all instances
+if (typeof window !== 'undefined') {
+    (window as any).__AMPLIFY_CONFIGURED__ = (window as any).__AMPLIFY_CONFIGURED__ || false;
+}
 
 interface AmplifyProviderProps {
     children: ReactNode;
@@ -36,12 +38,17 @@ export function AmplifyProvider({ children }: AmplifyProviderProps) {
 
     useEffect(() => {
         async function configure() {
-            if (!configured) {
+            // Check global flag
+            if (typeof window !== 'undefined' && !(window as any).__AMPLIFY_CONFIGURED__) {
+                console.log('🔧 Configuring Amplify for the first time...');
                 const config = await loadAmplifyConfig();
                 if (config) {
                     configureAmplifyAuth(config);
-                    configured = true;
+                    (window as any).__AMPLIFY_CONFIGURED__ = true;
+                    console.log('✅ Amplify configured successfully');
                 }
+            } else {
+                console.log('ℹ️ Amplify already configured globally');
             }
             setIsReady(true);
         }

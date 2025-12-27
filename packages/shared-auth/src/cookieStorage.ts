@@ -26,6 +26,7 @@ export class CookieStorage implements KeyValueStorageInterface {
                 expires: 365, // 1 year
                 secure: this.secure,
                 sameSite: this.sameSite,
+                path: '/', // Ensure cookie is accessible across all paths
             };
 
             // Only set domain in production (not localhost)
@@ -34,6 +35,11 @@ export class CookieStorage implements KeyValueStorageInterface {
             }
 
             Cookies.set(key, value, cookieOptions);
+
+            // Debug logging in production
+            if (this.domain) {
+                console.log(`🍪 Set cookie: ${key.substring(0, 30)}... with domain: ${this.domain}`);
+            }
         } catch (error) {
             console.error('Error setting cookie:', error);
         }
@@ -50,7 +56,9 @@ export class CookieStorage implements KeyValueStorageInterface {
 
     async removeItem(key: string): Promise<void> {
         try {
-            const cookieOptions: Cookies.CookieAttributes = {};
+            const cookieOptions: Cookies.CookieAttributes = {
+                path: '/', // Must match the path used when setting
+            };
 
             // Only set domain in production
             if (this.domain && !this.domain.includes('localhost')) {
