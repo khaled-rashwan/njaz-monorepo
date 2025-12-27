@@ -27,29 +27,33 @@ export function getAuthDomain(): string {
 }
 
 /**
- * Configure Amplify with cookie-based storage for cross-domain auth
- * IMPORTANT: This must be called on the client side in a useEffect
+ * Configure Amplify with cookie-based storage for cross-subdomain auth
+ * 
+ * Uses SameSite=None with Secure=true to enable cross-subdomain cookie sharing
+ * in modern browsers. This is required for desktop browsers which have strict
+ * third-party cookie policies.
  */
 export function configureAmplifyAuth(config: any) {
     const cookieDomain = getAuthDomain();
 
     // Determine if we're in production
-    // Check hostname if window exists, otherwise use NODE_ENV
     let isProduction = process.env.NODE_ENV === 'production';
     if (typeof window !== 'undefined') {
         const hostname = window.location.hostname;
         isProduction = hostname.endsWith('.njaz.org') || hostname === 'njaz.org';
     }
 
-    // Create cookie storage instance
+    // Create cookie storage instance with proper cross-subdomain settings
     const cookieStorage = new CookieStorage({
         domain: cookieDomain,
-        secure: isProduction,
-        sameSite: 'lax',
+        secure: true, // Always true - required for SameSite=None
+        sameSite: isProduction ? 'none' : 'lax', // 'none' for production cross-subdomain
     });
 
     // Configure Amplify with the resource config
-    Amplify.configure(config);
+    Amplify.configure(config, {
+        ssr: false,
+    });
 
     // Set cookie storage for Cognito tokens
     cognitoUserPoolsTokenProvider.setKeyValueStorage(cookieStorage);
@@ -57,6 +61,8 @@ export function configureAmplifyAuth(config: any) {
     console.log('✅ Amplify configured with cookie storage', {
         domain: cookieDomain || 'current domain',
         isProduction,
+        sameSite: isProduction ? 'none' : 'lax',
+        secure: true,
         hostname: typeof window !== 'undefined' ? window.location.hostname : 'SSR',
     });
 }
