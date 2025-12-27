@@ -65,6 +65,26 @@ export default function ScalesPage() {
                     {/* Header */}
                     <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
                         <div>
+                            <Link
+                                href="/"
+                                className="futuristic-btn inline-flex items-center gap-2 text-sm mb-3"
+                            >
+                                {direction === 'rtl' ? (
+                                    <>
+                                        {t('Back to Home', 'العودة للرئيسية')}
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                        </svg>
+                                    </>
+                                ) : (
+                                    <>
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                                        </svg>
+                                        {t('Back to Home', 'العودة للرئيسية')}
+                                    </>
+                                )}
+                            </Link>
                             <h1 className="text-3xl font-bold text-white mb-2">
                                 {t('Scale Library', 'مكتبة المقاييس')}
                             </h1>
@@ -109,8 +129,8 @@ export default function ScalesPage() {
                             <button
                                 onClick={() => setFilterLang('all')}
                                 className={`px-4 py-2 rounded-lg text-sm transition-all ${filterLang === 'all'
-                                        ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/40'
-                                        : 'text-slate-400 border border-slate-600 hover:border-slate-500'
+                                    ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/40'
+                                    : 'text-slate-400 border border-slate-600 hover:border-slate-500'
                                     }`}
                             >
                                 {t('All', 'الكل')}
@@ -118,8 +138,8 @@ export default function ScalesPage() {
                             <button
                                 onClick={() => setFilterLang('ar')}
                                 className={`px-4 py-2 rounded-lg text-sm transition-all ${filterLang === 'ar'
-                                        ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/40'
-                                        : 'text-slate-400 border border-slate-600 hover:border-slate-500'
+                                    ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/40'
+                                    : 'text-slate-400 border border-slate-600 hover:border-slate-500'
                                     }`}
                             >
                                 العربية
@@ -127,8 +147,8 @@ export default function ScalesPage() {
                             <button
                                 onClick={() => setFilterLang('en')}
                                 className={`px-4 py-2 rounded-lg text-sm transition-all ${filterLang === 'en'
-                                        ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/40'
-                                        : 'text-slate-400 border border-slate-600 hover:border-slate-500'
+                                    ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/40'
+                                    : 'text-slate-400 border border-slate-600 hover:border-slate-500'
                                     }`}
                             >
                                 English
@@ -190,8 +210,8 @@ export default function ScalesPage() {
                                             <div className="flex items-center gap-2">
                                                 {/* Language badge */}
                                                 <span className={`text-xs px-2 py-1 rounded ${scale.language === 'ar'
-                                                        ? 'bg-blue-500/20 text-blue-400'
-                                                        : 'bg-orange-500/20 text-orange-400'
+                                                    ? 'bg-blue-500/20 text-blue-400'
+                                                    : 'bg-orange-500/20 text-orange-400'
                                                     }`}>
                                                     {scale.language === 'ar' ? 'عربي' : 'EN'}
                                                 </span>

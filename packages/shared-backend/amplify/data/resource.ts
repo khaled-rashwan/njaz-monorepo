@@ -1,47 +1,22 @@
 import { a, defineData, type ClientSchema } from '@aws-amplify/backend';
+import { estebianSchema } from '@njaz/estebian-data';
 
 /**
  * Njaz Platform Data Schema
  * 
- * Includes models for:
- * - Estebian (surveys)
+ * Composed from app-specific packages:
+ * - @njaz/estebian-data (Estebian survey platform)
+ * 
+ * Plus shared/other app models defined here:
  * - PID Controller (industrial)
  * - Dev Platform (projects)
  * - Interior Design (design projects)
  */
 const schema = a.schema({
     // ============================================
-    // ESTEBIAN - Arabic Survey Platform
+    // ESTEBIAN - Imported from @njaz/estebian-data
     // ============================================
-
-    EstebianSurvey: a
-        .model({
-            title: a.string().required(),
-            titleAr: a.string(), // Arabic title
-            description: a.string(),
-            descriptionAr: a.string(), // Arabic description
-            questions: a.json(), // Array of questions
-            settings: a.json(), // Survey settings
-            isPublished: a.boolean().default(false),
-            responseCount: a.integer().default(0),
-        })
-        .authorization((allow) => [
-            allow.groups(['admins']),
-            allow.groups(['estebian-access']),
-            allow.owner(),
-        ]),
-
-    EstebianResponse: a
-        .model({
-            surveyId: a.id().required(),
-            responses: a.json().required(), // Answers to questions
-            respondentId: a.string(), // Anonymous or authenticated
-            submittedAt: a.datetime(),
-        })
-        .authorization((allow) => [
-            allow.owner(),
-            allow.groups(['estebian-access']).to(['read', 'create']),
-        ]),
+    ...estebianSchema,
 
     // ============================================
     // PID CONTROLLER - Industrial Platform
@@ -129,5 +104,9 @@ export const data = defineData({
     schema,
     authorizationModes: {
         defaultAuthorizationMode: 'userPool',
+        // Allow unauthenticated access for public survey responses
+        apiKeyAuthorizationMode: {
+            expiresInDays: 365,
+        },
     },
 });

@@ -2,6 +2,8 @@
 
 import React from 'react';
 import { Scale } from '@/lib/types';
+import { useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 interface ScaleCardProps {
     scale: Scale;
@@ -11,11 +13,31 @@ interface ScaleCardProps {
 }
 
 export default function ScaleCard({ scale, onRemove, language, index }: ScaleCardProps) {
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+        isDragging,
+    } = useSortable({ id: scale.id });
+
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.5 : 1,
+        zIndex: isDragging ? 100 : 1,
+    };
+
     const totalStatements = scale.dimensions.reduce((sum, d) => sum + d.statements.length, 0);
     const isRtl = scale.language === 'ar';
 
     return (
-        <div className="relative group animate-fade-in" style={{ animationDelay: `${index * 100}ms` }}>
+        <div
+            ref={setNodeRef}
+            style={style}
+            className="relative group animate-fade-in"
+        >
             {/* Connection Line from top */}
             <div className="absolute left-1/2 -top-6 w-0.5 h-6 bg-gradient-to-b from-purple-500/50 to-purple-500 -translate-x-1/2" />
 
@@ -31,10 +53,24 @@ export default function ScaleCard({ scale, onRemove, language, index }: ScaleCar
                 shadow-lg shadow-purple-500/10
                 hover:shadow-purple-500/20
                 transition-all duration-300
-                group-hover:scale-[1.02]
+                ${isDragging ? 'scale-105 shadow-2xl shadow-purple-500/30' : 'group-hover:scale-[1.02]'}
             `}>
                 {/* Glow Effect */}
                 <div className="absolute inset-0 rounded-xl bg-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+
+                {/* Drag Handle */}
+                <button
+                    {...attributes}
+                    {...listeners}
+                    className="absolute top-2 left-2 p-1.5 rounded-lg bg-slate-700/50 text-slate-500 
+                               hover:text-cyan-400 hover:bg-slate-700 cursor-grab active:cursor-grabbing
+                               opacity-0 group-hover:opacity-100 transition-all touch-none"
+                    title={language === 'ar' ? 'اسحب لإعادة الترتيب' : 'Drag to reorder'}
+                >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
+                    </svg>
+                </button>
 
                 {/* Remove Button */}
                 <button
@@ -44,7 +80,7 @@ export default function ScaleCard({ scale, onRemove, language, index }: ScaleCar
                     }}
                     className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-red-500/80 hover:bg-red-500 
                                flex items-center justify-center text-white opacity-0 group-hover:opacity-100
-                               transition-all duration-200 shadow-lg"
+                               transition-all duration-200 shadow-lg z-10"
                 >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -52,10 +88,15 @@ export default function ScaleCard({ scale, onRemove, language, index }: ScaleCar
                 </button>
 
                 {/* Scale Icon */}
-                <div className="w-10 h-10 rounded-lg bg-purple-500/20 flex items-center justify-center mb-3">
+                <div className="w-10 h-10 rounded-lg bg-purple-500/20 flex items-center justify-center mb-3 mt-2">
                     <svg className="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
                     </svg>
+                </div>
+
+                {/* Order Badge */}
+                <div className="absolute top-2 right-8 w-6 h-6 rounded-full bg-cyan-500/20 flex items-center justify-center">
+                    <span className="text-xs font-bold text-cyan-400">{index + 1}</span>
                 </div>
 
                 {/* Scale Title */}
@@ -84,10 +125,10 @@ export default function ScaleCard({ scale, onRemove, language, index }: ScaleCar
                 </div>
 
                 {/* Language Badge */}
-                <div className={`absolute top-2 ${isRtl ? 'left-2' : 'right-2'}`}>
+                <div className={`absolute top-2 ${isRtl ? 'left-10' : 'right-8'}`}>
                     <span className={`text-[10px] px-1.5 py-0.5 rounded ${scale.language === 'ar'
-                            ? 'bg-blue-500/20 text-blue-400'
-                            : 'bg-orange-500/20 text-orange-400'
+                        ? 'bg-blue-500/20 text-blue-400'
+                        : 'bg-orange-500/20 text-orange-400'
                         }`}>
                         {scale.language === 'ar' ? 'ع' : 'EN'}
                     </span>

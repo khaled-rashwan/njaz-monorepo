@@ -2,17 +2,153 @@
 
 import { useState, useEffect } from 'react';
 import { getCurrentUser } from 'aws-amplify/auth';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useLanguage, LanguageSwitcher } from '@/components/LanguageContext';
 import { SharedHeader, SharedFooter, FuturisticPanel } from '@njaz/ui-components';
 import { Scale, Dimension, Statement, ScaleOption, getDefaultOptions } from '@/lib/types';
-import { saveScale, generateId } from '@/lib/storage';
+import { generateId } from '@/lib/storage';
+import { createScale } from '@/lib/api';
 import { getDashboardUrl, getCurrentUrl } from '@njaz/shared-auth';
+import {
+    DndContext,
+    closestCenter,
+    KeyboardSensor,
+    PointerSensor,
+    TouchSensor,
+    useSensor,
+    useSensors,
+    DragEndEvent,
+} from '@dnd-kit/core';
+import {
+    arrayMove,
+    SortableContext,
+    sortableKeyboardCoordinates,
+    useSortable,
+    verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+
+// Sortable statement row component
+function SortableStatementRow({
+    statement,
+    dimensions,
+    onUpdate,
+    onRemove,
+    scaleLanguage,
+    t,
+}: {
+    statement: Statement & { dimensionId: string };
+    dimensions: Dimension[];
+    onUpdate: (id: string, field: string, value: any) => void;
+    onRemove: (id: string) => void;
+    scaleLanguage: 'ar' | 'en';
+    t: (en: string, ar: string) => string;
+}) {
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+        isDragging,
+    } = useSortable({ id: statement.id });
+
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.5 : 1,
+    };
+
+    const isRtl = scaleLanguage === 'ar';
+
+    return (
+        <div
+            ref={setNodeRef}
+            style={style}
+            className={`p-4 rounded-lg bg-slate-800/50 border border-slate-700 ${isDragging ? 'shadow-lg shadow-cyan-500/20' : ''}`}
+        >
+            <div className="flex items-start gap-3">
+                {/* Drag Handle */}
+                <button
+                    {...attributes}
+                    {...listeners}
+                    className="mt-2 p-1 cursor-grab active:cursor-grabbing text-slate-500 hover:text-cyan-400 touch-none"
+                    title={t('Drag to reorder', 'اسحب لإعادة الترتيب')}
+                >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
+                    </svg>
+                </button>
+
+                <div className="flex-1 space-y-3">
+                    {/* Statement Text */}
+                    <textarea
+                        value={statement.text}
+                        onChange={(e) => onUpdate(statement.id, 'text', e.target.value)}
+                        className="futuristic-input text-sm w-full min-h-[60px]"
+                        placeholder={scaleLanguage === 'ar'
+                            ? 'أشعر بالتوتر في المواقف الاجتماعية'
+                            : 'I feel nervous in social situations'}
+                        dir={isRtl ? 'rtl' : 'ltr'}
+                    />
+
+                    <div className="flex flex-wrap items-center gap-4">
+                        {/* Dimension Dropdown */}
+                        <div className="flex-1 min-w-[150px]">
+                            <label className="block text-xs text-slate-500 mb-1">
+                                {t('Dimension', 'البُعد')}
+                            </label>
+                            <select
+                                value={statement.dimensionId}
+                                onChange={(e) => onUpdate(statement.id, 'dimensionId', e.target.value)}
+                                className="futuristic-input text-sm w-full"
+                                dir={isRtl ? 'rtl' : 'ltr'}
+                            >
+                                <option value="">{t('Select dimension...', 'اختر البُعد...')}</option>
+                                {dimensions.map(d => (
+                                    <option key={d.id} value={d.id}>
+                                        {d.name || t('Unnamed', 'بدون اسم')}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+
+                        {/* Reversed Scoring */}
+                        <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                                type="checkbox"
+                                checked={statement.isReversed}
+                                onChange={(e) => onUpdate(statement.id, 'isReversed', e.target.checked)}
+                                className="w-4 h-4 rounded bg-slate-700"
+                            />
+                            <span className={`text-xs ${statement.isReversed ? 'text-amber-400' : 'text-slate-500'}`}>
+                                {t('Reversed', 'عكسي')}
+                            </span>
+                        </label>
+                    </div>
+                </div>
+
+                {/* Remove Button */}
+                <button
+                    onClick={() => onRemove(statement.id)}
+                    className="text-red-400 hover:text-red-300 p-1"
+                >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+    );
+}
 
 export default function NewScalePage() {
     const { t, language: uiLanguage, direction } = useLanguage();
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const returnTo = searchParams.get('returnTo');
+
     const [userId, setUserId] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
@@ -25,7 +161,15 @@ export default function NewScalePage() {
     const [description, setDescription] = useState('');
     const [isPublic, setIsPublic] = useState(true);
     const [dimensions, setDimensions] = useState<Dimension[]>([]);
+    const [statements, setStatements] = useState<(Statement & { dimensionId: string })[]>([]);
     const [options, setOptions] = useState<ScaleOption[]>(getDefaultOptions('ar'));
+
+    // Drag and drop sensors with touch support
+    const sensors = useSensors(
+        useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+        useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } }),
+        useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+    );
 
     useEffect(() => {
         checkAuth();
@@ -41,13 +185,69 @@ export default function NewScalePage() {
             const user = await getCurrentUser();
             setUserId(user.username);
         } catch {
-            // User not authenticated - that's okay
             setUserId(null);
         } finally {
             setIsLoading(false);
         }
     }
 
+    // Dimension functions
+    function addDimension() {
+        const newDimension: Dimension = {
+            id: generateId(),
+            name: '',
+            statements: []
+        };
+        setDimensions([...dimensions, newDimension]);
+    }
+
+    function updateDimension(id: string, name: string) {
+        setDimensions(dimensions.map(d =>
+            d.id === id ? { ...d, name } : d
+        ));
+    }
+
+    function removeDimension(id: string) {
+        // Also unassign statements from this dimension
+        setStatements(statements.map(s =>
+            s.dimensionId === id ? { ...s, dimensionId: '' } : s
+        ));
+        setDimensions(dimensions.filter(d => d.id !== id));
+    }
+
+    // Statement functions
+    function addStatement() {
+        const newStatement: Statement & { dimensionId: string } = {
+            id: generateId(),
+            text: '',
+            isReversed: false,
+            dimensionId: dimensions.length > 0 ? dimensions[0].id : ''
+        };
+        setStatements([...statements, newStatement]);
+    }
+
+    function updateStatement(id: string, field: string, value: any) {
+        setStatements(statements.map(s =>
+            s.id === id ? { ...s, [field]: value } : s
+        ));
+    }
+
+    function removeStatement(id: string) {
+        setStatements(statements.filter(s => s.id !== id));
+    }
+
+    function handleDragEnd(event: DragEndEvent) {
+        const { active, over } = event;
+        if (over && active.id !== over.id) {
+            setStatements((items) => {
+                const oldIndex = items.findIndex(i => i.id === active.id);
+                const newIndex = items.findIndex(i => i.id === over.id);
+                return arrayMove(items, oldIndex, newIndex);
+            });
+        }
+    }
+
+    // Option functions
     function addOption() {
         const newOption: ScaleOption = {
             id: generateId(),
@@ -63,7 +263,6 @@ export default function NewScalePage() {
             return;
         }
         const newOptions = options.filter(o => o.id !== id);
-        // Re-assign values
         setOptions(newOptions.map((o, i) => ({ ...o, value: i + 1 })));
     }
 
@@ -73,88 +272,49 @@ export default function NewScalePage() {
         ));
     }
 
-    function addDimension() {
-        const newDimension: Dimension = {
-            id: generateId(),
-            name: '',
-            statements: []
-        };
-        setDimensions([...dimensions, newDimension]);
-    }
-
-    function updateDimension(id: string, field: keyof Dimension, value: any) {
-        setDimensions(dimensions.map(d =>
-            d.id === id ? { ...d, [field]: value } : d
-        ));
-    }
-
-    function removeDimension(id: string) {
-        setDimensions(dimensions.filter(d => d.id !== id));
-    }
-
-    function addStatement(dimensionId: string) {
-        const newStatement: Statement = {
-            id: generateId(),
-            text: '',
-            isReversed: false
-        };
-        setDimensions(dimensions.map(d =>
-            d.id === dimensionId
-                ? { ...d, statements: [...d.statements, newStatement] }
-                : d
-        ));
-    }
-
-    function updateStatement(dimensionId: string, statementId: string, field: keyof Statement, value: any) {
-        setDimensions(dimensions.map(d =>
-            d.id === dimensionId
-                ? {
-                    ...d,
-                    statements: d.statements.map(s =>
-                        s.id === statementId ? { ...s, [field]: value } : s
-                    )
-                }
-                : d
-        ));
-    }
-
-    function removeStatement(dimensionId: string, statementId: string) {
-        setDimensions(dimensions.map(d =>
-            d.id === dimensionId
-                ? { ...d, statements: d.statements.filter(s => s.id !== statementId) }
-                : d
-        ));
-    }
-
     async function handleSave() {
         if (!userId || !title || dimensions.length === 0) {
             alert(t('Please fill in title and add at least one dimension', 'يرجى ملء العنوان وإضافة بُعد واحد على الأقل'));
             return;
         }
 
-        // Validate options
         if (options.some(o => !o.label.trim())) {
             alert(t('Please fill in all option labels', 'يرجى ملء جميع تسميات الخيارات'));
             return;
         }
 
+        // Check for unassigned statements
+        const unassigned = statements.filter(s => !s.dimensionId);
+        if (unassigned.length > 0) {
+            alert(t('Please assign all statements to a dimension', 'يرجى تعيين جميع العبارات لبُعد'));
+            return;
+        }
+
         setIsSaving(true);
         try {
-            const scale: Scale = {
-                id: generateId(),
+            // Convert flat statements back to dimension-nested format
+            const dimensionsWithStatements = dimensions.map(d => ({
+                ...d,
+                statements: statements
+                    .filter(s => s.dimensionId === d.id)
+                    .map(({ dimensionId, ...rest }) => rest) // Remove dimensionId from final output
+            }));
+
+            await createScale({
                 language: scaleLanguage,
                 title,
                 description,
-                createdBy: userId,
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
                 isPublic,
-                dimensions,
+                dimensions: dimensionsWithStatements,
                 options
-            };
+            });
 
-            saveScale(scale);
-            router.push('/scales');
+            // Return to survey builder if coming from there
+            if (returnTo === 'survey') {
+                router.push('/surveys/new');
+            } else {
+                router.push('/scales');
+            }
         } catch (error) {
             console.error('Error saving scale:', error);
             alert(t('Error saving scale', 'خطأ في حفظ المقياس'));
@@ -174,6 +334,26 @@ export default function NewScalePage() {
         );
     }
 
+    if (!userId) {
+        return (
+            <div className="min-h-screen flex flex-col futuristic-bg" dir={direction}>
+                <SharedHeader currentApp="estebian" showLanguageSwitcher={true} LanguageSwitcher={LanguageSwitcher} />
+                <main className="flex-1 pt-24 pb-8 px-4 flex items-center justify-center">
+                    <FuturisticPanel glowColor="cyan" size="lg">
+                        <div className="text-center py-12 px-6">
+                            <h2 className="text-2xl font-bold text-white mb-3">{t('Authentication Required', 'المصادقة مطلوبة')}</h2>
+                            <p className="text-slate-400 mb-6">{t('Please sign in to create scales.', 'يرجى تسجيل الدخول لإنشاء مقاييس.')}</p>
+                            <a href={getDashboardUrl(getCurrentUrl())} className="futuristic-btn-primary inline-flex items-center gap-2">
+                                {t('Sign In', 'تسجيل الدخول')}
+                            </a>
+                        </div>
+                    </FuturisticPanel>
+                </main>
+                <SharedFooter direction={direction} t={t} />
+            </div>
+        );
+    }
+
     const isRtl = scaleLanguage === 'ar';
 
     return (
@@ -189,8 +369,22 @@ export default function NewScalePage() {
                     {/* Header */}
                     <div className="flex items-center justify-between mb-8">
                         <div>
-                            <Link href="/scales" className="text-sm text-cyan-400 hover:text-cyan-300 mb-2 inline-block">
-                                ← {t('Back to Library', 'العودة للمكتبة')}
+                            <Link href={returnTo === 'survey' ? '/surveys/new' : '/scales'} className="futuristic-btn inline-flex items-center gap-2 text-sm mb-2">
+                                {direction === 'rtl' ? (
+                                    <>
+                                        {returnTo === 'survey' ? t('Back to Survey', 'العودة للاستبيان') : t('Back to Library', 'العودة للمكتبة')}
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                        </svg>
+                                    </>
+                                ) : (
+                                    <>
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                                        </svg>
+                                        {returnTo === 'survey' ? t('Back to Survey', 'العودة للاستبيان') : t('Back to Library', 'العودة للمكتبة')}
+                                    </>
+                                )}
                             </Link>
                             <h1 className="text-3xl font-bold text-white">
                                 {t('Create New Scale', 'إنشاء مقياس جديد')}
@@ -210,10 +404,6 @@ export default function NewScalePage() {
                         <h2 className="text-xl font-bold text-white mb-4">
                             {t('Scale Language', 'لغة المقياس')}
                         </h2>
-                        <p className="text-sm text-slate-400 mb-4">
-                            {t('Choose the language for this scale. All content will be in this language.',
-                                'اختر لغة هذا المقياس. كل المحتوى سيكون بهذه اللغة.')}
-                        </p>
                         <div className="flex gap-4">
                             <button
                                 onClick={() => setScaleLanguage('ar')}
@@ -223,7 +413,6 @@ export default function NewScalePage() {
                                     }`}
                             >
                                 <span className="text-lg font-bold">العربية</span>
-                                <span className="block text-sm opacity-70">Arabic</span>
                             </button>
                             <button
                                 onClick={() => setScaleLanguage('en')}
@@ -233,7 +422,6 @@ export default function NewScalePage() {
                                     }`}
                             >
                                 <span className="text-lg font-bold">English</span>
-                                <span className="block text-sm opacity-70">الإنجليزية</span>
                             </button>
                         </div>
                     </FuturisticPanel>
@@ -269,38 +457,27 @@ export default function NewScalePage() {
                                     dir={isRtl ? 'rtl' : 'ltr'}
                                 />
                             </div>
-                            <div className="flex items-center gap-3">
-                                <label className="flex items-center gap-2 cursor-pointer">
-                                    <input
-                                        type="checkbox"
-                                        checked={isPublic}
-                                        onChange={(e) => setIsPublic(e.target.checked)}
-                                        className="w-5 h-5 rounded bg-slate-700 border-cyan-500/30 text-cyan-500 focus:ring-cyan-500"
-                                    />
-                                    <span className="text-white">
-                                        {t('Make this scale public', 'اجعل هذا المقياس عاماً')}
-                                    </span>
-                                </label>
-                            </div>
+                            <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    checked={isPublic}
+                                    onChange={(e) => setIsPublic(e.target.checked)}
+                                    className="w-5 h-5 rounded bg-slate-700"
+                                />
+                                <span className="text-white">
+                                    {t('Make this scale public', 'اجعل هذا المقياس عاماً')}
+                                </span>
+                            </label>
                         </div>
                     </FuturisticPanel>
 
                     {/* Response Options */}
                     <FuturisticPanel glowColor="gold" size="md" className="mb-6">
                         <div className="flex items-center justify-between mb-4">
-                            <div>
-                                <h2 className="text-xl font-bold text-white">
-                                    {t('Response Options', 'خيارات الاستجابة')}
-                                </h2>
-                                <p className="text-sm text-slate-400 mt-1">
-                                    {t('Define the multiple choice options (e.g., Likert scale)',
-                                        'حدد خيارات الاختيار المتعدد (مثل: مقياس ليكرت)')}
-                                </p>
-                            </div>
-                            <button
-                                onClick={addOption}
-                                className="text-cyan-400 hover:text-cyan-300 text-sm flex items-center gap-1"
-                            >
+                            <h2 className="text-xl font-bold text-white">
+                                {t('Response Options', 'خيارات الاستجابة')}
+                            </h2>
+                            <button onClick={addOption} className="text-cyan-400 hover:text-cyan-300 text-sm flex items-center gap-1">
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                                 </svg>
@@ -308,7 +485,7 @@ export default function NewScalePage() {
                             </button>
                         </div>
                         <div className="space-y-3">
-                            {options.map((option, index) => (
+                            {options.map((option) => (
                                 <div key={option.id} className="flex items-center gap-4 p-3 rounded-lg bg-slate-800/50">
                                     <span className="w-8 h-8 rounded-full bg-amber-500/20 flex items-center justify-center text-amber-400 font-bold">
                                         {option.value}
@@ -321,11 +498,7 @@ export default function NewScalePage() {
                                         placeholder={scaleLanguage === 'ar' ? 'تسمية الخيار' : 'Option label'}
                                         dir={isRtl ? 'rtl' : 'ltr'}
                                     />
-                                    <button
-                                        onClick={() => removeOption(option.id)}
-                                        className="text-red-400 hover:text-red-300 p-1"
-                                        title={t('Remove option', 'حذف الخيار')}
-                                    >
+                                    <button onClick={() => removeOption(option.id)} className="text-red-400 hover:text-red-300 p-1">
                                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                                         </svg>
@@ -335,16 +508,18 @@ export default function NewScalePage() {
                         </div>
                     </FuturisticPanel>
 
-                    {/* Dimensions */}
-                    <div className="mb-6">
+                    {/* Dimensions Section */}
+                    <FuturisticPanel glowColor="green" size="md" className="mb-6">
                         <div className="flex items-center justify-between mb-4">
-                            <h2 className="text-xl font-bold text-white">
-                                {t('Dimensions & Statements', 'الأبعاد والعبارات')}
-                            </h2>
-                            <button
-                                onClick={addDimension}
-                                className="futuristic-btn inline-flex items-center gap-2"
-                            >
+                            <div>
+                                <h2 className="text-xl font-bold text-white">
+                                    {t('Dimensions', 'الأبعاد')}
+                                </h2>
+                                <p className="text-sm text-slate-400 mt-1">
+                                    {t('Define the categories/subscales for your statements', 'حدد التصنيفات/المقاييس الفرعية لعباراتك')}
+                                </p>
+                            </div>
+                            <button onClick={addDimension} className="futuristic-btn inline-flex items-center gap-2">
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                                 </svg>
@@ -353,134 +528,102 @@ export default function NewScalePage() {
                         </div>
 
                         {dimensions.length === 0 ? (
-                            <FuturisticPanel glowColor="cyan" size="md">
-                                <div className="text-center py-8">
-                                    <svg className="w-16 h-16 mx-auto mb-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                                    </svg>
-                                    <p className="text-slate-400 mb-4">
-                                        {t('No dimensions yet. Add your first dimension to start building the scale.',
-                                            'لا توجد أبعاد بعد. أضف بُعدك الأول لبدء بناء المقياس.')}
-                                    </p>
-                                    <button
-                                        onClick={addDimension}
-                                        className="futuristic-btn-primary inline-flex items-center gap-2"
-                                    >
-                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                                        </svg>
-                                        {t('Add First Dimension', 'إضافة أول بُعد')}
-                                    </button>
-                                </div>
-                            </FuturisticPanel>
+                            <div className="text-center py-8 border-2 border-dashed border-slate-700 rounded-xl">
+                                <p className="text-slate-500">{t('No dimensions yet', 'لا توجد أبعاد بعد')}</p>
+                                <p className="text-sm text-slate-600 mt-1">{t('Add dimensions to categorize statements', 'أضف أبعاداً لتصنيف العبارات')}</p>
+                            </div>
                         ) : (
-                            <div className="space-y-6">
-                                {dimensions.map((dimension, dimIndex) => (
-                                    <FuturisticPanel key={dimension.id} glowColor="green" size="md">
-                                        <div className="flex items-start justify-between mb-4">
-                                            <span className="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-400 text-sm font-medium">
-                                                {t('Dimension', 'البُعد')} {dimIndex + 1}
-                                            </span>
-                                            <button
-                                                onClick={() => removeDimension(dimension.id)}
-                                                className="text-red-400 hover:text-red-300 p-1"
-                                            >
-                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                </svg>
-                                            </button>
-                                        </div>
-
-                                        {/* Dimension Name */}
-                                        <div className="mb-4">
-                                            <label className="block text-sm text-slate-400 mb-2">
-                                                {t('Dimension Name', 'اسم البُعد')}
-                                            </label>
-                                            <input
-                                                type="text"
-                                                value={dimension.name}
-                                                onChange={(e) => updateDimension(dimension.id, 'name', e.target.value)}
-                                                className="futuristic-input"
-                                                placeholder={scaleLanguage === 'ar' ? 'مثال: الأعراض الجسدية' : 'e.g., Physical Symptoms'}
-                                                dir={isRtl ? 'rtl' : 'ltr'}
-                                            />
-                                        </div>
-
-                                        {/* Statements */}
-                                        <div className="border-t border-slate-700 pt-4">
-                                            <div className="flex items-center justify-between mb-3">
-                                                <h4 className="text-sm font-medium text-white">
-                                                    {t('Statements', 'العبارات')} ({dimension.statements.length})
-                                                </h4>
-                                                <button
-                                                    onClick={() => addStatement(dimension.id)}
-                                                    className="text-cyan-400 hover:text-cyan-300 text-sm flex items-center gap-1"
-                                                >
-                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                                                    </svg>
-                                                    {t('Add Statement', 'إضافة عبارة')}
-                                                </button>
-                                            </div>
-
-                                            {dimension.statements.length === 0 ? (
-                                                <p className="text-sm text-slate-500 text-center py-4">
-                                                    {t('No statements. Click "Add Statement" to add items.',
-                                                        'لا توجد عبارات. اضغط "إضافة عبارة" لإضافة بنود.')}
-                                                </p>
-                                            ) : (
-                                                <div className="space-y-3">
-                                                    {dimension.statements.map((statement, stIndex) => (
-                                                        <div key={statement.id} className="p-3 rounded-lg bg-slate-800/30 border border-slate-700">
-                                                            <div className="flex items-start gap-3">
-                                                                <span className="w-6 h-6 rounded-full bg-slate-700 flex items-center justify-center text-xs text-slate-400 mt-2">
-                                                                    {stIndex + 1}
-                                                                </span>
-                                                                <div className="flex-1">
-                                                                    <textarea
-                                                                        value={statement.text}
-                                                                        onChange={(e) => updateStatement(dimension.id, statement.id, 'text', e.target.value)}
-                                                                        className="futuristic-input text-sm w-full min-h-[60px]"
-                                                                        placeholder={scaleLanguage === 'ar'
-                                                                            ? 'أشعر بالتوتر في المواقف الاجتماعية'
-                                                                            : 'I feel nervous in social situations'}
-                                                                        dir={isRtl ? 'rtl' : 'ltr'}
-                                                                    />
-                                                                    <label className="flex items-center gap-2 mt-2 cursor-pointer">
-                                                                        <input
-                                                                            type="checkbox"
-                                                                            checked={statement.isReversed}
-                                                                            onChange={(e) => updateStatement(dimension.id, statement.id, 'isReversed', e.target.checked)}
-                                                                            className="w-4 h-4 rounded bg-slate-700"
-                                                                        />
-                                                                        <span className={`text-xs ${statement.isReversed ? 'text-amber-400' : 'text-slate-500'}`}>
-                                                                            {t('Reversed scoring (opposite meaning)', 'درجات عكسية (معنى معاكس)')}
-                                                                        </span>
-                                                                    </label>
-                                                                </div>
-                                                                <button
-                                                                    onClick={() => removeStatement(dimension.id, statement.id)}
-                                                                    className="text-red-400 hover:text-red-300 p-1"
-                                                                >
-                                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                                                    </svg>
-                                                                </button>
-                                                            </div>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            )}
-                                        </div>
-                                    </FuturisticPanel>
+                            <div className="space-y-3">
+                                {dimensions.map((dimension, index) => (
+                                    <div key={dimension.id} className="flex items-center gap-4 p-3 rounded-lg bg-slate-800/50 border border-slate-700">
+                                        <span className="w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400 font-bold text-sm">
+                                            {index + 1}
+                                        </span>
+                                        <input
+                                            type="text"
+                                            value={dimension.name}
+                                            onChange={(e) => updateDimension(dimension.id, e.target.value)}
+                                            className="futuristic-input flex-1"
+                                            placeholder={scaleLanguage === 'ar' ? 'اسم البُعد (مثال: الأعراض الجسدية)' : 'Dimension name (e.g., Physical Symptoms)'}
+                                            dir={isRtl ? 'rtl' : 'ltr'}
+                                        />
+                                        <span className="text-xs text-slate-500">
+                                            {statements.filter(s => s.dimensionId === dimension.id).length} {t('statements', 'عبارات')}
+                                        </span>
+                                        <button onClick={() => removeDimension(dimension.id)} className="text-red-400 hover:text-red-300 p-1">
+                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                            </svg>
+                                        </button>
+                                    </div>
                                 ))}
                             </div>
                         )}
-                    </div>
+                    </FuturisticPanel>
+
+                    {/* Statements Section */}
+                    <FuturisticPanel glowColor="cyan" size="md" className="mb-6">
+                        <div className="flex items-center justify-between mb-4">
+                            <div>
+                                <h2 className="text-xl font-bold text-white">
+                                    {t('Statements', 'العبارات')}
+                                </h2>
+                                <p className="text-sm text-slate-400 mt-1">
+                                    {t('Add statements and assign each to a dimension. Drag to reorder.', 'أضف العبارات وعيّن كل واحدة لبُعد. اسحب لإعادة الترتيب.')}
+                                </p>
+                            </div>
+                            <button
+                                onClick={addStatement}
+                                disabled={dimensions.length === 0}
+                                className={`futuristic-btn inline-flex items-center gap-2 ${dimensions.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            >
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                                </svg>
+                                {t('Add Statement', 'إضافة عبارة')}
+                            </button>
+                        </div>
+
+                        {dimensions.length === 0 ? (
+                            <div className="text-center py-8 border-2 border-dashed border-slate-700 rounded-xl">
+                                <p className="text-slate-500">{t('Add dimensions first', 'أضف الأبعاد أولاً')}</p>
+                            </div>
+                        ) : statements.length === 0 ? (
+                            <div className="text-center py-8 border-2 border-dashed border-slate-700 rounded-xl">
+                                <p className="text-slate-500">{t('No statements yet', 'لا توجد عبارات بعد')}</p>
+                                <p className="text-sm text-slate-600 mt-1">{t('Add statements for participants to respond to', 'أضف عبارات ليرد عليها المشاركون')}</p>
+                            </div>
+                        ) : (
+                            <DndContext
+                                sensors={sensors}
+                                collisionDetection={closestCenter}
+                                onDragEnd={handleDragEnd}
+                            >
+                                <SortableContext
+                                    items={statements.map(s => s.id)}
+                                    strategy={verticalListSortingStrategy}
+                                >
+                                    <div className="space-y-3">
+                                        {statements.map((statement) => (
+                                            <SortableStatementRow
+                                                key={statement.id}
+                                                statement={statement}
+                                                dimensions={dimensions}
+                                                onUpdate={updateStatement}
+                                                onRemove={removeStatement}
+                                                scaleLanguage={scaleLanguage}
+                                                t={t}
+                                            />
+                                        ))}
+                                    </div>
+                                </SortableContext>
+                            </DndContext>
+                        )}
+                    </FuturisticPanel>
 
                     {/* Save Button */}
                     <div className="flex justify-end gap-4">
-                        <Link href="/scales" className="futuristic-btn">
+                        <Link href={returnTo === 'survey' ? '/surveys/new' : '/scales'} className="futuristic-btn">
                             {t('Cancel', 'إلغاء')}
                         </Link>
                         <button

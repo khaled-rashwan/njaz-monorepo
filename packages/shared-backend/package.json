@@ -8,7 +8,8 @@
         "sandbox:delete": "npx ampx sandbox delete"
     },
     "dependencies": {
-        "aws-amplify": "^6.0.0"
+        "aws-amplify": "^6.0.0",
+        "@njaz/estebian-data": "file:../estebian-data"
     },
     "devDependencies": {
         "@aws-amplify/backend": "^1.0.0",

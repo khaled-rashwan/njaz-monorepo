@@ -55,6 +55,26 @@ export default function ReportsPage() {
                 <div className="max-w-7xl mx-auto">
                     {/* Header */}
                     <div className="mb-8">
+                        <Link
+                            href="/"
+                            className="futuristic-btn inline-flex items-center gap-2 text-sm mb-3"
+                        >
+                            {direction === 'rtl' ? (
+                                <>
+                                    {t('Back to Home', 'العودة للرئيسية')}
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                    </svg>
+                                </>
+                            ) : (
+                                <>
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                                    </svg>
+                                    {t('Back to Home', 'العودة للرئيسية')}
+                                </>
+                            )}
+                        </Link>
                         <h1 className="text-3xl font-bold text-white mb-2">
                             {t('Reports & Analytics', 'التقارير والتحليلات')}
                         </h1>

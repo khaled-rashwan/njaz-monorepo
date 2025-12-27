@@ -10,12 +10,15 @@
         "sync-assets": "node ../../scripts/sync-assets.js"
     },
     "dependencies": {
+        "@dnd-kit/core": "^6.3.1",
+        "@dnd-kit/sortable": "^10.0.0",
+        "@dnd-kit/utilities": "^3.2.2",
+        "@njaz/shared-auth": "*",
+        "@njaz/ui-components": "*",
+        "aws-amplify": "^6.0.0",
         "next": "^14.2.0",
         "react": "^18.3.0",
         "react-dom": "^18.3.0",
-        "@njaz/ui-components": "*",
-        "@njaz/shared-auth": "*",
-        "aws-amplify": "^6.0.0",
         "uuid": "^9.0.0"
     },
     "devDependencies": {

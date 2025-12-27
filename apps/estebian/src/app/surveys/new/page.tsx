@@ -10,6 +10,22 @@ import { Survey, Scale, DemographicField } from '@/lib/types';
 import { saveSurvey, getScales, generateId } from '@/lib/storage';
 import { getDashboardUrl, getCurrentUrl } from '@njaz/shared-auth';
 import { ProgressSteps, ScaleCard, ScaleSelectorModal } from '@/components/SurveyBuilder';
+import {
+    DndContext,
+    closestCenter,
+    KeyboardSensor,
+    PointerSensor,
+    TouchSensor,
+    useSensor,
+    useSensors,
+    DragEndEvent,
+} from '@dnd-kit/core';
+import {
+    arrayMove,
+    SortableContext,
+    sortableKeyboardCoordinates,
+    rectSortingStrategy,
+} from '@dnd-kit/sortable';
 
 export default function NewSurveyPage() {
     const { t, language: uiLanguage, direction } = useLanguage();
@@ -141,6 +157,24 @@ export default function NewSurveyPage() {
 
     function removeScale(scaleId: string) {
         setSelectedScaleIds(selectedScaleIds.filter(id => id !== scaleId));
+    }
+
+    // Drag and drop sensors with touch support for mobile
+    const sensors = useSensors(
+        useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+        useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } }),
+        useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+    );
+
+    function handleScaleDragEnd(event: DragEndEvent) {
+        const { active, over } = event;
+        if (over && active.id !== over.id) {
+            setSelectedScaleIds((items) => {
+                const oldIndex = items.indexOf(active.id as string);
+                const newIndex = items.indexOf(over.id as string);
+                return arrayMove(items, oldIndex, newIndex);
+            });
+        }
     }
 
     // Clear selected scales when language changes
@@ -548,20 +582,34 @@ export default function NewSurveyPage() {
                                         </button>
                                     </div>
 
-                                    {/* Connected Scales */}
+                                    {/* Connected Scales with Drag-and-Drop */}
                                     {selectedScales.length > 0 && (
                                         <div className="mt-8">
-                                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                                                {selectedScales.map((scale, index) => (
-                                                    <ScaleCard
-                                                        key={scale.id}
-                                                        scale={scale}
-                                                        onRemove={() => removeScale(scale.id)}
-                                                        language={uiLanguage}
-                                                        index={index}
-                                                    />
-                                                ))}
-                                            </div>
+                                            <p className="text-xs text-slate-500 text-center mb-4">
+                                                {t('Drag to reorder scales', 'اسحب لإعادة ترتيب المقاييس')}
+                                            </p>
+                                            <DndContext
+                                                sensors={sensors}
+                                                collisionDetection={closestCenter}
+                                                onDragEnd={handleScaleDragEnd}
+                                            >
+                                                <SortableContext
+                                                    items={selectedScaleIds}
+                                                    strategy={rectSortingStrategy}
+                                                >
+                                                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                                                        {selectedScales.map((scale, index) => (
+                                                            <ScaleCard
+                                                                key={scale.id}
+                                                                scale={scale}
+                                                                onRemove={() => removeScale(scale.id)}
+                                                                language={uiLanguage}
+                                                                index={index}
+                                                            />
+                                                        ))}
+                                                    </div>
+                                                </SortableContext>
+                                            </DndContext>
                                         </div>
                                     )}
 
@@ -637,10 +685,13 @@ export default function NewSurveyPage() {
                                 : 'futuristic-btn'
                                 }`}
                         >
+                            {/* In RTL: arrow points right (→) for "back", icon after text */}
+                            {direction === 'rtl' && t('Previous', 'السابق')}
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                                    d={direction === 'rtl' ? "M9 5l7 7-7 7" : "M15 19l-7-7 7-7"} />
                             </svg>
-                            {t('Previous', 'السابق')}
+                            {direction === 'ltr' && t('Previous', 'السابق')}
                         </button>
 
                         {currentStep < 5 ? (
@@ -652,10 +703,13 @@ export default function NewSurveyPage() {
                                     : 'opacity-50 cursor-not-allowed bg-slate-700 text-slate-500'
                                     }`}
                             >
-                                {t('Next', 'التالي')}
+                                {/* In RTL: arrow points left (←) for "forward", icon before text */}
+                                {direction === 'ltr' && t('Next', 'التالي')}
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                                        d={direction === 'rtl' ? "M15 19l-7-7 7-7" : "M9 5l7 7-7 7"} />
                                 </svg>
+                                {direction === 'rtl' && t('Next', 'التالي')}
                             </button>
                         ) : (
                             <button
