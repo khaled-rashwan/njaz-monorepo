@@ -1,7 +1,8 @@
 'use client';
 
 import { ReactNode, useEffect, useState } from 'react';
-import { configureAmplifyAuth } from '@njaz/shared-auth';
+import { configureAmplifyAuth, clearAuthAndSignOut } from '@njaz/shared-auth';
+import { getCurrentUser, fetchAuthSession } from 'aws-amplify/auth';
 
 interface AmplifyProviderProps {
     children: ReactNode;
@@ -17,6 +18,29 @@ async function loadAmplifyConfig() {
         console.error('❌ Failed to load amplify_outputs.json:', e);
         console.error('Run npm run sync-amplify first');
         return null;
+    }
+}
+
+/**
+ * Verify auth session and handle revoked tokens
+ */
+async function verifyAuthSession(): Promise<void> {
+    try {
+        // Try to get current user - this will use the stored tokens
+        await getCurrentUser();
+        console.log('✅ Auth session is valid');
+    } catch (error: any) {
+        const message = error?.message || '';
+        // Check if token was revoked
+        if (message.includes('revoked') || message.includes('NotAuthorizedException')) {
+            console.warn('⚠️ Auth token revoked - clearing stale tokens');
+            await clearAuthAndSignOut();
+        } else if (message.includes('UserUnAuthenticatedException') || message.includes('not authenticated')) {
+            // User is simply not logged in - this is fine
+            console.log('ℹ️ User not authenticated');
+        } else {
+            console.log('ℹ️ Auth check:', message);
+        }
     }
 }
 
@@ -39,6 +63,9 @@ export function AmplifyProvider({ children }: AmplifyProviderProps) {
             if (config) {
                 configureAmplifyAuth(config);
                 console.log('✅ Amplify configured successfully');
+
+                // Verify auth session after configuration
+                await verifyAuthSession();
             } else {
                 console.error('❌ Failed to configure Amplify - config is null');
             }
@@ -53,4 +80,3 @@ export function AmplifyProvider({ children }: AmplifyProviderProps) {
 
     return <>{children}</>;
 }
-
