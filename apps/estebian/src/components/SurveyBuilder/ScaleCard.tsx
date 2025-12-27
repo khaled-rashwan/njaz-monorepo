@@ -58,13 +58,13 @@ export default function ScaleCard({ scale, onRemove, language, index }: ScaleCar
                 {/* Glow Effect */}
                 <div className="absolute inset-0 rounded-xl bg-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
 
-                {/* Drag Handle */}
+                {/* Drag Handle - Always visible for discoverability */}
                 <button
                     {...attributes}
                     {...listeners}
-                    className="absolute top-2 left-2 p-1.5 rounded-lg bg-slate-700/50 text-slate-500 
-                               hover:text-cyan-400 hover:bg-slate-700 cursor-grab active:cursor-grabbing
-                               opacity-0 group-hover:opacity-100 transition-all touch-none"
+                    className="absolute top-2 left-2 p-1.5 rounded-lg bg-cyan-500/20 text-cyan-400 
+                               hover:text-cyan-300 hover:bg-cyan-500/30 cursor-grab active:cursor-grabbing
+                               transition-all touch-none border border-cyan-500/30"
                     title={language === 'ar' ? 'اسحب لإعادة الترتيب' : 'Drag to reorder'}
                 >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -97,12 +97,19 @@ export default function ScalesPage() {
                         </div>
                         <Link
                             href="/scales/new"
-                            className="futuristic-btn-primary inline-flex items-center gap-2 justify-center"
+                            className="group relative px-6 py-3 rounded-xl font-semibold inline-flex items-center gap-3 justify-center
+                                       bg-gradient-to-r from-cyan-500 via-cyan-400 to-emerald-500
+                                       text-slate-900 shadow-lg shadow-cyan-500/30
+                                       hover:shadow-xl hover:shadow-cyan-500/50 hover:scale-105
+                                       transition-all duration-300 overflow-hidden"
                         >
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                            {/* Animated Shine Effect */}
+                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent 
+                                           translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
+                            <svg className="w-5 h-5 relative z-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                             </svg>
-                            {t('Create New Scale', 'إنشاء مقياس جديد')}
+                            <span className="relative z-10">{t('Create New Scale', 'إنشاء مقياس جديد')}</span>
                         </Link>
                     </div>
 
