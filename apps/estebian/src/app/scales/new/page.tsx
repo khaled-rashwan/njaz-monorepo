@@ -7,8 +7,7 @@ import Link from 'next/link';
 import { useLanguage, LanguageSwitcher } from '@/components/LanguageContext';
 import { SharedHeader, SharedFooter, FuturisticPanel } from '@njaz/ui-components';
 import { Scale, Dimension, Statement, ScaleOption, getDefaultOptions } from '@/lib/types';
-import { generateId } from '@/lib/storage';
-import { createScale } from '@/lib/api';
+import { saveScale, generateId } from '@/lib/storage';
 import { getDashboardUrl, getCurrentUrl } from '@njaz/shared-auth';
 import {
     DndContext,
@@ -300,14 +299,21 @@ export default function NewScalePage() {
                     .map(({ dimensionId, ...rest }) => rest) // Remove dimensionId from final output
             }));
 
-            await createScale({
+            // Create scale object for localStorage
+            const scale: Scale = {
+                id: generateId(),
                 language: scaleLanguage,
                 title,
                 description,
                 isPublic,
                 dimensions: dimensionsWithStatements,
-                options
-            });
+                options,
+                createdBy: userId,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+            };
+
+            saveScale(scale);
 
             // Return to survey builder if coming from there
             if (returnTo === 'survey') {
