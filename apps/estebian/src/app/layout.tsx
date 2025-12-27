@@ -33,6 +33,7 @@ export default function RootLayout({
                 <meta name="keywords" content="استبيان, مقاييس, بحث علمي, تحليل بيانات, survey, scales, research" />
                 <link rel="preconnect" href="https://fonts.googleapis.com" />
                 <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+                <link rel="icon" href="/images/favicon.png" />
             </head>
             <body className="antialiased">
                 <Providers>

@@ -12,6 +12,7 @@ applications:
         preBuild:
           commands:
             - npm ci
+            - node ../../scripts/sync-assets.js
         build:
           commands:
             - npm run build
@@ -29,6 +30,7 @@ applications:
         preBuild:
           commands:
             - npm ci
+            - node ../../scripts/sync-assets.js
         build:
           commands:
             - npm run build
@@ -46,6 +48,7 @@ applications:
         preBuild:
           commands:
             - npm ci
+            - node ../../scripts/sync-assets.js
         build:
           commands:
             - npm run build

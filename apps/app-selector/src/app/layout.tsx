@@ -5,6 +5,9 @@ import { Providers } from './providers';
 export const metadata: Metadata = {
     title: 'Njaz Apps | Dashboard',
     description: 'Access all your Njaz applications from one central dashboard.',
+    icons: {
+        icon: '/images/favicon.png',
+    },
 };
 
 export default function RootLayout({

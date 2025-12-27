@@ -9,7 +9,8 @@ const targetAssets = [
     'njaz-logo.svg',
     'estebian-logo.png',
     'dev-logo.png',
-    'process-logo.png'
+    'process-logo.png',
+    'favicon.png'
 ];
 
 function syncAssets() {

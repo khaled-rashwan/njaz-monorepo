@@ -3,10 +3,11 @@
     "version": "0.0.1",
     "private": true,
     "scripts": {
-        "dev": "next dev --port 3001",
-        "build": "next build",
+        "dev": "npm run sync-assets && next dev --port 3001",
+        "build": "npm run sync-assets && next build",
         "start": "next start",
-        "lint": "next lint"
+        "lint": "next lint",
+        "sync-assets": "node ../../scripts/sync-assets.js"
     },
     "dependencies": {
         "next": "^14.2.0",
