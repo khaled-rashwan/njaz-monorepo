@@ -3,10 +3,10 @@ const path = require('path');
 
 const rootDir = path.join(__dirname, '..');
 const sharedAssetsDir = path.join(rootDir, 'packages', 'shared-assets', 'public', 'images');
-const apps = ['landing', 'app-selector', 'estebian'];
+const apps = ['landing', 'app-selector', 'estebian', 'dev'];
 
 const targetAssets = [
-    'njaz-logo.svg',
+    'favicon.png',
     'logo.png',
     'estebian-logo.png',
     'dev-logo.png',

@@ -11,6 +11,7 @@
     "lint": "turbo run lint",
     "dev:landing": "npm run sync-assets && turbo run dev --filter=landing",
     "dev:app-selector": "npm run sync-assets && turbo run dev --filter=app-selector",
+    "dev:dev": "npm run sync-assets && turbo run dev --filter=dev",
     "build:landing": "npm run sync-assets && turbo run build --filter=landing",
     "sync-amplify": "node scripts/sync-amplify-config.js",
     "sync-assets": "node scripts/sync-assets.js",

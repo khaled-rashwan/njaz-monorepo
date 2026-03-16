@@ -74,7 +74,7 @@ export default function LandingPage() {
                                         boxShadow: '0 0 30px rgba(56,205,223,0.3)',
                                     }}
                                 >
-                                    <Image src="/images/njaz-logo.svg" alt="Njaz" width={52} height={52} className="drop-shadow-[0_0_15px_rgba(56,205,223,0.5)]" />
+                                    <Image src="/images/favicon.png" alt="Njaz" width={52} height={52} className="drop-shadow-[0_0_15px_rgba(56,205,223,0.5)]" />
                                 </div>
                             </div>
                         </div>

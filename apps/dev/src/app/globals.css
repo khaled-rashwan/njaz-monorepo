@@ -1,0 +1,309 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800;900&display=swap');
+
+:root {
+    --foreground-rgb: 255, 255, 255;
+    --background-start-rgb: 10, 15, 26;
+    --background-end-rgb: 15, 23, 42;
+}
+
+* {
+    box-sizing: border-box;
+    padding: 0;
+    margin: 0;
+}
+
+html,
+body {
+    max-width: 100vw;
+    overflow-x: hidden;
+    font-family: 'Cairo', system-ui, sans-serif;
+}
+
+body {
+    color: rgb(var(--foreground-rgb));
+    background: linear-gradient(to bottom,
+            rgb(var(--background-start-rgb)),
+            rgb(var(--background-end-rgb)));
+    min-height: 100vh;
+}
+
+/* Futuristic Background Grid */
+.futuristic-bg {
+    background-image:
+        linear-gradient(rgba(56, 205, 223, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(56, 205, 223, 0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+}
+
+/* Gradient Text */
+.gradient-text {
+    background: linear-gradient(135deg, #38cddf 0%, #06b6d4 50%, #0891b2 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+/* Futuristic Card */
+.futuristic-card {
+    background: linear-gradient(180deg, rgba(30, 40, 55, 0.9) 0%, rgba(20, 28, 40, 0.95) 100%);
+    border: 1px solid rgba(56, 205, 223, 0.2);
+    border-radius: 12px;
+    backdrop-filter: blur(10px);
+    transition: all 0.3s ease;
+}
+
+.futuristic-card:hover {
+    border-color: rgba(56, 205, 223, 0.4);
+    box-shadow: 0 0 30px rgba(56, 205, 223, 0.1);
+}
+
+/* Futuristic Button */
+.futuristic-btn {
+    background: linear-gradient(135deg, rgba(56, 205, 223, 0.2) 0%, rgba(6, 182, 212, 0.3) 100%);
+    border: 1px solid rgba(56, 205, 223, 0.4);
+    color: #38cddf;
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-block;
+}
+
+.futuristic-btn:hover {
+    background: linear-gradient(135deg, rgba(56, 205, 223, 0.3) 0%, rgba(6, 182, 212, 0.4) 100%);
+    box-shadow: 0 0 20px rgba(56, 205, 223, 0.3);
+    transform: translateY(-1px);
+}
+
+.futuristic-btn-primary {
+    background: linear-gradient(135deg, #38cddf 0%, #06b6d4 100%);
+    border: none;
+    color: #0a0f1a;
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    font-weight: 700;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-block;
+}
+
+.futuristic-btn-primary:hover {
+    background: linear-gradient(135deg, #67e8f9 0%, #22d3ee 100%);
+    box-shadow: 0 0 25px rgba(56, 205, 223, 0.4);
+    transform: translateY(-1px);
+}
+
+/* Futuristic Input */
+.futuristic-input {
+    background: rgba(20, 28, 40, 0.8);
+    border: 1px solid rgba(56, 205, 223, 0.2);
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    color: white;
+    width: 100%;
+    transition: all 0.3s ease;
+}
+
+.futuristic-input:focus {
+    outline: none;
+    border-color: rgba(56, 205, 223, 0.5);
+    box-shadow: 0 0 15px rgba(56, 205, 223, 0.1);
+}
+
+.futuristic-input::placeholder {
+    color: rgba(148, 163, 184, 0.6);
+}
+
+/* Futuristic Textarea */
+.futuristic-textarea {
+    background: rgba(20, 28, 40, 0.8);
+    border: 1px solid rgba(56, 205, 223, 0.2);
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    color: white;
+    width: 100%;
+    transition: all 0.3s ease;
+    resize: vertical;
+    min-height: 120px;
+}
+
+.futuristic-textarea:focus {
+    outline: none;
+    border-color: rgba(56, 205, 223, 0.5);
+    box-shadow: 0 0 15px rgba(56, 205, 223, 0.1);
+}
+
+.futuristic-textarea::placeholder {
+    color: rgba(148, 163, 184, 0.6);
+}
+
+/* Select */
+.futuristic-select {
+    background: rgba(20, 28, 40, 0.8);
+    border: 1px solid rgba(56, 205, 223, 0.2);
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    color: white;
+    width: 100%;
+    transition: all 0.3s ease;
+    appearance: none;
+    cursor: pointer;
+}
+
+.futuristic-select:focus {
+    outline: none;
+    border-color: rgba(56, 205, 223, 0.5);
+    box-shadow: 0 0 15px rgba(56, 205, 223, 0.1);
+}
+
+/* RTL Support */
+[dir="rtl"] .futuristic-input,
+[dir="rtl"] .futuristic-btn,
+[dir="rtl"] .futuristic-textarea,
+[dir="rtl"] .futuristic-select {
+    text-align: right;
+}
+
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: rgba(20, 28, 40, 0.5);
+}
+
+::-webkit-scrollbar-thumb {
+    background: rgba(56, 205, 223, 0.3);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(56, 205, 223, 0.5);
+}
+
+/* Animations */
+@keyframes pulse-glow {
+    0%, 100% {
+        box-shadow: 0 0 20px rgba(56, 205, 223, 0.2);
+    }
+    50% {
+        box-shadow: 0 0 40px rgba(56, 205, 223, 0.4);
+    }
+}
+
+@keyframes fade-in {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fade-in-up {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes float {
+    0%, 100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-10px);
+    }
+}
+
+@keyframes count-up {
+    from {
+        opacity: 0;
+        transform: scale(0.5);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.animate-fade-in {
+    animation: fade-in 0.5s ease-out;
+}
+
+.animate-fade-in-up {
+    animation: fade-in-up 0.7s ease-out;
+}
+
+.animate-float {
+    animation: float 3s ease-in-out infinite;
+}
+
+/* Glassmorphism */
+.glass-card {
+    backdrop-filter: blur(16px);
+    background: rgba(33, 28, 45, 0.7);
+    border: 1px solid rgba(56, 205, 223, 0.3);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+}
+
+.neon-glow {
+    box-shadow: 0 0 15px rgba(56, 205, 223, 0.5);
+}
+
+/* Service Card Hover Effects */
+.service-card {
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.service-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3), 0 0 30px rgba(56, 205, 223, 0.15);
+}
+
+/* Portfolio Card */
+.portfolio-card {
+    transition: all 0.4s ease;
+    overflow: hidden;
+}
+
+.portfolio-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3), 0 0 20px rgba(56, 205, 223, 0.1);
+}
+
+.portfolio-card .portfolio-overlay {
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.portfolio-card:hover .portfolio-overlay {
+    opacity: 1;
+}
+
+/* Stagger animation delays */
+.stagger-1 { animation-delay: 0.1s; }
+.stagger-2 { animation-delay: 0.2s; }
+.stagger-3 { animation-delay: 0.3s; }
+.stagger-4 { animation-delay: 0.4s; }
+.stagger-5 { animation-delay: 0.5s; }
+.stagger-6 { animation-delay: 0.6s; }
+
+.material-symbols-outlined {
+    font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+}

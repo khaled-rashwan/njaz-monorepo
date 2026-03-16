@@ -61,3 +61,21 @@ applications:
           - .next/cache/**/*
           - node_modules/**/*
     appRoot: apps/estebian
+  - frontend:
+      phases:
+        preBuild:
+          commands:
+            - npm ci
+            - node ../../scripts/sync-assets.js
+        build:
+          commands:
+            - npm run build
+      artifacts:
+        baseDirectory: .next
+        files:
+          - '**/*'
+      cache:
+        paths:
+          - .next/cache/**/*
+          - node_modules/**/*
+    appRoot: apps/dev
