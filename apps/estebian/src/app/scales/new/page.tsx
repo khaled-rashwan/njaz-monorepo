@@ -195,7 +195,6 @@ export default function NewScalePage() {
         const newDimension: Dimension = {
             id: generateId(),
             name: '',
-            statements: []
         };
         setDimensions([...dimensions, newDimension]);
     }
@@ -291,29 +290,19 @@ export default function NewScalePage() {
 
         setIsSaving(true);
         try {
-            // Convert flat statements back to dimension-nested format
-            const dimensionsWithStatements = dimensions.map(d => ({
-                ...d,
-                statements: statements
-                    .filter(s => s.dimensionId === d.id)
-                    .map(({ dimensionId, ...rest }) => rest) // Remove dimensionId from final output
-            }));
-
-            // Create scale object for localStorage
-            const scale: Scale = {
-                id: generateId(),
+            // Create scale object for backend (using flattened structure)
+            const scale: any = {
                 language: scaleLanguage,
                 title,
                 description,
                 isPublic,
-                dimensions: dimensionsWithStatements,
+                dimensions: dimensions.map(d => ({ id: d.id, name: d.name })), // Only metadata
+                statements, // Flat list in user-defined order
                 options,
                 createdBy: userId,
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
             };
 
-            saveScale(scale);
+            await saveScale(scale);
 
             // Return to survey builder if coming from there
             if (returnTo === 'survey') {

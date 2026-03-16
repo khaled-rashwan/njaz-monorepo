@@ -28,13 +28,167 @@
   "data": {
     "url": "https://62lknugo3jepljmsz2uhm2ov4i.appsync-api.us-east-1.amazonaws.com/graphql",
     "aws_region": "us-east-1",
+    "api_key": "da2-as3ja3bzincflgwbxb5qdzuzvi",
     "default_authorization_type": "AMAZON_COGNITO_USER_POOLS",
     "authorization_types": [
+      "API_KEY",
       "AWS_IAM"
     ],
     "model_introspection": {
       "version": 1,
       "models": {
+        "EstebianScale": {
+          "name": "EstebianScale",
+          "fields": {
+            "id": {
+              "name": "id",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": true,
+              "attributes": []
+            },
+            "language": {
+              "name": "language",
+              "isArray": false,
+              "type": {
+                "enum": "EstebianScaleLanguage"
+              },
+              "isRequired": false,
+              "attributes": []
+            },
+            "title": {
+              "name": "title",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true,
+              "attributes": []
+            },
+            "description": {
+              "name": "description",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "isPublic": {
+              "name": "isPublic",
+              "isArray": false,
+              "type": "Boolean",
+              "isRequired": false,
+              "attributes": []
+            },
+            "dimensions": {
+              "name": "dimensions",
+              "isArray": false,
+              "type": "AWSJSON",
+              "isRequired": true,
+              "attributes": []
+            },
+            "statements": {
+              "name": "statements",
+              "isArray": false,
+              "type": "AWSJSON",
+              "isRequired": true,
+              "attributes": []
+            },
+            "options": {
+              "name": "options",
+              "isArray": false,
+              "type": "AWSJSON",
+              "isRequired": true,
+              "attributes": []
+            },
+            "createdAt": {
+              "name": "createdAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": false,
+              "attributes": [],
+              "isReadOnly": true
+            },
+            "updatedAt": {
+              "name": "updatedAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": false,
+              "attributes": [],
+              "isReadOnly": true
+            }
+          },
+          "syncable": true,
+          "pluralName": "EstebianScales",
+          "attributes": [
+            {
+              "type": "model",
+              "properties": {}
+            },
+            {
+              "type": "auth",
+              "properties": {
+                "rules": [
+                  {
+                    "provider": "userPools",
+                    "ownerField": "owner",
+                    "allow": "owner",
+                    "identityClaim": "cognito:username",
+                    "operations": [
+                      "create",
+                      "update",
+                      "delete",
+                      "read"
+                    ]
+                  },
+                  {
+                    "groupClaim": "cognito:groups",
+                    "provider": "userPools",
+                    "allow": "groups",
+                    "groups": [
+                      "admins"
+                    ],
+                    "operations": [
+                      "create",
+                      "update",
+                      "delete",
+                      "read"
+                    ]
+                  },
+                  {
+                    "groupClaim": "cognito:groups",
+                    "provider": "userPools",
+                    "allow": "groups",
+                    "groups": [
+                      "estebian-access"
+                    ],
+                    "operations": [
+                      "create",
+                      "update",
+                      "delete",
+                      "read"
+                    ]
+                  },
+                  {
+                    "allow": "private",
+                    "operations": [
+                      "read"
+                    ]
+                  },
+                  {
+                    "allow": "public",
+                    "provider": "apiKey",
+                    "operations": [
+                      "get"
+                    ]
+                  }
+                ]
+              }
+            }
+          ],
+          "primaryKeyInfo": {
+            "isCustomPrimaryKey": false,
+            "primaryKeyFieldName": "id",
+            "sortKeyFieldNames": []
+          }
+        },
         "EstebianSurvey": {
           "name": "EstebianSurvey",
           "fields": {
@@ -45,6 +199,15 @@
               "isRequired": true,
               "attributes": []
             },
+            "language": {
+              "name": "language",
+              "isArray": false,
+              "type": {
+                "enum": "EstebianSurveyLanguage"
+              },
+              "isRequired": false,
+              "attributes": []
+            },
             "title": {
               "name": "title",
               "isArray": false,
@@ -52,38 +215,10 @@
               "isRequired": true,
               "attributes": []
             },
-            "titleAr": {
-              "name": "titleAr",
+            "introduction": {
+              "name": "introduction",
               "isArray": false,
               "type": "String",
-              "isRequired": false,
-              "attributes": []
-            },
-            "description": {
-              "name": "description",
-              "isArray": false,
-              "type": "String",
-              "isRequired": false,
-              "attributes": []
-            },
-            "descriptionAr": {
-              "name": "descriptionAr",
-              "isArray": false,
-              "type": "String",
-              "isRequired": false,
-              "attributes": []
-            },
-            "questions": {
-              "name": "questions",
-              "isArray": false,
-              "type": "AWSJSON",
-              "isRequired": false,
-              "attributes": []
-            },
-            "settings": {
-              "name": "settings",
-              "isArray": false,
-              "type": "AWSJSON",
               "isRequired": false,
               "attributes": []
             },
@@ -94,10 +229,32 @@
               "isRequired": false,
               "attributes": []
             },
-            "responseCount": {
-              "name": "responseCount",
+            "publishedUrl": {
+              "name": "publishedUrl",
               "isArray": false,
-              "type": "Int",
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "demographics": {
+              "name": "demographics",
+              "isArray": false,
+              "type": "AWSJSON",
+              "isRequired": false,
+              "attributes": []
+            },
+            "scaleIds": {
+              "name": "scaleIds",
+              "isArray": true,
+              "type": "String",
+              "isRequired": false,
+              "attributes": [],
+              "isArrayNullable": false
+            },
+            "scaleSnapshots": {
+              "name": "scaleSnapshots",
+              "isArray": false,
+              "type": "AWSJSON",
               "isRequired": false,
               "attributes": []
             },
@@ -130,6 +287,18 @@
               "properties": {
                 "rules": [
                   {
+                    "provider": "userPools",
+                    "ownerField": "owner",
+                    "allow": "owner",
+                    "identityClaim": "cognito:username",
+                    "operations": [
+                      "create",
+                      "update",
+                      "delete",
+                      "read"
+                    ]
+                  },
+                  {
                     "groupClaim": "cognito:groups",
                     "provider": "userPools",
                     "allow": "groups",
@@ -158,15 +327,10 @@
                     ]
                   },
                   {
-                    "provider": "userPools",
-                    "ownerField": "owner",
-                    "allow": "owner",
-                    "identityClaim": "cognito:username",
+                    "allow": "public",
+                    "provider": "apiKey",
                     "operations": [
-                      "create",
-                      "update",
-                      "delete",
-                      "read"
+                      "get"
                     ]
                   }
                 ]
@@ -196,25 +360,32 @@
               "isRequired": true,
               "attributes": []
             },
-            "responses": {
-              "name": "responses",
-              "isArray": false,
-              "type": "AWSJSON",
-              "isRequired": true,
-              "attributes": []
-            },
-            "respondentId": {
-              "name": "respondentId",
+            "surveyOwner": {
+              "name": "surveyOwner",
               "isArray": false,
               "type": "String",
-              "isRequired": false,
+              "isRequired": true,
               "attributes": []
             },
             "submittedAt": {
               "name": "submittedAt",
               "isArray": false,
               "type": "AWSDateTime",
+              "isRequired": true,
+              "attributes": []
+            },
+            "demographics": {
+              "name": "demographics",
+              "isArray": false,
+              "type": "AWSJSON",
               "isRequired": false,
+              "attributes": []
+            },
+            "answers": {
+              "name": "answers",
+              "isArray": false,
+              "type": "AWSJSON",
+              "isRequired": true,
               "attributes": []
             },
             "createdAt": {
@@ -247,6 +418,108 @@
                 "rules": [
                   {
                     "provider": "userPools",
+                    "ownerField": "surveyOwner",
+                    "allow": "owner",
+                    "operations": [
+                      "read",
+                      "delete"
+                    ],
+                    "identityClaim": "cognito:username"
+                  },
+                  {
+                    "groupClaim": "cognito:groups",
+                    "provider": "userPools",
+                    "allow": "groups",
+                    "groups": [
+                      "admins"
+                    ],
+                    "operations": [
+                      "create",
+                      "update",
+                      "delete",
+                      "read"
+                    ]
+                  }
+                ]
+              }
+            }
+          ],
+          "primaryKeyInfo": {
+            "isCustomPrimaryKey": false,
+            "primaryKeyFieldName": "id",
+            "sortKeyFieldNames": []
+          }
+        },
+        "EstebianReport": {
+          "name": "EstebianReport",
+          "fields": {
+            "id": {
+              "name": "id",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": true,
+              "attributes": []
+            },
+            "surveyId": {
+              "name": "surveyId",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": true,
+              "attributes": []
+            },
+            "type": {
+              "name": "type",
+              "isArray": false,
+              "type": {
+                "enum": "EstebianReportType"
+              },
+              "isRequired": false,
+              "attributes": []
+            },
+            "isPaid": {
+              "name": "isPaid",
+              "isArray": false,
+              "type": "Boolean",
+              "isRequired": false,
+              "attributes": []
+            },
+            "data": {
+              "name": "data",
+              "isArray": false,
+              "type": "AWSJSON",
+              "isRequired": false,
+              "attributes": []
+            },
+            "createdAt": {
+              "name": "createdAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": false,
+              "attributes": [],
+              "isReadOnly": true
+            },
+            "updatedAt": {
+              "name": "updatedAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": false,
+              "attributes": [],
+              "isReadOnly": true
+            }
+          },
+          "syncable": true,
+          "pluralName": "EstebianReports",
+          "attributes": [
+            {
+              "type": "model",
+              "properties": {}
+            },
+            {
+              "type": "auth",
+              "properties": {
+                "rules": [
+                  {
+                    "provider": "userPools",
                     "ownerField": "owner",
                     "allow": "owner",
                     "identityClaim": "cognito:username",
@@ -261,12 +534,28 @@
                     "groupClaim": "cognito:groups",
                     "provider": "userPools",
                     "allow": "groups",
-                    "operations": [
-                      "read",
-                      "create"
+                    "groups": [
+                      "admins"
                     ],
+                    "operations": [
+                      "create",
+                      "update",
+                      "delete",
+                      "read"
+                    ]
+                  },
+                  {
+                    "groupClaim": "cognito:groups",
+                    "provider": "userPools",
+                    "allow": "groups",
                     "groups": [
                       "estebian-access"
+                    ],
+                    "operations": [
+                      "create",
+                      "update",
+                      "delete",
+                      "read"
                     ]
                   }
                 ]
@@ -847,6 +1136,28 @@
         }
       },
       "enums": {
+        "EstebianScaleLanguage": {
+          "name": "EstebianScaleLanguage",
+          "values": [
+            "ar",
+            "en"
+          ]
+        },
+        "EstebianSurveyLanguage": {
+          "name": "EstebianSurveyLanguage",
+          "values": [
+            "ar",
+            "en"
+          ]
+        },
+        "EstebianReportType": {
+          "name": "EstebianReportType",
+          "values": [
+            "demographic",
+            "scale",
+            "comprehensive"
+          ]
+        },
         "DevProjectType": {
           "name": "DevProjectType",
           "values": [
@@ -886,7 +1197,35 @@
           ]
         }
       },
-      "nonModels": {}
+      "nonModels": {},
+      "mutations": {
+        "submitResponse": {
+          "name": "submitResponse",
+          "isArray": false,
+          "type": "AWSJSON",
+          "isRequired": false,
+          "arguments": {
+            "surveyId": {
+              "name": "surveyId",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": true
+            },
+            "answers": {
+              "name": "answers",
+              "isArray": false,
+              "type": "AWSJSON",
+              "isRequired": true
+            },
+            "demographics": {
+              "name": "demographics",
+              "isArray": false,
+              "type": "AWSJSON",
+              "isRequired": false
+            }
+          }
+        }
+      }
     }
   },
   "version": "1.4"

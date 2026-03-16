@@ -20,8 +20,11 @@ export const estebianSchema = {
             title: a.string().required(),
             description: a.string(),
             isPublic: a.boolean().default(true),
-            // Dimensions: Array of { id, name, statements: [{ id, text, isReversed }] }
+            // Dimensions Metadata: Array of { id, name }
             dimensions: a.json().required(),
+            // Flattened Statements: Array of { id, text, isReversed, dimensionId }
+            // The array index strictly defines the display/user-defined order.
+            statements: a.json().required(),
             // Options: Array of { id, label, value } (e.g., Likert scale)
             options: a.json().required(),
         })
@@ -29,8 +32,9 @@ export const estebianSchema = {
             allow.owner(),
             allow.groups(['admins']),
             allow.groups(['estebian-access']),
-            // Public scales readable by authenticated users
+            // Public scales readable by authenticated users and respondents (via API Key)
             allow.authenticated().to(['read']),
+            allow.publicApiKey().to(['get']),
         ]),
 
     // ============================================
@@ -45,15 +49,17 @@ export const estebianSchema = {
             publishedUrl: a.string(),
             // Demographics: Array of { id, type, label, required, options? }
             demographics: a.json(),
-            // Scale IDs in order of appearance
+            // Scale IDs referenced
             scaleIds: a.string().array().required(),
+            // Frozen copy of all scales at publish-time (Array of Scale objects)
+            scaleSnapshots: a.json(),
         })
         .authorization((allow) => [
             allow.owner(),
             allow.groups(['admins']),
             allow.groups(['estebian-access']),
             // Published surveys readable by anyone (for respondents)
-            allow.guest().to(['read']),
+            allow.publicApiKey().to(['get']),
         ]),
 
     // ============================================
@@ -62,20 +68,19 @@ export const estebianSchema = {
     EstebianResponse: a
         .model({
             surveyId: a.id().required(),
+            // Store the creator's ID to allow them to see the results
+            surveyOwner: a.string().required(),
             submittedAt: a.datetime().required(),
             // Demographics: Record<fieldId, value>
             demographics: a.json(),
             // Answers: Record<statementId, selectedOptionValue>
             answers: a.json().required(),
-            // Optional respondent identifier (anonymous by default)
-            respondentId: a.string(),
         })
         .authorization((allow) => [
-            // Anyone can create (anonymous responses)
-            allow.guest().to(['create']),
-            // Owner of the survey can read responses
+            // The survey creator (owner of this record manually set) can read
+            // We use identity claim check for the surveyOwner field
+            allow.ownerDefinedIn('surveyOwner').to(['read', 'delete']),
             allow.groups(['admins']),
-            allow.groups(['estebian-access']).to(['read']),
         ]),
 
     // ============================================

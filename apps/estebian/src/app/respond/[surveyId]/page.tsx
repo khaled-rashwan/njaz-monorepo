@@ -2,22 +2,31 @@
 
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
-import { Survey, Scale, SurveyResponse } from '@/lib/types';
+import { Survey, Scale, SurveyResponse, Statement, ScaleOption } from '@/lib/types';
 import { getPublishedSurveyById, getScaleById, saveResponse, generateId } from '@/lib/storage';
 
 type Step = 'intro' | 'demographics' | 'scales' | 'complete';
+
+interface FlattenedStatement {
+    id: string;
+    text: string;
+    isReversed: boolean;
+    dimensionId: string;
+    scaleId: string;
+    options: ScaleOption[];
+}
 
 export default function RespondPage() {
     const params = useParams();
     const surveyId = params.surveyId as string;
 
     const [survey, setSurvey] = useState<Survey | null>(null);
-    const [scales, setScales] = useState<Scale[]>([]);
+    const [allStatements, setAllStatements] = useState<FlattenedStatement[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
     const [step, setStep] = useState<Step>('intro');
-    const [currentScaleIndex, setCurrentScaleIndex] = useState(0);
+    const [currentStatementIndex, setCurrentStatementIndex] = useState(0);
     const [demographicAnswers, setDemographicAnswers] = useState<Record<string, any>>({});
     const [scaleAnswers, setScaleAnswers] = useState<Record<string, number>>({});
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -36,7 +45,7 @@ export default function RespondPage() {
 
     async function loadSurvey() {
         try {
-            const surveyData = getPublishedSurveyById(surveyId);
+            const surveyData = await getPublishedSurveyById(surveyId);
             if (!surveyData) {
                 setError(language === 'ar'
                     ? 'الاستبيان غير موجود أو غير منشور'
@@ -47,12 +56,34 @@ export default function RespondPage() {
 
             setSurvey(surveyData);
 
-            // Load scales
-            const surveyScales = surveyData.scaleIds
-                .map(id => getScaleById(id))
-                .filter((s): s is Scale => s !== null);
-            setScales(surveyScales);
+            let surveyScales: Scale[] = [];
+
+            // Use snapshots if available, otherwise fetch scales
+            if (surveyData.scaleSnapshots) {
+                surveyScales = surveyData.scaleSnapshots;
+            } else {
+                const fetched = await Promise.all(
+                    surveyData.scaleIds.map(id => getScaleById(id, 'apiKey'))
+                );
+                surveyScales = fetched.filter((s): s is Scale => s !== null);
+            }
+
+            // Flatten all statements from all scales
+            const flattened: FlattenedStatement[] = [];
+            surveyScales.forEach(scale => {
+                (scale.statements || []).forEach(st => {
+                    flattened.push({
+                        ...st,
+                        scaleId: scale.id,
+                        options: scale.options || []
+                    });
+                });
+            });
+
+            setAllStatements(flattened);
+
         } catch (err) {
+            console.error('Error loading survey:', err);
             setError('Error loading survey');
         } finally {
             setIsLoading(false);
@@ -64,15 +95,31 @@ export default function RespondPage() {
     }
 
     function updateScaleAnswer(statementId: string, value: number) {
-        setScaleAnswers({ ...scaleAnswers, [statementId]: value });
+        const newAnswers = { ...scaleAnswers, [statementId]: value };
+        setScaleAnswers(newAnswers);
+
+        // Auto-advance after selection to improve UX for one-by-one mode
+        // Small delay to let the user see their selection
+        setTimeout(() => {
+            // Need to handle state carefully in timeout
+            // If we are at the end, submit. Otherwise advance.
+            if (currentStatementIndex < allStatements.length - 1) {
+                setCurrentStatementIndex(prev => prev + 1);
+            } else {
+                // For the last question, we don't auto-submit to avoid accidental submissions
+                // But we could if desired. Usually users prefer checking the last one.
+            }
+        }, 300);
     }
 
     function nextStep() {
         if (step === 'intro') {
             if (survey?.demographics.length) {
                 setStep('demographics');
-            } else {
+            } else if (allStatements.length > 0) {
                 setStep('scales');
+            } else {
+                submitResponse();
             }
         } else if (step === 'demographics') {
             // Validate required fields
@@ -81,10 +128,20 @@ export default function RespondPage() {
                 alert(t('Please fill in all required fields', 'يرجى ملء جميع الحقول المطلوبة'));
                 return;
             }
-            setStep('scales');
+            if (allStatements.length > 0) {
+                setStep('scales');
+            } else {
+                submitResponse();
+            }
         } else if (step === 'scales') {
-            if (currentScaleIndex < scales.length - 1) {
-                setCurrentScaleIndex(currentScaleIndex + 1);
+            const currentST = allStatements[currentStatementIndex];
+            if (scaleAnswers[currentST.id] === undefined) {
+                alert(t('Please answer the current question', 'يرجى الإجابة على السؤال الحالي'));
+                return;
+            }
+
+            if (currentStatementIndex < allStatements.length - 1) {
+                setCurrentStatementIndex(currentStatementIndex + 1);
             } else {
                 submitResponse();
             }
@@ -95,8 +152,8 @@ export default function RespondPage() {
         if (step === 'demographics') {
             setStep('intro');
         } else if (step === 'scales') {
-            if (currentScaleIndex > 0) {
-                setCurrentScaleIndex(currentScaleIndex - 1);
+            if (currentStatementIndex > 0) {
+                setCurrentStatementIndex(currentStatementIndex - 1);
             } else if (survey?.demographics.length) {
                 setStep('demographics');
             } else {
@@ -108,6 +165,8 @@ export default function RespondPage() {
     async function submitResponse() {
         setIsSubmitting(true);
         try {
+            if (!survey) return;
+
             const response: SurveyResponse = {
                 id: generateId(),
                 surveyId,
@@ -116,7 +175,7 @@ export default function RespondPage() {
                 answers: scaleAnswers
             };
 
-            saveResponse(response);
+            await saveResponse(response);
             setStep('complete');
         } catch (error) {
             console.error('Error submitting response:', error);
@@ -127,13 +186,15 @@ export default function RespondPage() {
     }
 
     function calculateProgress(): number {
-        if (!survey || scales.length === 0) return 0;
+        if (!survey) return 0;
 
-        const totalSteps = 1 + (survey.demographics.length > 0 ? 1 : 0) + scales.length;
+        const totalSteps = (survey.demographics.length > 0 ? 1 : 0) + allStatements.length;
+        if (totalSteps === 0) return 0;
+
         let completedSteps = 0;
 
-        if (step === 'demographics') completedSteps = 1;
-        else if (step === 'scales') completedSteps = 1 + (survey.demographics.length > 0 ? 1 : 0) + currentScaleIndex;
+        if (step === 'demographics') completedSteps = 0;
+        else if (step === 'scales') completedSteps = (survey.demographics.length > 0 ? 1 : 0) + currentStatementIndex;
         else if (step === 'complete') completedSteps = totalSteps;
 
         return Math.round((completedSteps / totalSteps) * 100);
@@ -166,7 +227,7 @@ export default function RespondPage() {
         );
     }
 
-    const currentScale = scales[currentScaleIndex];
+    const currentST = allStatements[currentStatementIndex];
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800" dir={direction}>
@@ -194,7 +255,7 @@ export default function RespondPage() {
             </header>
 
             {/* Content */}
-            <main className="pt-20 pb-24 px-4">
+            <main className="pt-20 pb-24 px-4 overflow-x-hidden">
                 <div className="max-w-3xl mx-auto">
                     {/* Intro Step */}
                     {step === 'intro' && (
@@ -227,7 +288,7 @@ export default function RespondPage() {
                             </div>
                             <button
                                 onClick={nextStep}
-                                className="w-full py-4 bg-gradient-to-r from-cyan-500 to-cyan-600 text-white font-bold rounded-lg hover:from-cyan-400 hover:to-cyan-500 transition-all"
+                                className="w-full py-4 bg-gradient-to-r from-cyan-500 to-cyan-600 text-white font-bold rounded-lg hover:from-cyan-400 hover:to-cyan-500 transition-all shadow-lg shadow-cyan-500/20"
                             >
                                 {t('Start Survey', 'ابدأ الاستبيان')}
                             </button>
@@ -242,7 +303,7 @@ export default function RespondPage() {
                             </h2>
                             <div className="space-y-6">
                                 {survey.demographics.map(field => (
-                                    <div key={field.id} className="bg-slate-800/50 rounded-lg p-4">
+                                    <div key={field.id} className="bg-slate-800/50 rounded-lg p-4 border border-slate-700/30">
                                         <label className="block mb-2">
                                             <span className="text-white font-medium">
                                                 {field.label}
@@ -254,7 +315,7 @@ export default function RespondPage() {
                                                 type="text"
                                                 value={demographicAnswers[field.id] || ''}
                                                 onChange={(e) => updateDemographic(field.id, e.target.value)}
-                                                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-3 text-white focus:border-cyan-500 focus:outline-none"
+                                                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-3 text-white focus:border-cyan-500 focus:outline-none transition-colors"
                                             />
                                         )}
                                         {field.type === 'number' && (
@@ -262,7 +323,7 @@ export default function RespondPage() {
                                                 type="number"
                                                 value={demographicAnswers[field.id] || ''}
                                                 onChange={(e) => updateDemographic(field.id, e.target.value)}
-                                                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-3 text-white focus:border-cyan-500 focus:outline-none"
+                                                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-3 text-white focus:border-cyan-500 focus:outline-none transition-colors"
                                             />
                                         )}
                                         {field.type === 'date' && (
@@ -270,14 +331,14 @@ export default function RespondPage() {
                                                 type="date"
                                                 value={demographicAnswers[field.id] || ''}
                                                 onChange={(e) => updateDemographic(field.id, e.target.value)}
-                                                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-3 text-white focus:border-cyan-500 focus:outline-none"
+                                                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-3 text-white focus:border-cyan-500 focus:outline-none transition-colors"
                                             />
                                         )}
                                         {field.type === 'select' && field.options && (
                                             <select
                                                 value={demographicAnswers[field.id] || ''}
                                                 onChange={(e) => updateDemographic(field.id, e.target.value)}
-                                                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-3 text-white focus:border-cyan-500 focus:outline-none"
+                                                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-3 text-white focus:border-cyan-500 focus:outline-none transition-colors"
                                             >
                                                 <option value="">{t('Select...', 'اختر...')}</option>
                                                 {field.options.filter(opt => opt.trim()).map((opt, i) => (
@@ -291,76 +352,65 @@ export default function RespondPage() {
                         </div>
                     )}
 
-                    {/* Scales Step */}
-                    {step === 'scales' && currentScale && (
-                        <div className="animate-fade-in">
-                            <div className="flex items-center justify-between mb-6">
-                                <h2 className="text-xl font-bold text-white">
-                                    {currentScale.title}
-                                </h2>
-                                <span className="text-sm text-slate-400">
-                                    {currentScaleIndex + 1} / {scales.length}
+                    {/* Scales Step - ONE BY ONE */}
+                    {step === 'scales' && currentST && (
+                        <div key={currentST.id} className="animate-fade-in py-8">
+                            <div className="flex items-center justify-between mb-8">
+                                <span className="text-cyan-400 font-bold tracking-wider">
+                                    {t('Item', 'الفقرة')} {currentStatementIndex + 1} / {allStatements.length}
                                 </span>
                             </div>
 
-                            {currentScale.dimensions.map(dimension => (
-                                <div key={dimension.id} className="mb-8">
-                                    {dimension.name && (
-                                        <h3 className="text-lg font-medium text-cyan-400 mb-4">
-                                            {dimension.name}
-                                        </h3>
-                                    )}
-                                    <div className="space-y-4">
-                                        {dimension.statements.map((statement, stIndex) => (
-                                            <div key={statement.id} className="bg-slate-800/50 rounded-lg p-4">
-                                                <p className="text-white mb-4">
-                                                    {stIndex + 1}. {statement.text}
-                                                </p>
-                                                <div className="flex flex-wrap gap-2">
-                                                    {currentScale.options.map(option => {
-                                                        const scoreValue = statement.isReversed
-                                                            ? (currentScale.options.length + 1 - option.value)
-                                                            : option.value;
-                                                        return (
-                                                            <button
-                                                                key={option.id}
-                                                                onClick={() => updateScaleAnswer(statement.id, scoreValue)}
-                                                                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${scaleAnswers[statement.id] === scoreValue
-                                                                        ? 'bg-cyan-500 text-white'
-                                                                        : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-                                                                    }`}
-                                                            >
-                                                                {option.label}
-                                                            </button>
-                                                        );
-                                                    })}
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
+                            <div className="bg-slate-800/50 rounded-2xl p-8 border border-slate-700/30 shadow-xl">
+                                <p className="text-white text-xl md:text-2xl font-medium leading-relaxed mb-12 text-center">
+                                    {currentST.text}
+                                </p>
+
+                                <div className="space-y-4 max-w-md mx-auto">
+                                    {currentST.options.map(option => {
+                                        // Score calculation
+                                        const scoreValue = currentST.isReversed
+                                            ? (currentST.options.length + 1 - option.value)
+                                            : option.value;
+
+                                        const isSelected = scaleAnswers[currentST.id] === scoreValue;
+
+                                        return (
+                                            <button
+                                                key={option.id}
+                                                onClick={() => updateScaleAnswer(currentST.id, scoreValue)}
+                                                className={`w-full px-6 py-4 rounded-xl text-lg font-bold transition-all duration-200 border-2 ${isSelected
+                                                    ? 'bg-cyan-500 border-cyan-400 text-white shadow-lg shadow-cyan-500/20'
+                                                    : 'bg-slate-800/80 border-slate-700 text-slate-300 hover:border-slate-500 hover:bg-slate-700'
+                                                    }`}
+                                            >
+                                                {option.label}
+                                            </button>
+                                        );
+                                    })}
                                 </div>
-                            ))}
+                            </div>
                         </div>
                     )}
 
                     {/* Complete Step */}
                     {step === 'complete' && (
                         <div className="animate-fade-in text-center py-12">
-                            <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-green-500/20 flex items-center justify-center">
-                                <svg className="w-10 h-10 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-green-500/20 flex items-center justify-center">
+                                <svg className="w-12 h-12 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                                 </svg>
                             </div>
-                            <h1 className="text-2xl font-bold text-white mb-4">
+                            <h1 className="text-3xl font-bold text-white mb-4">
                                 {t('Thank You!', 'شكراً لك!')}
                             </h1>
-                            <p className="text-slate-300 mb-8">
+                            <p className="text-slate-300 text-lg mb-8">
                                 {t('Your response has been submitted successfully.',
                                     'تم إرسال استجابتك بنجاح.')}
                             </p>
-                            <p className="text-sm text-slate-500">
-                                {t('You may close this page now.',
-                                    'يمكنك إغلاق هذه الصفحة الآن.')}
+                            <p className="text-sm text-slate-500 italic">
+                                {t('You may close this window safely.',
+                                    'يمكنك إغلاق هذه النافذة بأمان.')}
                             </p>
                         </div>
                     )}
@@ -369,37 +419,53 @@ export default function RespondPage() {
 
             {/* Footer Navigation */}
             {step !== 'intro' && step !== 'complete' && (
-                <footer className="fixed bottom-0 left-0 right-0 bg-slate-900/90 backdrop-blur border-t border-slate-700">
-                    <div className="max-w-3xl mx-auto px-4 py-4 flex items-center justify-between">
+                <footer className="fixed bottom-0 left-0 right-0 bg-slate-900/90 backdrop-blur border-t border-slate-700 py-4">
+                    <div className="max-w-3xl mx-auto px-4 flex items-center justify-between">
                         <button
                             onClick={prevStep}
-                            className="px-6 py-3 text-slate-300 hover:text-white transition-colors"
+                            className="px-6 py-3 text-slate-400 hover:text-white transition-colors font-medium flex items-center gap-2"
                         >
+                            <svg className={`w-5 h-5 ${direction === 'rtl' ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                            </svg>
                             {t('Back', 'رجوع')}
                         </button>
-                        <button
-                            onClick={nextStep}
-                            disabled={isSubmitting}
-                            className="px-8 py-3 bg-gradient-to-r from-cyan-500 to-cyan-600 text-white font-bold rounded-lg hover:from-cyan-400 hover:to-cyan-500 transition-all disabled:opacity-50"
-                        >
-                            {isSubmitting
-                                ? t('Submitting...', 'جاري الإرسال...')
-                                : step === 'scales' && currentScaleIndex === scales.length - 1
-                                    ? t('Submit', 'إرسال')
+
+                        {/* Only show Next for demographics step, as scales step has auto-advance */}
+                        {step === 'demographics' && (
+                            <button
+                                onClick={nextStep}
+                                disabled={isSubmitting}
+                                className="px-8 py-3 bg-cyan-600 text-white font-bold rounded-lg hover:bg-cyan-500 transition-all shadow-lg shadow-cyan-500/10"
+                            >
+                                {t('Next', 'التالي')}
+                            </button>
+                        )}
+
+                        {/* For scales step, if user wants to change answer without selecting (manual advance) */}
+                        {step === 'scales' && (
+                            <button
+                                onClick={nextStep}
+                                disabled={isSubmitting}
+                                className="px-8 py-3 bg-slate-800 text-white font-bold rounded-lg hover:bg-slate-700 transition-all border border-slate-700"
+                            >
+                                {currentStatementIndex === allStatements.length - 1
+                                    ? (isSubmitting ? t('Submitting...', 'جاري الإرسال...') : t('Submit', 'إرسال'))
                                     : t('Next', 'التالي')
-                            }
-                        </button>
+                                }
+                            </button>
+                        )}
                     </div>
                 </footer>
             )}
 
             <style jsx global>{`
                 @keyframes fade-in {
-                    from { opacity: 0; transform: translateY(10px); }
-                    to { opacity: 1; transform: translateY(0); }
+                    from { opacity: 0; transform: scale(0.98) translateY(10px); }
+                    to { opacity: 1; transform: scale(1) translateY(0); }
                 }
                 .animate-fade-in {
-                    animation: fade-in 0.3s ease-out;
+                    animation: fade-in 0.4s cubic-bezier(0.16, 1, 0.3, 1);
                 }
             `}</style>
         </div>

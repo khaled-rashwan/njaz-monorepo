@@ -137,7 +137,7 @@ export default function ScaleSelectorModal({
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {filteredScales.map(scale => {
                                 const isSelected = selectedScaleIds.includes(scale.id);
-                                const totalStatements = scale.dimensions.reduce((sum, d) => sum + d.statements.length, 0);
+                                const totalStatements = scale.statements.length;
 
                                 return (
                                     <button

@@ -29,7 +29,7 @@ export default function ScaleCard({ scale, onRemove, language, index }: ScaleCar
         zIndex: isDragging ? 100 : 1,
     };
 
-    const totalStatements = scale.dimensions.reduce((sum, d) => sum + d.statements.length, 0);
+    const totalStatements = scale.statements.length;
     const isRtl = scale.language === 'ar';
 
     return (

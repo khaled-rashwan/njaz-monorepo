@@ -13,10 +13,13 @@
     "dev:app-selector": "npm run sync-assets && turbo run dev --filter=app-selector",
     "build:landing": "npm run sync-assets && turbo run build --filter=landing",
     "sync-amplify": "node scripts/sync-amplify-config.js",
-    "sync-assets": "node scripts/sync-assets.js"
+    "sync-assets": "node scripts/sync-assets.js",
+    "amplify:sandbox": "cd packages/shared-backend && npx ampx sandbox"
   },
   "devDependencies": {
-    "turbo": "^2.3.3"
+    "turbo": "^2.3.3",
+    "@aws-sdk/client-dynamodb": "^3.0.0",
+    "@aws-sdk/lib-dynamodb": "^3.0.0"
   },
   "packageManager": "npm@10.2.0"
 }

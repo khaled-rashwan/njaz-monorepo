@@ -1,5 +1,6 @@
 import { a, defineData, type ClientSchema } from '@aws-amplify/backend';
 import { estebianSchema } from '@njaz/estebian-data';
+import { submitResponse } from '../functions/submitResponse/resource';
 
 /**
  * Njaz Platform Data Schema
@@ -74,6 +75,20 @@ const schema = a.schema({
             allow.groups(['devplatform-access']),
             allow.owner(),
         ]),
+
+    // ============================================
+    // CUSTOM MUTATIONS
+    // ============================================
+
+    submitResponse: a.mutation()
+        .arguments({
+            surveyId: a.id().required(),
+            answers: a.json().required(),
+            demographics: a.json(),
+        })
+        .returns(a.json())
+        .handler(a.handler.function(submitResponse))
+        .authorization((allow) => [allow.publicApiKey()]),
 
     // ============================================
     // INTERIOR DESIGN - Design Platform

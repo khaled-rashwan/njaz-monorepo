@@ -10,7 +10,7 @@ module.exports = {
         extend: {
             fontFamily: {
                 sans: ['Cairo', 'system-ui', 'sans-serif'],
-                display: ['Cairo', 'system-ui', 'sans-serif'],
+                display: ['Manrope', 'Cairo', 'system-ui', 'sans-serif'],
             },
             colors: {
                 primary: {
@@ -25,6 +25,9 @@ module.exports = {
                     800: '#155e75',
                     900: '#164e63',
                 },
+                'stitch-primary': '#38CDDF',
+                'background-dark': '#191022',
+                'slate-glass': 'rgba(33, 28, 39, 0.7)',
             },
             backgroundImage: {
                 'futuristic-grid': 'linear-gradient(rgba(56, 205, 223, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(56, 205, 223, 0.03) 1px, transparent 1px)',

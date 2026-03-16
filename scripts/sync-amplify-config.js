@@ -15,6 +15,7 @@ const SOURCE = path.join(ROOT, 'packages/shared-backend/amplify_outputs.json');
 const TARGETS = [
     path.join(ROOT, 'apps/landing/amplify_outputs.json'),
     path.join(ROOT, 'apps/app-selector/amplify_outputs.json'),
+    path.join(ROOT, 'apps/estebian/amplify_outputs.json'),
 ];
 
 function syncConfig() {

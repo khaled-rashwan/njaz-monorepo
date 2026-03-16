@@ -3,13 +3,17 @@
     "version": "0.0.1",
     "private": true,
     "type": "module",
+    "main": "./src/index.ts",
+    "types": "./src/index.ts",
     "scripts": {
         "sandbox": "npx ampx sandbox",
         "sandbox:delete": "npx ampx sandbox delete"
     },
     "dependencies": {
         "aws-amplify": "^6.0.0",
-        "@njaz/estebian-data": "file:../estebian-data"
+        "@njaz/estebian-data": "file:../estebian-data",
+        "@aws-sdk/client-dynamodb": "^3.0.0",
+        "@aws-sdk/lib-dynamodb": "^3.0.0"
     },
     "devDependencies": {
         "@aws-amplify/backend": "^1.0.0",

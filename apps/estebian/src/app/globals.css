@@ -163,3 +163,22 @@ body {
 .animate-fade-in {
     animation: fade-in 0.5s ease-out;
 }
+/* Stitch-inspired Glassmorphism */
+.glass-card {
+    backdrop-filter: blur(16px);
+    background: rgba(33, 28, 45, 0.7);
+    border: 1px solid rgba(56, 205, 223, 0.3);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+}
+
+.neon-glow {
+    box-shadow: 0 0 15px rgba(56, 205, 223, 0.5);
+}
+
+.status-glow {
+    box-shadow: 0 0 10px rgba(11, 218, 115, 0.4);
+}
+
+.material-symbols-outlined {
+    font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+}

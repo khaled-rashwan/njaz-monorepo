@@ -60,9 +60,8 @@ export default function NewSurveyPage() {
             setUserId(user.username);
 
             // Get all available scales
-            const scales = getScales();
-            const publicScales = scales.filter(s => s.isPublic || s.createdBy === user.username);
-            setAvailableScales(publicScales);
+            const scales = await getScales();
+            setAvailableScales(scales);
 
             // Restore draft if exists (after coming back from creating a scale)
             const draft = localStorage.getItem('surveyDraft');
@@ -99,8 +98,10 @@ export default function NewSurveyPage() {
         localStorage.setItem('surveyDraft', JSON.stringify(draft));
     }
 
-    // Get selected scales objects
-    const selectedScales = availableScales.filter(s => selectedScaleIds.includes(s.id));
+    // Get selected scales objects - IMPORTANT: map over selectedScaleIds to preserve sort order from drag-and-drop
+    const selectedScales = selectedScaleIds
+        .map(id => availableScales.find(s => s.id === id))
+        .filter((s): s is Scale => s !== undefined);
 
     function addDemographic(type: DemographicField['type']) {
         const newField: DemographicField = {
@@ -211,8 +212,7 @@ export default function NewSurveyPage() {
 
         setIsSaving(true);
         try {
-            const survey: Survey = {
-                id: generateId(),
+            const survey: any = {
                 language: surveyLanguage,
                 title,
                 introduction,
@@ -224,7 +224,7 @@ export default function NewSurveyPage() {
                 scaleIds: selectedScaleIds
             };
 
-            saveSurvey(survey);
+            await saveSurvey(survey);
             router.push('/surveys');
         } catch (error) {
             console.error('Error saving survey:', error);
@@ -552,7 +552,7 @@ export default function NewSurveyPage() {
                                             </div>
                                             <div className="text-center">
                                                 <p className="text-2xl font-bold text-emerald-400">
-                                                    {selectedScales.reduce((sum, s) => sum + s.dimensions.reduce((dSum, d) => dSum + d.statements.length, 0), 0)}
+                                                    {selectedScales.reduce((sum, s) => sum + s.statements.length, 0)}
                                                 </p>
                                                 <p className="text-xs text-slate-500">{t('Questions', 'أسئلة')}</p>
                                             </div>

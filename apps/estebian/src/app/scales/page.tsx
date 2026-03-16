@@ -26,14 +26,12 @@ export default function ScalesPage() {
             setUserId(user.username);
 
             // Get all scales (public + user's private)
-            const allScales = getScales();
-            const visibleScales = allScales.filter(
-                s => s.isPublic || s.createdBy === user.username
-            );
-            setScales(visibleScales);
+            const allScales = await getScales();
+            setScales(allScales);
         } catch {
             // Not logged in - show only public
-            setScales(getPublicScales());
+            const publicScales = await getPublicScales();
+            setScales(publicScales);
         } finally {
             setIsLoading(false);
         }
@@ -245,7 +243,7 @@ export default function ScalesPage() {
                                                 {scale.dimensions.length} {t('dimensions', 'أبعاد')}
                                             </span>
                                             <span>
-                                                {scale.dimensions.reduce((sum, d) => sum + d.statements.length, 0)} {t('statements', 'عبارات')}
+                                                {scale.statements.length} {t('statements', 'عبارات')}
                                             </span>
                                         </div>
                                     </FuturisticPanel>

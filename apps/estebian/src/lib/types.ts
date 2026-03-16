@@ -13,7 +13,8 @@ export interface Scale {
     createdAt: string;
     updatedAt: string;
     isPublic: boolean;
-    dimensions: Dimension[];
+    dimensions: Dimension[]; // Metadata: id, name
+    statements: Statement[]; // Flat list with order preserved
     options: ScaleOption[];
 }
 
@@ -23,7 +24,6 @@ export interface Scale {
 export interface Dimension {
     id: string;
     name: string;
-    statements: Statement[];
 }
 
 /**
@@ -32,7 +32,8 @@ export interface Dimension {
 export interface Statement {
     id: string;
     text: string;
-    isReversed: boolean; // Opposite scoring
+    isReversed: boolean;
+    dimensionId: string; // Link to dimension
 }
 
 /**
@@ -60,6 +61,7 @@ export interface Survey {
     publishedUrl?: string;
     demographics: DemographicField[];
     scaleIds: string[];
+    scaleSnapshots?: Scale[]; // Deep copy of scales at publish time
 }
 
 /**

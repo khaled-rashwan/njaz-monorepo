@@ -13,6 +13,7 @@ export default function ReportsPage() {
     const { t, language, direction } = useLanguage();
     const [surveys, setSurveys] = useState<Survey[]>([]);
     const [reports, setReports] = useState<Report[]>([]);
+    const [responseCounts, setResponseCounts] = useState<Record<string, number>>({});
     const [isLoading, setIsLoading] = useState(true);
     const [userId, setUserId] = useState<string | null>(null);
 
@@ -25,8 +26,18 @@ export default function ReportsPage() {
             const user = await getCurrentUser();
             setUserId(user.username);
 
-            const userSurveys = getSurveys(user.username);
-            const userReports = getReports(user.username);
+            const userSurveys = await getSurveys();
+
+            // Pre-load all response counts
+            const counts: Record<string, number> = {};
+            await Promise.all(userSurveys.map(async (s) => {
+                const res = await getResponses(s.id);
+                counts[s.id] = res.length;
+            }));
+
+            setResponseCounts(counts);
+
+            const userReports = await getReports("");
             setSurveys(userSurveys);
             setReports(userReports);
         } catch {
@@ -38,7 +49,7 @@ export default function ReportsPage() {
     }
 
     function getResponseCount(surveyId: string): number {
-        return getResponses(surveyId).length;
+        return responseCounts[surveyId] || 0;
     }
 
     const publishedSurveys = surveys.filter(s => s.isPublished);
