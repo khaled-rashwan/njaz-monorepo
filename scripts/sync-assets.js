@@ -7,6 +7,7 @@ const apps = ['landing', 'app-selector', 'estebian'];
 
 const targetAssets = [
     'njaz-logo.svg',
+    'logo.png',
     'estebian-logo.png',
     'dev-logo.png',
     'process-logo.png',

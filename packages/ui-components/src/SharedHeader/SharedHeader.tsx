@@ -107,20 +107,31 @@ export function SharedHeader({
                 <div className="relative px-4 sm:px-6 py-3 flex items-center justify-between">
                     {/* Logo - Left Side (RTL: appears on right) */}
                     <a href="/" className="flex items-center gap-3 group">
-                        <div
-                            className="w-10 h-10 sm:w-11 sm:h-11 rounded-full p-2 flex items-center justify-center flex-shrink-0 transition-all duration-300"
-                            style={{
-                                background: 'linear-gradient(135deg, rgba(30, 40, 55, 0.9) 0%, rgba(15, 22, 35, 0.95) 100%)',
-                                border: `2px solid ${currentAppInfo?.color ? `${currentAppInfo.color}60` : 'rgba(56, 205, 223, 0.4)'}`,
-                                boxShadow: `0 0 15px ${currentAppInfo?.color ? `${currentAppInfo.color}30` : 'rgba(56, 205, 223, 0.2)'}, inset 0 0 10px ${currentAppInfo?.color ? `${currentAppInfo.color}20` : 'rgba(56, 205, 223, 0.1)'}`,
-                            }}
-                        >
-                            <img
-                                src={currentAppInfo?.icon || "/images/njaz-logo.svg"}
-                                alt={currentAppInfo?.name || "Njaz"}
-                                className="w-full h-full object-contain drop-shadow-[0_0_8px_rgba(56,205,223,0.5)]"
-                            />
-                        </div>
+                        {currentAppInfo ? (
+                            <div
+                                className="w-10 h-10 sm:w-11 sm:h-11 rounded-full p-2 flex items-center justify-center flex-shrink-0 transition-all duration-300"
+                                style={{
+                                    background: 'linear-gradient(135deg, rgba(30, 40, 55, 0.9) 0%, rgba(15, 22, 35, 0.95) 100%)',
+                                    border: `2px solid ${currentAppInfo.color}60`,
+                                    boxShadow: `0 0 15px ${currentAppInfo.color}30, inset 0 0 10px ${currentAppInfo.color}20`,
+                                }}
+                            >
+                                <img
+                                    src={currentAppInfo.icon}
+                                    alt={currentAppInfo.name}
+                                    className="w-full h-full object-contain drop-shadow-[0_0_8px_rgba(56,205,223,0.5)]"
+                                />
+                            </div>
+                        ) : (
+                            <div className="h-10 sm:h-12 w-28 sm:w-36 flex items-center justify-center flex-shrink-0 transition-all duration-300 overflow-hidden">
+                                <img
+                                    src="/images/logo.png"
+                                    alt="Njaz"
+                                    className="w-[140%] h-auto max-w-none object-contain drop-shadow-[0_0_8px_rgba(56,205,223,0.5)] style-logo-blend"
+                                    style={{ filter: 'brightness(0) invert(1)' }}
+                                />
+                            </div>
+                        )}
                     </a>
 
 

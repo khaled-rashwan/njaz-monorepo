@@ -36,33 +36,14 @@ export function SharedFooter({ language = 'en', direction = 'ltr', t }: SharedFo
                 {/* Center Content */}
                 <div className="flex items-center gap-3">
                     {/* Logo */}
-                    <div
-                        className="w-8 h-8 rounded-full p-1.5 flex items-center justify-center"
-                        style={{
-                            background: 'linear-gradient(135deg, rgba(30, 40, 55, 0.9) 0%, rgba(15, 22, 35, 0.95) 100%)',
-                            border: '1px solid rgba(56, 205, 223, 0.3)',
-                            boxShadow: '0 0 10px rgba(56, 205, 223, 0.15)',
-                        }}
-                    >
+                    <div className="h-6 sm:h-7 w-20 sm:w-24 flex items-center justify-center flex-shrink-0 transition-all duration-300 overflow-hidden">
                         <img
-                            src="/images/logo.svg"
+                            src="/images/logo.png"
                             alt="Njaz"
-                            className="w-full h-full object-contain drop-shadow-[0_0_4px_rgba(56,205,223,0.4)]"
+                            className="w-[140%] h-auto max-w-none object-contain drop-shadow-[0_0_8px_rgba(56,205,223,0.5)] style-logo-blend"
+                            style={{ filter: 'brightness(0) invert(1)' }}
                         />
                     </div>
-
-                    {/* Brand Name */}
-                    <span
-                        className="text-lg font-bold tracking-wide"
-                        style={{
-                            background: 'linear-gradient(135deg, #38CDDF 0%, #5CE1E6 50%, #38CDDF 100%)',
-                            WebkitBackgroundClip: 'text',
-                            WebkitTextFillColor: 'transparent',
-                            backgroundClip: 'text',
-                        }}
-                    >
-                        {translate('Njaz', 'إنجاز')}
-                    </span>
                 </div>
 
                 {/* Decorative Star (like in reference) */}
