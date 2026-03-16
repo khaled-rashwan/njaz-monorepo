@@ -11,7 +11,7 @@
     },
     "dependencies": {
         "aws-amplify": "^6.0.0",
-        "@njaz/estebian-data": "file:../estebian-data",
+        "@njaz/estebian-data": "*",
         "@aws-sdk/client-dynamodb": "^3.0.0",
         "@aws-sdk/lib-dynamodb": "^3.0.0"
     },
