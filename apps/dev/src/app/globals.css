@@ -307,3 +307,41 @@ body {
 .material-symbols-outlined {
     font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
 }
+
+/* ── Intake Wizard Animations ──────────────────────────── */
+.wizard-step-enter {
+    animation: wizard-slide-in 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes wizard-slide-in {
+    from {
+        opacity: 0;
+        transform: translateY(16px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Drop zone drag-over visual feedback */
+.drop-zone.drag-over,
+.drop-zone:focus-within {
+    border-color: rgba(56, 205, 223, 0.6);
+    background: rgba(56, 205, 223, 0.08);
+    box-shadow: 0 0 30px rgba(56, 205, 223, 0.1);
+}
+
+/* Glow pulse for progress indicator */
+@keyframes glow-pulse {
+    0%, 100% {
+        box-shadow: 0 0 15px rgba(56, 205, 223, 0.2);
+    }
+    50% {
+        box-shadow: 0 0 30px rgba(56, 205, 223, 0.4);
+    }
+}
+
+.animate-glow-pulse {
+    animation: glow-pulse 2s ease-in-out infinite;
+}

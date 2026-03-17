@@ -89,10 +89,10 @@ export function SharedHeader({
                 <div
                     className="absolute inset-0 pointer-events-none"
                     style={{
-                        background: 'linear-gradient(180deg, rgba(30, 40, 55, 0.95) 0%, rgba(20, 28, 40, 0.98) 100%)',
+                        background: 'linear-gradient(180deg, rgba(235, 245, 255, 0.95) 0%, rgba(215, 225, 240, 0.98) 100%)',
                         borderRadius: '8px',
-                        border: '1px solid rgba(56, 205, 223, 0.2)',
-                        boxShadow: '0 4px 30px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.05)',
+                        border: '1px solid rgba(56, 205, 223, 0.4)',
+                        boxShadow: '0 4px 30px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.8)',
                         clipPath: 'polygon(0 0, calc(100% - 20px) 0, 100% 20px, 100% 100%, 20px 100%, 0 calc(100% - 20px))',
                     }}
                 />
@@ -123,12 +123,11 @@ export function SharedHeader({
                                 />
                             </div>
                         ) : (
-                            <div className="h-10 sm:h-12 w-28 sm:w-36 flex items-center justify-center flex-shrink-0 transition-all duration-300 overflow-hidden">
+                            <div className="h-10 sm:h-12 flex items-center justify-center flex-shrink-0 transition-all duration-300">
                                 <img
                                     src="/images/logo.png"
                                     alt="Njaz"
-                                    className="w-[140%] h-auto max-w-none object-contain drop-shadow-[0_0_8px_rgba(56,205,223,0.5)] style-logo-blend"
-                                    style={{ filter: 'brightness(0) invert(1)' }}
+                                    className="h-full w-auto object-contain drop-shadow-[0_0_8px_rgba(56,205,223,0.3)] style-logo-blend"
                                 />
                             </div>
                         )}
@@ -153,7 +152,10 @@ export function SharedHeader({
                                     /* Logged Out State */
                                     <a
                                         href={dashboardUrl}
-                                        className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg text-sm font-medium text-cyan-400 border border-cyan-500/30 hover:bg-cyan-500/10 transition-all"
+                                        className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg text-sm font-medium text-cyan-400 border border-cyan-500/30 hover:border-cyan-500/50 transition-all"
+                                        style={{
+                                            background: 'linear-gradient(135deg, rgba(30, 40, 55, 0.8) 0%, rgba(20, 28, 40, 0.9) 100%)',
+                                        }}
                                     >
                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />

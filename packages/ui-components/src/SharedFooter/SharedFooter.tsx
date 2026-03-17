@@ -20,10 +20,10 @@ export function SharedFooter({ language = 'en', direction = 'ltr', t }: SharedFo
             <div
                 className="relative mx-4 mb-4 px-6 py-3 flex items-center justify-center"
                 style={{
-                    background: 'linear-gradient(180deg, rgba(30, 40, 55, 0.95) 0%, rgba(20, 28, 40, 0.98) 100%)',
+                    background: 'linear-gradient(180deg, rgba(235, 245, 255, 0.95) 0%, rgba(215, 225, 240, 0.98) 100%)',
                     borderRadius: '8px',
-                    border: '1px solid rgba(56, 205, 223, 0.2)',
-                    boxShadow: '0 -4px 30px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.05)',
+                    border: '1px solid rgba(56, 205, 223, 0.4)',
+                    boxShadow: '0 -4px 30px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.8)',
                     clipPath: 'polygon(20px 0, 100% 0, 100% calc(100% - 20px), calc(100% - 20px) 100%, 0 100%, 0 20px)',
                 }}
             >
@@ -36,12 +36,11 @@ export function SharedFooter({ language = 'en', direction = 'ltr', t }: SharedFo
                 {/* Center Content */}
                 <div className="flex items-center gap-3">
                     {/* Logo */}
-                    <div className="h-6 sm:h-7 w-20 sm:w-24 flex items-center justify-center flex-shrink-0 transition-all duration-300 overflow-hidden">
+                    <div className="h-6 sm:h-7 flex items-center justify-center flex-shrink-0 transition-all duration-300">
                         <img
                             src="/images/logo.png"
                             alt="Njaz"
-                            className="w-[140%] h-auto max-w-none object-contain drop-shadow-[0_0_8px_rgba(56,205,223,0.5)] style-logo-blend"
-                            style={{ filter: 'brightness(0) invert(1)' }}
+                            className="h-full w-auto object-contain drop-shadow-[0_0_8px_rgba(56,205,223,0.3)] style-logo-blend"
                         />
                     </div>
                 </div>
