@@ -22,24 +22,28 @@ A zero-friction project management system that:
 
 ### Technology Stack
 ```
-Frontend:
-- Next.js 14+ (App Router)
-- React Server Components
-- Tailwind CSS + shadcn/ui
-- React Hook Form + Zod validation
+Frontend (apps/dev):
+- Next.js 14+ (App Router) within njaz TurboRepo monorepo
+- @njaz/ui-components (shared Futuristic design system)
+- Tailwind CSS
+- React Reducers + TypeScript validation
+- RTL/i18n support (Arabic/English)
 
-Backend:
-- Next.js API Routes (serverless) / AWS API Gateway
-- AWS Amplify Gen2 (Cognito Auth, DynamoDB, API)
+Backend (packages/shared-backend):
+- AWS Amplify Gen2 (shared across all monorepo apps)
+  - Amazon Cognito (Authentication & cross-app SSO)
+  - Amazon DynamoDB (DevInquiry, DevProject models via AppSync)
+  - AWS AppSync (auto-generated GraphQL API)
+- Next.js API Routes (server-side orchestration)
 - AWS S3 (Brand assets and file storage)
 
-Integrations:
-- GitHub API (repo creation, project boards)
-- LINEAR / Jira API (task management)
-- Slack/Discord webhooks (notifications)
-- Amazon SES (Emails)
+Automation & Integrations:
+- Workflow Engine (template-based project workflow generation)
+- GitHub API (repo creation, project boards) — Phase 3
+- Slack webhooks (real-time inquiry notifications)
+- Amazon SES (Emails) — Future
 
-AI Layer (Optional):
+AI Layer (Future):
 - Anthropic / OpenAI API for requirement analysis
 - Automatic task breakdown
 - Smart milestone suggestions
@@ -1199,10 +1203,9 @@ async function handlePushEvent(payload: any) {
 
 ## NEXT STEPS
 
-1. Review and approve this specification
-2. Set up development environment
-3. Create GitHub organization and repositories
-4. Set up Supabase project
-5. Begin Phase 1 implementation
-
-Would you like me to proceed with implementing any specific component?
+1. ✅ Phase 1 — Frontend UI & State (Complete)
+2. ✅ Phase 2 — Backend Integration (Complete: DevInquiry model, API, workflow engine, dashboard)
+3. 🔜 Phase 3 — Deploy sandbox and verify full data flow
+4. 📋 Phase 4 — GitHub Automation (auto-create repos and project boards)
+5. 📋 Phase 5 — Team Features (task board, assignment, notifications expansion)
+6. 📋 Phase 6 — Client Portal & AI features

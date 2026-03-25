@@ -72,15 +72,13 @@ export default function AppSelectorDashboard() {
     if (!isAuthenticated) {
         return (
             <div className="auth-page min-h-screen flex flex-col items-center justify-center p-6 hero-section">
-                <div className="mb-6 flex items-center justify-center animate-fade-in">
-                    <div className="h-16 w-48 flex items-center justify-center overflow-hidden">
-                        <img 
-                            src="/images/logo.png" 
-                            alt="Njaz" 
-                            className="w-[140%] h-auto max-w-none object-contain drop-shadow-[0_0_15px_rgba(56,205,223,0.4)]" 
-                            style={{ filter: 'brightness(0) invert(1)' }}
-                        />
-                    </div>
+                <div className="mb-8 flex items-center justify-center animate-fade-in">
+                    <img 
+                        src="/images/logo.png" 
+                        alt="Njaz" 
+                        className="h-14 w-auto object-contain drop-shadow-[0_0_20px_rgba(56,205,223,0.3)]" 
+                        style={{ filter: 'brightness(0) invert(1)' }}
+                    />
                 </div>
                 <AuthForm onSuccess={() => {
                     if (redirectUrl) window.location.href = redirectUrl;

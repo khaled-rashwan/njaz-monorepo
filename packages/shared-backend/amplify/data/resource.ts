@@ -77,6 +77,57 @@ const schema = a.schema({
         ]),
 
     // ============================================
+    // DEV INQUIRY - Client Intake Pipeline
+    // ============================================
+    // Captures all data from the multi-step intake wizard.
+    // Public users can create (form is anonymous),
+    // while admins manage the full lifecycle.
+
+    DevInquiry: a
+        .model({
+            // Client information
+            clientName: a.string().required(),
+            clientEmail: a.string().required(),
+            clientPhone: a.string(),
+            companyName: a.string(),
+            projectDescription: a.string().required(),
+
+            // Project configuration
+            projectTypes: a.string().array().required(),
+            features: a.json(),      // Record<FeatureKey, boolean>
+            timeline: a.enum(['standard', 'accelerated', 'rush']),
+
+            // Brand assets
+            hasBrandAssets: a.boolean(),
+            brandNotes: a.string(),
+            preferredColors: a.string(),
+            stylePreference: a.string(),
+            competitors: a.string(),
+
+            // Computed estimate
+            estimatedPriceMin: a.float(),
+            estimatedPriceMax: a.float(),
+            estimatedWeeks: a.integer(),
+            complexityScore: a.integer(),
+
+            // Lifecycle
+            status: a.enum(['new', 'reviewing', 'proposal_sent', 'approved', 'in_progress', 'completed', 'cancelled']),
+
+            // Generated workflow (JSON blob from workflow engine)
+            workflow: a.json(),
+
+            // Notification tracking
+            notifiedAt: a.datetime(),
+        })
+        .authorization((allow) => [
+            // Anyone can submit the intake form (no login required)
+            allow.publicApiKey().to(['create']),
+            // Admins and dev team can manage inquiries
+            allow.groups(['admins']),
+            allow.groups(['devplatform-access']),
+        ]),
+
+    // ============================================
     // CUSTOM MUTATIONS
     // ============================================
 

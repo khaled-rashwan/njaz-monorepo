@@ -978,6 +978,234 @@
             "sortKeyFieldNames": []
           }
         },
+        "DevInquiry": {
+          "name": "DevInquiry",
+          "fields": {
+            "id": {
+              "name": "id",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": true,
+              "attributes": []
+            },
+            "clientName": {
+              "name": "clientName",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true,
+              "attributes": []
+            },
+            "clientEmail": {
+              "name": "clientEmail",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true,
+              "attributes": []
+            },
+            "clientPhone": {
+              "name": "clientPhone",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "companyName": {
+              "name": "companyName",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "projectDescription": {
+              "name": "projectDescription",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true,
+              "attributes": []
+            },
+            "projectTypes": {
+              "name": "projectTypes",
+              "isArray": true,
+              "type": "String",
+              "isRequired": false,
+              "attributes": [],
+              "isArrayNullable": false
+            },
+            "features": {
+              "name": "features",
+              "isArray": false,
+              "type": "AWSJSON",
+              "isRequired": false,
+              "attributes": []
+            },
+            "timeline": {
+              "name": "timeline",
+              "isArray": false,
+              "type": {
+                "enum": "DevInquiryTimeline"
+              },
+              "isRequired": false,
+              "attributes": []
+            },
+            "hasBrandAssets": {
+              "name": "hasBrandAssets",
+              "isArray": false,
+              "type": "Boolean",
+              "isRequired": false,
+              "attributes": []
+            },
+            "brandNotes": {
+              "name": "brandNotes",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "preferredColors": {
+              "name": "preferredColors",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "stylePreference": {
+              "name": "stylePreference",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "competitors": {
+              "name": "competitors",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "estimatedPriceMin": {
+              "name": "estimatedPriceMin",
+              "isArray": false,
+              "type": "Float",
+              "isRequired": false,
+              "attributes": []
+            },
+            "estimatedPriceMax": {
+              "name": "estimatedPriceMax",
+              "isArray": false,
+              "type": "Float",
+              "isRequired": false,
+              "attributes": []
+            },
+            "estimatedWeeks": {
+              "name": "estimatedWeeks",
+              "isArray": false,
+              "type": "Int",
+              "isRequired": false,
+              "attributes": []
+            },
+            "complexityScore": {
+              "name": "complexityScore",
+              "isArray": false,
+              "type": "Int",
+              "isRequired": false,
+              "attributes": []
+            },
+            "status": {
+              "name": "status",
+              "isArray": false,
+              "type": {
+                "enum": "DevInquiryStatus"
+              },
+              "isRequired": false,
+              "attributes": []
+            },
+            "workflow": {
+              "name": "workflow",
+              "isArray": false,
+              "type": "AWSJSON",
+              "isRequired": false,
+              "attributes": []
+            },
+            "notifiedAt": {
+              "name": "notifiedAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": false,
+              "attributes": []
+            },
+            "createdAt": {
+              "name": "createdAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": false,
+              "attributes": [],
+              "isReadOnly": true
+            },
+            "updatedAt": {
+              "name": "updatedAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": false,
+              "attributes": [],
+              "isReadOnly": true
+            }
+          },
+          "syncable": true,
+          "pluralName": "DevInquiries",
+          "attributes": [
+            {
+              "type": "model",
+              "properties": {}
+            },
+            {
+              "type": "auth",
+              "properties": {
+                "rules": [
+                  {
+                    "allow": "public",
+                    "provider": "apiKey",
+                    "operations": [
+                      "create"
+                    ]
+                  },
+                  {
+                    "groupClaim": "cognito:groups",
+                    "provider": "userPools",
+                    "allow": "groups",
+                    "groups": [
+                      "admins"
+                    ],
+                    "operations": [
+                      "create",
+                      "update",
+                      "delete",
+                      "read"
+                    ]
+                  },
+                  {
+                    "groupClaim": "cognito:groups",
+                    "provider": "userPools",
+                    "allow": "groups",
+                    "groups": [
+                      "devplatform-access"
+                    ],
+                    "operations": [
+                      "create",
+                      "update",
+                      "delete",
+                      "read"
+                    ]
+                  }
+                ]
+              }
+            }
+          ],
+          "primaryKeyInfo": {
+            "isCustomPrimaryKey": false,
+            "primaryKeyFieldName": "id",
+            "sortKeyFieldNames": []
+          }
+        },
         "DesignProject": {
           "name": "DesignProject",
           "fields": {
@@ -1175,6 +1403,26 @@
             "in_progress",
             "completed",
             "on_hold"
+          ]
+        },
+        "DevInquiryTimeline": {
+          "name": "DevInquiryTimeline",
+          "values": [
+            "standard",
+            "accelerated",
+            "rush"
+          ]
+        },
+        "DevInquiryStatus": {
+          "name": "DevInquiryStatus",
+          "values": [
+            "new",
+            "reviewing",
+            "proposal_sent",
+            "approved",
+            "in_progress",
+            "completed",
+            "cancelled"
           ]
         },
         "DesignProjectType": {

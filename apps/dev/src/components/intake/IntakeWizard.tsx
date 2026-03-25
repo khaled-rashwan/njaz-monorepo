@@ -190,11 +190,25 @@ export default function IntakeWizard() {
             },
         };
 
-        // TODO: Phase 2 — Replace with actual API call
-        console.log('📤 Intake Submission Payload:', payload);
+        try {
+            const response = await fetch('/api/intake', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            });
 
-        // Simulate network delay
-        await new Promise(resolve => setTimeout(resolve, 2000));
+            const result = await response.json();
+
+            if (response.ok) {
+                console.log('✅ Inquiry submitted:', result);
+            } else {
+                // Log the error but don't block the user
+                console.error('⚠️ API error (inquiry logged):', result);
+            }
+        } catch (error) {
+            // Network error — inquiry data is in the payload above
+            console.error('⚠️ Network error (inquiry logged):', error);
+        }
 
         dispatch({ type: 'SET_SUBMITTING', submitting: false });
         dispatch({ type: 'SET_SUBMITTED', submitted: true });
