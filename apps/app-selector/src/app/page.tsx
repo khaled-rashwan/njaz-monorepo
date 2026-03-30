@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useAuth } from '../components/AuthContext';
 import { AuthForm } from '../components/AuthForm';
+import { MyProjectsPanel } from '../components/MyProjectsPanel';
 import {
     NJAZ_APPS,
     FuturisticPanel,
@@ -15,23 +16,14 @@ import {
     SharedHeader,
     SharedFooter
 } from '@njaz/ui-components';
-import { getLandingUrl } from '@njaz/shared-auth';
+import { getLandingUrl, getAppUrl } from '@njaz/shared-auth';
 
 // Quick actions for the dashboard
 const quickActions = [
-    { id: 'new-survey', label: 'Survey', icon: '📝', color: 'purple' as const },
-    { id: 'new-controller', label: 'Controller', icon: '⚙️', color: 'gold' as const },
-    { id: 'new-project', label: 'Project', icon: '📁', color: 'cyan' as const },
-    { id: 'upload-design', label: 'Design', icon: '🎨', color: 'green' as const },
-];
-
-// Recent activity mock data
-const recentActivity = [
-    { timestamp: '03:08:20', action: 'Survey completed: Employee Satisfaction', status: 'completed' as const },
-    { timestamp: '03:06:15', action: 'Controller tuned: Temperature PID', status: 'completed' as const },
-    { timestamp: '03:03:26', action: 'Project created: E-commerce Platform', status: 'completed' as const },
-    { timestamp: '02:58:13', action: 'Design uploaded: Villa Modern', status: 'pending' as const },
-    { timestamp: '02:45:08', action: 'Survey started: Customer Feedback', status: 'completed' as const },
+    { id: 'new-survey', label: 'Survey', icon: '📝', color: 'purple' as const, appId: 'estebian', path: '/' },
+    { id: 'new-controller', label: 'Tuner', icon: '⚙️', color: 'gold' as const, appId: 'pid', path: '/' },
+    { id: 'new-project', label: 'Project', icon: '📁', color: 'cyan' as const, appId: 'dev', path: '/contact' },
+    { id: 'upload-design', label: 'Design', icon: '🎨', color: 'green' as const, appId: 'interior', path: '/' },
 ];
 
 // Mock chart data
@@ -161,14 +153,15 @@ export default function AppSelectorDashboard() {
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
                         {/* Quick Actions */}
                         <FuturisticPanel title="Quick Actions" glowColor="cyan">
-                            <div className="grid grid-cols-4 gap-2">
+                            <div className="grid grid-cols-4 gap-2 text-center">
                                 {quickActions.map((action) => (
-                                    <ActionButton
-                                        key={action.id}
-                                        icon={action.icon}
-                                        label={action.label}
-                                        color={action.color}
-                                    />
+                                    <a key={action.id} href={`${getAppUrl(action.appId as any)}${action.path}`} className="block">
+                                        <ActionButton
+                                            icon={action.icon}
+                                            label={action.label}
+                                            color={action.color}
+                                        />
+                                    </a>
                                 ))}
                             </div>
                         </FuturisticPanel>
@@ -200,21 +193,13 @@ export default function AppSelectorDashboard() {
                         </FuturisticPanel>
                     </div>
 
-                    {/* Bottom Row - Activity */}
-                    <div className="grid grid-cols-1 gap-6">
-                        <FuturisticPanel title="Recent Activity" glowColor="cyan">
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-1">
-                                {recentActivity.map((activity, i) => (
-                                    <ActivityItem
-                                        key={i}
-                                        timestamp={activity.timestamp}
-                                        action={activity.action}
-                                        status={activity.status}
-                                    />
-                                ))}
-                            </div>
+                    {/* My Projects (Dev Inquiries) */}
+                    <div className="grid grid-cols-1 gap-6 mb-6">
+                        <FuturisticPanel title="My Projects" glowColor="green">
+                            <MyProjectsPanel />
                         </FuturisticPanel>
                     </div>
+
                 </div>
             </main>
 

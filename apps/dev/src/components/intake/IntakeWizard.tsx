@@ -10,6 +10,7 @@ import type {
     WizardState, WizardAction, IntakeFormData,
     ProjectType, FeatureKey, UploadedFile,
 } from '@/lib/intake';
+import { fetchAuthSession } from 'aws-amplify/auth';
 
 import ProgressBar from './ProgressBar';
 import EstimateCard from './EstimateCard';
@@ -191,9 +192,26 @@ export default function IntakeWizard() {
         };
 
         try {
+            // Get user token if authenticated
+            let token = '';
+            try {
+                const session = await fetchAuthSession();
+                token = session.tokens?.accessToken?.toString() || '';
+            } catch (e) {
+                // Not authenticated, proceed anonymously
+            }
+
+            const headers: Record<string, string> = {
+                'Content-Type': 'application/json',
+            };
+            
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+            }
+
             const response = await fetch('/api/intake', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers,
                 body: JSON.stringify(payload),
             });
 

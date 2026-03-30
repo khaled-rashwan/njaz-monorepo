@@ -2,7 +2,8 @@
 // POST /api/intake — Project Inquiry Submission
 // ============================================
 // Receives intake form data, generates a workflow,
-// saves to DynamoDB via AppSync, and sends notifications.
+// saves to DynamoDB via AppSync, auto-creates DevTasks,
+// and sends notifications.
 
 import { NextResponse } from 'next/server';
 import { generateWorkflow } from '@/lib/workflow';
@@ -32,6 +33,31 @@ interface IntakePayload {
     };
 }
 
+/**
+ * Extract a JWT token from the request Authorization header (if present).
+ * This is used to identify logged-in users submitting inquiries.
+ */
+function extractAuthToken(request: Request): string | null {
+    const authHeader = request.headers.get('Authorization');
+    if (!authHeader) return null;
+    // Bearer token or raw token
+    return authHeader.startsWith('Bearer ') ? authHeader.slice(7) : authHeader;
+}
+
+/**
+ * Decode basic JWT claims without verification (we trust AppSync to verify).
+ * Only used to extract `sub` for the submittedBy field.
+ */
+function decodeTokenSub(token: string): string | null {
+    try {
+        const payload = token.split('.')[1];
+        const decoded = JSON.parse(Buffer.from(payload, 'base64').toString());
+        return decoded.sub || null;
+    } catch {
+        return null;
+    }
+}
+
 export async function POST(request: Request) {
     try {
         const body: IntakePayload = await request.json();
@@ -46,6 +72,10 @@ export async function POST(request: Request) {
         if (errors.length > 0) {
             return NextResponse.json({ error: 'Validation failed', details: errors }, { status: 400 });
         }
+
+        // ── Check if user is authenticated ──────────────
+        const authToken = extractAuthToken(request);
+        const submittedBy = authToken ? decodeTokenSub(authToken) : null;
 
         // ── Generate Workflow ───────────────────────────
         const workflow = generateWorkflow({
@@ -66,7 +96,7 @@ export async function POST(request: Request) {
         });
 
         // ── Prepare DynamoDB Input ──────────────────────
-        const input = {
+        const input: Record<string, any> = {
             clientName: body.clientName.trim(),
             clientEmail: body.clientEmail.trim(),
             clientPhone: body.clientPhone?.trim() || null,
@@ -85,8 +115,21 @@ export async function POST(request: Request) {
             estimatedWeeks: body.estimate?.estimatedWeeks || 0,
             complexityScore: body.estimate?.complexityScore || 0,
             status: 'new',
+            priority: 'medium',
+            managementType: 'internal', // Default to internal; admin can change later
             workflow: JSON.stringify(workflow),
+            statusHistory: JSON.stringify([{
+                status: 'new',
+                timestamp: new Date().toISOString(),
+                changedBy: submittedBy || 'anonymous',
+                note: 'Inquiry submitted',
+            }]),
         };
+
+        // Set submittedBy if user was logged in
+        if (submittedBy) {
+            input.submittedBy = submittedBy;
+        }
 
         // ── Save to DynamoDB ────────────────────────────
         let inquiryId = null;
@@ -100,6 +143,37 @@ export async function POST(request: Request) {
         } catch (dbError: any) {
             // Log but don't fail — the inquiry data is in the request logs
             console.error('⚠️ DynamoDB save failed (schema may not be deployed):', dbError.message);
+        }
+
+        // ── Auto-create tasks from workflow phases ──────
+        if (inquiryId && workflow.phases.length > 0) {
+            try {
+                let phaseOrder = 0;
+                for (const phase of workflow.phases) {
+                    for (const task of phase.tasks) {
+                        await executeGraphQL(
+                            MUTATIONS.createDevTask,
+                            {
+                                input: {
+                                    inquiryId,
+                                    title: task.title,
+                                    titleAr: task.titleAr || null,
+                                    type: task.type,
+                                    status: 'backlog',
+                                    priority: task.priority,
+                                    estimatedHours: task.estimatedHours,
+                                    phase: phase.name,
+                                    phaseOrder,
+                                },
+                            },
+                        );
+                    }
+                    phaseOrder++;
+                }
+                console.log(`✅ Created ${workflow.phases.reduce((acc, p) => acc + p.tasks.length, 0)} tasks for inquiry ${inquiryId}`);
+            } catch (taskError: any) {
+                console.error('⚠️ Task creation failed (non-blocking):', taskError.message);
+            }
         }
 
         // ── Send Slack Notification ─────────────────────

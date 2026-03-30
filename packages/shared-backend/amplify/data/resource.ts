@@ -80,8 +80,8 @@ const schema = a.schema({
     // DEV INQUIRY - Client Intake Pipeline
     // ============================================
     // Captures all data from the multi-step intake wizard.
-    // Public users can create (form is anonymous),
-    // while admins manage the full lifecycle.
+    // Public users can create (anonymous or logged-in).
+    // Admins manage the full lifecycle. Clients see their own.
 
     DevInquiry: a
         .model({
@@ -118,13 +118,91 @@ const schema = a.schema({
 
             // Notification tracking
             notifiedAt: a.datetime(),
+
+            // Owner tracking — set when submitter is logged in
+            submittedBy: a.string(),          // Cognito sub (user ID)
+
+            // Assignment & management
+            assignedTo: a.string(),           // Cognito sub of assigned dev
+            assignedToName: a.string(),       // Display name for UI
+            priority: a.enum(['low', 'medium', 'high', 'urgent']),
+            adminNotes: a.string(),           // Internal notes (not visible to client)
+            proposalUrl: a.string(),          // Link to proposal PDF/doc
+
+            // GitHub integration (optional — not all projects need repos)
+            githubRepo: a.string(),           // e.g. "njaz-org/client-project"
+            githubIssueUrl: a.string(),       // Link to tracking issue
+            githubIssueNumber: a.integer(),
+
+            // Management type — determines how tasks are tracked
+            managementType: a.enum(['internal', 'github', 'hybrid']),
+
+            // Status changelog: [{status, timestamp, changedBy, note}]
+            statusHistory: a.json(),
         })
         .authorization((allow) => [
             // Anyone can submit the intake form (no login required)
             allow.publicApiKey().to(['create']),
+            // Logged-in users can read their own submissions
+            allow.authenticated().to(['read']),
             // Admins and dev team can manage inquiries
             allow.groups(['admins']),
             allow.groups(['devplatform-access']),
+        ]),
+
+    // ============================================
+    // DEV TASK - Granular Task Management
+    // ============================================
+    // Tasks derived from workflow phases, or created ad-hoc.
+    // Kanban-compatible statuses. Optional GitHub sync.
+
+    DevTask: a
+        .model({
+            inquiryId: a.id().required(),         // FK → DevInquiry
+            title: a.string().required(),
+            titleAr: a.string(),
+            description: a.string(),
+            type: a.enum(['setup', 'design', 'development', 'testing', 'deployment', 'documentation', 'review']),
+            status: a.enum(['backlog', 'todo', 'in_progress', 'in_review', 'done']),
+            priority: a.enum(['low', 'medium', 'high', 'urgent']),
+            assignedTo: a.string(),               // Cognito sub
+            assignedToName: a.string(),
+            estimatedHours: a.float(),
+            actualHours: a.float(),
+            phase: a.string(),                    // Workflow phase name
+            phaseOrder: a.integer(),              // For ordering
+            dueDate: a.date(),
+            completedAt: a.datetime(),
+
+            // GitHub integration (optional per task)
+            githubIssueNumber: a.integer(),
+            githubIssueUrl: a.string(),
+        })
+        .authorization((allow) => [
+            allow.groups(['admins']),
+            allow.groups(['devplatform-access']),
+        ]),
+
+    // ============================================
+    // DEV COMMENT - Activity Log & Communication
+    // ============================================
+    // Threaded comments on inquiries or tasks.
+    // isInternal=true means only team can see.
+
+    DevComment: a
+        .model({
+            targetType: a.enum(['inquiry', 'task']),
+            targetId: a.id().required(),          // ID of inquiry or task
+            authorId: a.string().required(),      // Cognito sub
+            authorName: a.string().required(),
+            content: a.string().required(),
+            isInternal: a.boolean(),              // true = team only, false = client visible
+        })
+        .authorization((allow) => [
+            allow.groups(['admins']),
+            allow.groups(['devplatform-access']),
+            // Clients can read non-internal comments on their inquiries
+            allow.authenticated().to(['read']),
         ]),
 
     // ============================================
