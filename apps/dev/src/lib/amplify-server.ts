@@ -57,7 +57,37 @@ export async function executeGraphQL<T = Record<string, any>>(
         throw new Error(`AppSync GraphQL error: ${message}`);
     }
 
-    return result.data as T;
+    // AppSync AWSJSON scalars double-encode JSON strings.
+    // Recursively unwrap any string value that is valid JSON.
+    return deepParseJson(result.data) as T;
+}
+
+/**
+ * Recursively parse stringified JSON values returned by AppSync AWSJSON scalars.
+ * Handles the double-encoding issue where `JSON.stringify(obj)` is wrapped in
+ * another JSON string by AppSync, producing `'"{\\"key\\":\\"val\\"}"'`.
+ */
+function deepParseJson(value: any): any {
+    if (typeof value === 'string') {
+        try {
+            const parsed = JSON.parse(value);
+            // If parsing a string gives us another string, parse again (triple encoding edge case)
+            return deepParseJson(parsed);
+        } catch {
+            return value; // genuine string, not JSON
+        }
+    }
+    if (Array.isArray(value)) {
+        return value.map(deepParseJson);
+    }
+    if (value !== null && typeof value === 'object') {
+        const out: Record<string, any> = {};
+        for (const [k, v] of Object.entries(value)) {
+            out[k] = deepParseJson(v);
+        }
+        return out;
+    }
+    return value;
 }
 
 // ============================================
@@ -143,6 +173,79 @@ export const MUTATIONS = {
                 isInternal
                 createdAt
             }
+        }
+    `,
+    createUser: /* GraphQL */ `
+        mutation CreateUser($username: String!, $email: String!) {
+            createUser(username: $username, email: $email)
+        }
+    `,
+    deleteUser: /* GraphQL */ `
+        mutation DeleteUser($username: String!) {
+            deleteUser(username: $username)
+        }
+    `,
+    manageUserGroup: /* GraphQL */ `
+        mutation ManageUserGroup($username: String!, $group: String!, $action: String!) {
+            manageUserGroup(username: $username, group: $group, action: $action)
+        }
+    `,
+    // Campaign Management
+    createDevCampaign: /* GraphQL */ `
+        mutation CreateDevCampaign($input: CreateDevCampaignInput!) {
+            createDevCampaign(input: $input) {
+                id name status channel budget startDate endDate createdAt
+            }
+        }
+    `,
+    updateDevCampaign: /* GraphQL */ `
+        mutation UpdateDevCampaign($input: UpdateDevCampaignInput!) {
+            updateDevCampaign(input: $input) {
+                id name status channel budget spentAmount startDate endDate goals kpis updatedAt
+            }
+        }
+    `,
+    deleteDevCampaign: /* GraphQL */ `
+        mutation DeleteDevCampaign($input: DeleteDevCampaignInput!) {
+            deleteDevCampaign(input: $input) { id }
+        }
+    `,
+    createDevLead: /* GraphQL */ `
+        mutation CreateDevLead($input: CreateDevLeadInput!) {
+            createDevLead(input: $input) {
+                id name email company source status campaignId estimatedValue createdAt
+            }
+        }
+    `,
+    updateDevLead: /* GraphQL */ `
+        mutation UpdateDevLead($input: UpdateDevLeadInput!) {
+            updateDevLead(input: $input) {
+                id name email status assignedTo assignedToName notes estimatedValue convertedInquiryId lastContactDate nextFollowUp updatedAt
+            }
+        }
+    `,
+    deleteDevLead: /* GraphQL */ `
+        mutation DeleteDevLead($input: DeleteDevLeadInput!) {
+            deleteDevLead(input: $input) { id }
+        }
+    `,
+    createDevQuotation: /* GraphQL */ `
+        mutation CreateDevQuotation($input: CreateDevQuotationInput!) {
+            createDevQuotation(input: $input) {
+                id quotationNumber clientName clientEmail status total lineItems currency createdAt
+            }
+        }
+    `,
+    updateDevQuotation: /* GraphQL */ `
+        mutation UpdateDevQuotation($input: UpdateDevQuotationInput!) {
+            updateDevQuotation(input: $input) {
+                id status sentAt validUntil lineItems total notes updatedAt
+            }
+        }
+    `,
+    deleteDevQuotation: /* GraphQL */ `
+        mutation DeleteDevQuotation($input: DeleteDevQuotationInput!) {
+            deleteDevQuotation(input: $input) { id }
         }
     `,
 };
@@ -262,6 +365,47 @@ export const QUERIES = {
                     content
                     isInternal
                     createdAt
+                }
+                nextToken
+            }
+        }
+    `,
+    listUsers: /* GraphQL */ `
+        query ListUsers {
+            listUsers
+        }
+    `,
+    // Campaign Management
+    listDevCampaigns: /* GraphQL */ `
+        query ListDevCampaigns($limit: Int, $nextToken: String) {
+            listDevCampaigns(limit: $limit, nextToken: $nextToken) {
+                items {
+                    id name description channel status startDate endDate budget spentAmount
+                    targetAudience goals kpis tags createdByName createdAt updatedAt
+                }
+                nextToken
+            }
+        }
+    `,
+    listDevLeads: /* GraphQL */ `
+        query ListDevLeads($limit: Int, $nextToken: String) {
+            listDevLeads(limit: $limit, nextToken: $nextToken) {
+                items {
+                    id campaignId name email phone company source status interest notes
+                    assignedTo assignedToName estimatedValue convertedInquiryId
+                    lastContactDate nextFollowUp createdAt updatedAt
+                }
+                nextToken
+            }
+        }
+    `,
+    listDevQuotations: /* GraphQL */ `
+        query ListDevQuotations($limit: Int, $nextToken: String) {
+            listDevQuotations(limit: $limit, nextToken: $nextToken) {
+                items {
+                    id leadId inquiryId quotationNumber clientName clientEmail status
+                    lineItems subtotal tax discount total currency validUntil notes terms
+                    sentAt createdByName createdAt updatedAt
                 }
                 nextToken
             }

@@ -4,10 +4,14 @@ import { useLanguage, LanguageSwitcher } from '@/components/LanguageContext';
 import { SharedHeader, SharedFooter } from '@njaz/ui-components';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useAdminUser } from '@/lib/admin/hooks';
 
 const ADMIN_NAV = [
     { href: '/admin', labelEn: 'Dashboard', labelAr: 'لوحة التحكم', icon: '📊' },
-    { href: '/admin/inquiries', labelEn: 'Inquiries', labelAr: 'الاستفسارات', icon: '📋' },
+    { href: '/admin/campaigns', labelEn: 'Campaigns', labelAr: 'الحملات', icon: '📢' },
+    { href: '/admin/leads', labelEn: 'Leads', labelAr: 'عملاء محتملين', icon: '🎯' },
+    { href: '/admin/quotations', labelEn: 'Quotes', labelAr: 'عروض أسعار', icon: '💰' },
+    { href: '/admin/inquiries', labelEn: 'Projects', labelAr: 'المشاريع', icon: '📋' },
     { href: '/admin/board', labelEn: 'Board', labelAr: 'لوحة المهام', icon: '📌' },
     { href: '/admin/team', labelEn: 'Team', labelAr: 'الفريق', icon: '👥' },
 ];
@@ -15,6 +19,7 @@ const ADMIN_NAV = [
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
     const { t, direction } = useLanguage();
     const pathname = usePathname();
+    const { isAdmin } = useAdminUser();
 
     return (
         <div className="min-h-screen flex flex-col futuristic-bg" dir={direction}>
@@ -46,6 +51,19 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                                 </Link>
                             );
                         })}
+                        {isAdmin && (
+                            <Link
+                                href="/admin/users"
+                                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all ${
+                                    pathname.startsWith('/admin/users')
+                                        ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/40'
+                                        : 'text-slate-400 hover:text-white hover:bg-slate-800/50 border border-transparent'
+                                }`}
+                            >
+                                <span>🛡️</span>
+                                <span>{t('Users', 'المستخدمين')}</span>
+                            </Link>
+                        )}
                     </div>
 
                     {/* Page Content */}

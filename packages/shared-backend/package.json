@@ -13,7 +13,8 @@
         "aws-amplify": "^6.0.0",
         "@njaz/estebian-data": "*",
         "@aws-sdk/client-dynamodb": "^3.0.0",
-        "@aws-sdk/lib-dynamodb": "^3.0.0"
+        "@aws-sdk/lib-dynamodb": "^3.0.0",
+        "@aws-sdk/client-cognito-identity-provider": "^3.0.0"
     },
     "devDependencies": {
         "@aws-amplify/backend": "^1.0.0",

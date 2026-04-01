@@ -33,12 +33,14 @@ export default function BoardPage() {
     const { t } = useLanguage();
     const searchParams = useSearchParams();
     const filterInquiryId = searchParams.get('inquiry');
-    const { hasAccess, user } = useAdminUser();
+    const { hasAccess, user, isAdmin } = useAdminUser();
 
     const { data: inquiryData } = useAdminData<{ inquiries: any[] }>({ url: '/api/admin/inquiries' });
     const { data: taskData, loading, refetch } = useAdminData<{ tasks: any[] }>({
         url: `/api/admin/tasks${filterInquiryId ? `?inquiryId=${filterInquiryId}` : ''}`,
     });
+    // Fetch users for assignment dropdown (only admins will get data or use it, but safe to call)
+    const { data: usersData } = useAdminData<{ users: any[] }>({ url: '/api/admin/users' });
 
     const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
     const [filterInquiry, setFilterInquiry] = useState<string>(filterInquiryId || '');
@@ -48,6 +50,7 @@ export default function BoardPage() {
 
     const tasks = taskData?.tasks || [];
     const inquiries = inquiryData?.inquiries || [];
+    const usersList = usersData?.users || [];
 
     // Client-side filtering
     const filteredTasks = useMemo(() => {
@@ -118,6 +121,28 @@ export default function BoardPage() {
             await refetch(); // revert
         }
     }, [draggedTaskId, tasks, refetch]);
+
+    const handleAssign = async (taskId: string, e: React.ChangeEvent<HTMLSelectElement>) => {
+        const assignedTo = e.target.value;
+        const selectedUser = usersList.find((u: any) => u.id === assignedTo);
+        const assignedToName = selectedUser ? selectedUser.username : null;
+
+        try {
+            const session = await fetchAuthSession();
+            const token = session.tokens?.accessToken?.toString();
+            await fetch('/api/admin/tasks', {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`,
+                },
+                body: JSON.stringify({ id: taskId, assignedTo: assignedTo || null, assignedToName }),
+            });
+            await refetch();
+        } catch (err) {
+            console.error('Failed to assign task:', err);
+        }
+    };
 
     // ── Create Task ─────────────────────────────────
     const handleCreateTask = useCallback(async () => {
@@ -246,14 +271,36 @@ export default function BoardPage() {
                                         </div>
 
                                         {/* Assignee */}
-                                        {task.assignedToName && (
-                                            <div className="mt-1.5 flex items-center gap-1.5">
-                                                <div className="w-4 h-4 rounded-full bg-cyan-500/20 border border-cyan-500/30 flex items-center justify-center text-[8px] text-cyan-400">
-                                                    {task.assignedToName.charAt(0)}
+                                        <div className="mt-2 flex items-center justify-between pointer-events-auto">
+                                            {task.assignedToName ? (
+                                                <div className="flex items-center gap-1.5">
+                                                    <div className="w-4 h-4 rounded-full bg-cyan-500/20 border border-cyan-500/30 flex items-center justify-center text-[8px] text-cyan-400">
+                                                        {task.assignedToName.charAt(0).toUpperCase()}
+                                                    </div>
+                                                    <span className="text-[10px] text-slate-400 truncate max-w-[80px]">
+                                                        {task.assignedToName}
+                                                    </span>
                                                 </div>
-                                                <span className="text-[10px] text-slate-400">{task.assignedToName}</span>
-                                            </div>
-                                        )}
+                                            ) : (
+                                                <span className="text-[10px] text-slate-500 italic">Unassigned</span>
+                                            )}
+
+                                            {isAdmin && (
+                                                <select
+                                                    value={task.assignedTo || ''}
+                                                    onChange={e => handleAssign(task.id, e)}
+                                                    onClick={e => e.stopPropagation()}
+                                                    className="bg-transparent text-[10px] text-cyan-400 border border-slate-700 rounded px-1 py-0.5 outline-none hover:border-cyan-500/50 appearance-none cursor-pointer max-w-[80px] truncate"
+                                                >
+                                                    <option value="" className="bg-slate-900">Unassigned</option>
+                                                    {usersList.map((u: any) => (
+                                                        <option key={u.id} value={u.id} className="bg-slate-900">
+                                                            {u.username}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            )}
+                                        </div>
 
                                         {/* GitHub badge */}
                                         {task.githubIssueUrl && (

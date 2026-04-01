@@ -69,6 +69,30 @@ export async function GET(request: Request) {
     }
 }
 
+// ── POST: Create a new inquiry (e.g. from lead conversion) ──
+export async function POST(request: Request) {
+    const token = getAuthToken(request);
+    if (!token) {
+        return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+    }
+
+    try {
+        const body = await request.json();
+        const result = await executeGraphQL<{ createDevInquiry: any }>(
+            MUTATIONS.createDevInquiry,
+            { input: body },
+            token,
+        );
+        return NextResponse.json(result.createDevInquiry);
+    } catch (error: any) {
+        console.error('❌ Failed to create inquiry:', error);
+        return NextResponse.json(
+            { error: 'Failed to create inquiry', message: error.message },
+            { status: 500 },
+        );
+    }
+}
+
 // ── PATCH: Update an inquiry ────────────────────────────
 export async function PATCH(request: Request) {
     const token = getAuthToken(request);

@@ -1,6 +1,4 @@
-'use client';
-
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { fetchAuthSession, getCurrentUser } from 'aws-amplify/auth';
 import { getAppUrl } from '@njaz/shared-auth';
 
@@ -40,6 +38,7 @@ export function MyProjectsPanel() {
     const [inquiries, setInquiries] = useState<Inquiry[]>([]);
     const [loading, setLoading] = useState(true);
     const [userSub, setUserSub] = useState<string | null>(null);
+    const [selectedInquiry, setSelectedInquiry] = useState<Inquiry | null>(null);
 
     const devUrl = getAppUrl('dev') || '/';
 
@@ -121,17 +120,67 @@ export function MyProjectsPanel() {
     }
 
     return (
-        <div className="space-y-3">
+        <div className="space-y-3 relative">
+            {selectedInquiry && (
+                <div className="absolute inset-0 z-10 bg-slate-900/95 rounded-xl border border-cyan-500/20 p-4 flex flex-col justify-start overflow-y-auto">
+                    <div className="flex justify-between items-start mb-4">
+                        <h3 className="text-lg font-bold text-white flex-1">{selectedInquiry.clientName}</h3>
+                        <button 
+                            onClick={() => setSelectedInquiry(null)}
+                            className="p-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors"
+                        >
+                            ✕
+                        </button>
+                    </div>
+                    
+                    <div className="space-y-4 text-sm">
+                        <div className="p-3 bg-white/5 rounded-lg border border-white/10">
+                            <p className="text-slate-400 text-xs mb-1">Status</p>
+                            <div className="flex items-center gap-2">
+                                <span className="font-medium text-cyan-400">
+                                    {STATUS_LABELS[selectedInquiry.status] || selectedInquiry.status}
+                                </span>
+                            </div>
+                        </div>
+
+                        <div>
+                            <p className="text-slate-400 text-xs mb-1">Project Types</p>
+                            <div className="flex flex-wrap gap-2">
+                                {selectedInquiry.projectTypes.map(pt => (
+                                    <span key={pt} className="inline-flex items-center gap-1 px-2 py-1 rounded bg-white/10 text-xs text-white">
+                                        {TYPE_ICONS[pt] || '📦'} {pt.replace('_', ' ')}
+                                    </span>
+                                ))}
+                            </div>
+                        </div>
+
+                        {selectedInquiry.projectDescription && (
+                            <div>
+                                <p className="text-slate-400 text-xs mb-1">Description</p>
+                                <p className="text-slate-300 leading-relaxed bg-white/5 p-2 rounded text-xs break-words whitespace-pre-wrap">
+                                    {selectedInquiry.projectDescription}
+                                </p>
+                            </div>
+                        )}
+
+                        <div className="flex justify-between items-center text-xs text-slate-500 pt-2 border-t border-slate-700">
+                            <span>{selectedInquiry.estimatedWeeks ? `~${selectedInquiry.estimatedWeeks} weeks` : 'TBD timeline'}</span>
+                            <span>{new Date(selectedInquiry.createdAt).toLocaleDateString()}</span>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {inquiries.map(inq => {
                 const currentStep = STATUS_STEPS.indexOf(inq.status);
                 const progress = inq.status === 'cancelled' ? 0
                     : currentStep >= 0 ? ((currentStep + 1) / STATUS_STEPS.length) * 100 : 10;
 
                 return (
-                    <a
+                    <button
                         key={inq.id}
-                        href={`${devUrl}/contact`}
-                        className="block p-3 rounded-lg bg-white/5 hover:bg-white/10 transition-colors group"
+                        onClick={() => setSelectedInquiry(inq)}
+                        className="block w-full text-left p-3 rounded-lg bg-white/5 hover:bg-white/10 transition-colors group"
                     >
                         <div className="flex items-center gap-2 mb-2">
                             <div className="flex gap-0.5">
@@ -159,7 +208,7 @@ export function MyProjectsPanel() {
                                 {STATUS_LABELS[inq.status] || inq.status}
                             </span>
                         </div>
-                    </a>
+                    </button>
                 );
             })}
 

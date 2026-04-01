@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { getCurrentUser, signOut } from 'aws-amplify/auth';
+import { getCurrentUser, signOut, fetchAuthSession } from 'aws-amplify/auth';
 import { SuiteNavigation, NJAZ_APPS } from '../SuiteNavigation/SuiteNavigation';
-import { getDashboardUrl, getCurrentUrl } from '@njaz/shared-auth';
+import { getDashboardUrl, getCurrentUrl, getAppUrl } from '@njaz/shared-auth';
 
 interface SharedHeaderProps {
     currentApp?: string;
@@ -16,6 +16,7 @@ interface SharedHeaderProps {
 interface User {
     username: string;
     email?: string;
+    isAdmin?: boolean;
 }
 
 /**
@@ -48,9 +49,14 @@ export function SharedHeader({
     async function checkAuthState() {
         try {
             const currentUser = await getCurrentUser();
+            const session = await fetchAuthSession();
+            const groups = (session.tokens?.accessToken?.payload['cognito:groups'] as string[]) || [];
+            const isAdmin = groups.includes('admins') || groups.includes('devplatform-access') || groups.includes('engineers');
+
             setInternalUser({
                 username: currentUser.username,
                 email: currentUser.signInDetails?.loginId,
+                isAdmin: isAdmin,
             });
         } catch {
             setInternalUser(null);
@@ -207,6 +213,14 @@ export function SharedHeader({
                                                         )}
                                                     </div>
                                                     <div className="py-2">
+                                                        {user.isAdmin && (
+                                                            <a
+                                                                href={getAppUrl('dev') ? `${getAppUrl('dev')}/admin` : '/admin'}
+                                                                className="block px-4 py-2 text-sm text-cyan-400 font-medium hover:bg-cyan-500/10 transition-colors"
+                                                            >
+                                                                Admin Panel
+                                                            </a>
+                                                        )}
                                                         <a
                                                             href={dashboardUrl}
                                                             className="block px-4 py-2 text-sm text-white/90 hover:bg-cyan-500/10 transition-colors"

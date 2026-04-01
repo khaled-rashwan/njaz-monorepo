@@ -1,6 +1,7 @@
 import { a, defineData, type ClientSchema } from '@aws-amplify/backend';
 import { estebianSchema } from '@njaz/estebian-data';
 import { submitResponse } from '../functions/submitResponse/resource';
+import { manageUsers } from '../functions/manageUsers/resource';
 
 /**
  * Njaz Platform Data Schema
@@ -218,6 +219,102 @@ const schema = a.schema({
         .returns(a.json())
         .handler(a.handler.function(submitResponse))
         .authorization((allow) => [allow.publicApiKey()]),
+
+    listUsers: a.query()
+        .returns(a.json())
+        .handler(a.handler.function(manageUsers))
+        .authorization((allow) => [allow.groups(['admins'])]),
+
+    createUser: a.mutation()
+        .arguments({ username: a.string().required(), email: a.string().required() })
+        .returns(a.json())
+        .handler(a.handler.function(manageUsers))
+        .authorization((allow) => [allow.groups(['admins'])]),
+
+    deleteUser: a.mutation()
+        .arguments({ username: a.string().required() })
+        .returns(a.json())
+        .handler(a.handler.function(manageUsers))
+        .authorization((allow) => [allow.groups(['admins'])]),
+
+    manageUserGroup: a.mutation()
+        .arguments({ username: a.string().required(), group: a.string().required(), action: a.string().required() })
+        .returns(a.json())
+        .handler(a.handler.function(manageUsers))
+        .authorization((allow) => [allow.groups(['admins'])]),
+
+    // ============================================
+    // CAMPAIGN MANAGEMENT - CRM & Sales Pipeline
+    // ============================================
+
+    DevCampaign: a
+        .model({
+            name: a.string().required(),
+            description: a.string(),
+            channel: a.enum(['social_media', 'email', 'seo', 'paid_ads', 'referral', 'events', 'content', 'other']),
+            status: a.enum(['draft', 'active', 'paused', 'completed', 'cancelled']),
+            startDate: a.date(),
+            endDate: a.date(),
+            budget: a.float(),
+            spentAmount: a.float(),
+            targetAudience: a.string(),
+            goals: a.string(),
+            kpis: a.json(),          // { impressions, clicks, conversions, etc. }
+            tags: a.string().array(),
+            createdByName: a.string(),
+        })
+        .authorization((allow) => [
+            allow.groups(['admins']),
+            allow.groups(['devplatform-access']),
+        ]),
+
+    DevLead: a
+        .model({
+            campaignId: a.id(),              // FK → DevCampaign (optional — manual leads have none)
+            name: a.string().required(),
+            email: a.string().required(),
+            phone: a.string(),
+            company: a.string(),
+            source: a.enum(['campaign', 'referral', 'website', 'social', 'cold_outreach', 'event', 'other']),
+            status: a.enum(['new', 'contacted', 'qualified', 'proposal', 'negotiation', 'won', 'lost']),
+            interest: a.string(),            // what they're interested in
+            notes: a.string(),
+            assignedTo: a.string(),          // Cognito sub
+            assignedToName: a.string(),
+            estimatedValue: a.float(),
+            convertedInquiryId: a.id(),      // FK → DevInquiry when converted
+            lastContactDate: a.date(),
+            nextFollowUp: a.date(),
+        })
+        .authorization((allow) => [
+            allow.groups(['admins']),
+            allow.groups(['devplatform-access']),
+        ]),
+
+    DevQuotation: a
+        .model({
+            leadId: a.id(),                  // FK → DevLead
+            inquiryId: a.id(),               // FK → DevInquiry (if already converted)
+            quotationNumber: a.string().required(),  // human-readable reference
+            clientName: a.string().required(),
+            clientEmail: a.string().required(),
+            status: a.enum(['draft', 'sent', 'viewed', 'accepted', 'rejected', 'expired']),
+            lineItems: a.json().required(),  // [{ description, qty, unitPrice, total }]
+            subtotal: a.float(),
+            tax: a.float(),
+            discount: a.float(),
+            total: a.float().required(),
+            currency: a.string(),            // default SAR
+            validUntil: a.date(),
+            notes: a.string(),
+            terms: a.string(),
+            sentAt: a.datetime(),
+            createdByName: a.string(),
+        })
+        .authorization((allow) => [
+            allow.groups(['admins']),
+            allow.groups(['devplatform-access']),
+        ]),
 
     // ============================================
     // INTERIOR DESIGN - Design Platform

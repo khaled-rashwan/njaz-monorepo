@@ -29,8 +29,17 @@ function syncAssets() {
             const targetPath = path.join(targetDir, asset);
 
             if (fs.existsSync(sourcePath)) {
-                fs.copyFileSync(sourcePath, targetPath);
-                console.log(`✅ Copied ${asset} to ${app}`);
+                try {
+                    fs.copyFileSync(sourcePath, targetPath);
+                    console.log(`✅ Copied ${asset} to ${app}`);
+                } catch (err) {
+                    // Ignore EBUSY or EPERM race condition locks during parallel turbo operations
+                    if (err.code === 'EBUSY' || err.code === 'EPERM') {
+                        // Silently handle if another copy process won the race
+                    } else {
+                        throw err;
+                    }
+                }
             } else {
                 console.warn(`⚠️ Source asset ${asset} not found in shared-assets`);
             }
