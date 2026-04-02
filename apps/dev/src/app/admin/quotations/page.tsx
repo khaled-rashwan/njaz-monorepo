@@ -1,6 +1,8 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import { useLanguage } from '@/components/LanguageContext';
 import { useAdminUser, useAdminData } from '@/lib/admin/hooks';
 import { fetchAuthSession } from 'aws-amplify/auth';
@@ -12,6 +14,15 @@ const STATUS_STYLES: Record<string, string> = {
     accepted: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',
     rejected: 'bg-red-500/15 text-red-400 border-red-500/30',
     expired: 'bg-amber-500/15 text-amber-400 border-amber-500/30',
+};
+
+const STATUS_LABELS: Record<string, { en: string; ar: string }> = {
+    draft: { en: 'Draft', ar: 'مسودة' },
+    sent: { en: 'Sent', ar: 'أُرسل' },
+    viewed: { en: 'Viewed', ar: 'مُطّلع' },
+    accepted: { en: 'Accepted', ar: 'مقبول' },
+    rejected: { en: 'Rejected', ar: 'مرفوض' },
+    expired: { en: 'Expired', ar: 'منتهي' },
 };
 
 interface LineItem {
@@ -43,6 +54,7 @@ const EMPTY_FORM: QuoteForm = {
 export default function QuotationsPage() {
     const { t } = useLanguage();
     const { hasAccess } = useAdminUser();
+    const searchParams = useSearchParams();
     const { data, loading, refetch } = useAdminData<{ quotations: any[] }>({ url: '/api/admin/quotations' });
     const { data: leadsData } = useAdminData<{ leads: any[] }>({ url: '/api/admin/leads' });
 
@@ -53,6 +65,22 @@ export default function QuotationsPage() {
 
     const quotations = data?.quotations || [];
     const leads = leadsData?.leads || [];
+
+    // Auto-open modal if navigating from leads page with pre-fill params
+    useEffect(() => {
+        const leadId = searchParams.get('leadId');
+        const name = searchParams.get('name');
+        const email = searchParams.get('email');
+        if (leadId && name && email) {
+            setForm({
+                ...EMPTY_FORM,
+                leadId,
+                clientName: decodeURIComponent(name),
+                clientEmail: decodeURIComponent(email),
+            });
+            setShowModal(true);
+        }
+    }, [searchParams]);
 
     const filtered = useMemo(() =>
         filterStatus ? quotations.filter((q: any) => q.status === filterStatus) : quotations
@@ -201,8 +229,8 @@ export default function QuotationsPage() {
                 <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
                     className="futuristic-select text-xs !py-1.5 !px-2">
                     <option value="">{t('All Statuses', 'كل الحالات')}</option>
-                    {Object.keys(STATUS_STYLES).map(s => (
-                        <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
+                    {Object.entries(STATUS_LABELS).map(([k, v]) => (
+                        <option key={k} value={k}>{t(v.en, v.ar)}</option>
                     ))}
                 </select>
             </div>
@@ -221,6 +249,7 @@ export default function QuotationsPage() {
                 <div className="space-y-3">
                     {filtered.map((q: any) => {
                         const items = typeof q.lineItems === 'string' ? JSON.parse(q.lineItems) : (q.lineItems || []);
+                        const linkedLead = q.leadId ? leads.find((l: any) => l.id === q.leadId) : null;
                         return (
                             <div key={q.id} className="futuristic-card rounded-xl p-5 hover:border-cyan-500/20 transition-all">
                                 <div className="flex items-start justify-between mb-3">
@@ -232,12 +261,17 @@ export default function QuotationsPage() {
                                                 onChange={e => handleStatusChange(q.id, e.target.value)}
                                                 className={`text-[10px] px-2 py-0.5 rounded border bg-transparent outline-none cursor-pointer ${STATUS_STYLES[q.status] || ''}`}
                                             >
-                                                {Object.keys(STATUS_STYLES).map(s => (
-                                                    <option key={s} value={s} className="bg-slate-900">{s}</option>
+                                                {Object.entries(STATUS_LABELS).map(([k, v]) => (
+                                                    <option key={k} value={k} className="bg-slate-900">{t(v.en, v.ar)}</option>
                                                 ))}
                                             </select>
                                         </div>
                                         <div className="text-slate-400 text-xs">{q.clientName} · {q.clientEmail}</div>
+                                        {linkedLead && (
+                                            <Link href="/admin/leads" className="text-[10px] text-purple-400 hover:text-purple-300 mt-0.5 inline-block">
+                                                🎯 {t('From lead:', 'من عميل:')} {linkedLead.name}
+                                            </Link>
+                                        )}
                                     </div>
                                     <div className="text-right">
                                         <div className="text-white font-bold" dir="ltr">

@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import { useLanguage } from '@/components/LanguageContext';
 import { useAdminUser, useAdminData } from '@/lib/admin/hooks';
 import { fetchAuthSession } from 'aws-amplify/auth';
@@ -14,6 +15,16 @@ const STATUS_STYLES: Record<string, string> = {
     negotiation: 'bg-orange-500/15 text-orange-400 border-orange-500/30',
     won: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',
     lost: 'bg-red-500/15 text-red-400 border-red-500/30',
+};
+
+const STATUS_LABELS: Record<string, { en: string; ar: string }> = {
+    new: { en: 'New', ar: 'جديد' },
+    contacted: { en: 'Contacted', ar: 'تم التواصل' },
+    qualified: { en: 'Qualified', ar: 'مؤهل' },
+    proposal: { en: 'Proposal', ar: 'عرض' },
+    negotiation: { en: 'Negotiation', ar: 'تفاوض' },
+    won: { en: 'Won', ar: 'فاز' },
+    lost: { en: 'Lost', ar: 'خسر' },
 };
 
 const SOURCE_ICONS: Record<string, string> = {
@@ -43,22 +54,41 @@ export default function LeadsPage() {
     });
     const { data: campaignData } = useAdminData<{ campaigns: any[] }>({ url: '/api/admin/campaigns' });
     const { data: usersData } = useAdminData<{ users: any[] }>({ url: '/api/admin/users' });
+    const { data: quoteData } = useAdminData<{ quotations: any[] }>({ url: '/api/admin/quotations' });
 
     const [showModal, setShowModal] = useState(false);
     const [form, setForm] = useState<LeadForm>({ ...EMPTY_FORM, campaignId: filterCampaignId });
     const [saving, setSaving] = useState(false);
     const [filterStatus, setFilterStatus] = useState('');
-    const [selectedLead, setSelectedLead] = useState<any>(null);
 
     const leads = data?.leads || [];
     const campaigns = campaignData?.campaigns || [];
     const usersList = usersData?.users || [];
+    const quotations = quoteData?.quotations || [];
+
+    // Campaign name lookup
+    const campaignNames = useMemo(() => {
+        const map: Record<string, string> = {};
+        for (const c of campaigns) map[c.id] = c.name;
+        return map;
+    }, [campaigns]);
+
+    // Quotations per lead lookup
+    const quotesByLead = useMemo(() => {
+        const map: Record<string, any[]> = {};
+        for (const q of quotations) {
+            if (q.leadId) {
+                if (!map[q.leadId]) map[q.leadId] = [];
+                map[q.leadId].push(q);
+            }
+        }
+        return map;
+    }, [quotations]);
 
     const filtered = useMemo(() =>
         filterStatus ? leads.filter((l: any) => l.status === filterStatus) : leads
     , [leads, filterStatus]);
 
-    // Funnel stats
     const funnel = useMemo(() => {
         const counts: Record<string, number> = {};
         for (const l of leads) counts[l.status] = (counts[l.status] || 0) + 1;
@@ -66,6 +96,9 @@ export default function LeadsPage() {
     }, [leads]);
 
     const totalValue = leads.reduce((s: number, l: any) => s + (l.estimatedValue || 0), 0);
+
+    // Filter campaign name display
+    const filterCampaignName = filterCampaignId ? campaignNames[filterCampaignId] : null;
 
     const handleCreate = async () => {
         if (!form.name || !form.email) return;
@@ -116,7 +149,11 @@ export default function LeadsPage() {
             await fetch('/api/admin/leads', {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                body: JSON.stringify({ id, assignedTo: assignedTo || null, assignedToName: user?.username || null }),
+                body: JSON.stringify({
+                    id,
+                    assignedTo: assignedTo || null,
+                    assignedToName: user ? (user.email || user.username) : null,
+                }),
             });
             await refetch();
         } catch (err) {
@@ -125,10 +162,14 @@ export default function LeadsPage() {
     };
 
     const handleConvertToInquiry = async (lead: any) => {
+        if (!confirm(t(
+            `Convert "${lead.name}" to a project? This will create a new project inquiry.`,
+            `تحويل "${lead.name}" إلى مشروع؟ سيتم إنشاء استفسار مشروع جديد.`
+        ))) return;
+
         try {
             const session = await fetchAuthSession();
             const token = session.tokens?.accessToken?.toString();
-            // Create a DevInquiry from this lead
             const inquiryResp = await fetch('/api/admin/inquiries', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
@@ -145,17 +186,30 @@ export default function LeadsPage() {
             const inquiry = await inquiryResp.json();
 
             if (inquiry?.id) {
-                // Update the lead with the inquiry reference
                 await fetch('/api/admin/leads', {
                     method: 'PATCH',
                     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                     body: JSON.stringify({ id: lead.id, status: 'won', convertedInquiryId: inquiry.id }),
                 });
                 await refetch();
-                alert(t('Lead converted to project inquiry!', 'تم تحويل العميل المحتمل إلى استفسار مشروع!'));
             }
         } catch (err) {
             console.error('Failed to convert:', err);
+        }
+    };
+
+    const handleDelete = async (id: string, name: string) => {
+        if (!confirm(t(`Delete lead "${name}"?`, `حذف العميل "${name}"؟`))) return;
+        try {
+            const session = await fetchAuthSession();
+            const token = session.tokens?.accessToken?.toString();
+            await fetch(`/api/admin/leads?id=${id}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` },
+            });
+            await refetch();
+        } catch (err) {
+            console.error('Failed:', err);
         }
     };
 
@@ -170,6 +224,12 @@ export default function LeadsPage() {
                 <div>
                     <h1 className="text-2xl font-extrabold text-white mb-1">
                         {t('Leads', 'العملاء المحتملين')}
+                        {filterCampaignName && (
+                            <span className="text-sm font-normal text-purple-400 ml-2">
+                                — {filterCampaignName}
+                                <Link href="/admin/leads" className="text-slate-500 ml-2 hover:text-white">✕</Link>
+                            </span>
+                        )}
                     </h1>
                     <p className="text-slate-400 text-sm">
                         {t('Track and manage potential clients through the sales funnel.', 'تتبع وإدارة العملاء المحتملين خلال قمع المبيعات.')}
@@ -183,8 +243,9 @@ export default function LeadsPage() {
             {/* Funnel Overview */}
             <div className="futuristic-card rounded-xl p-4 mb-6">
                 <div className="flex items-center gap-1 overflow-x-auto">
-                    {Object.entries(STATUS_STYLES).map(([status, style]) => {
+                    {Object.entries(STATUS_LABELS).map(([status, labels]) => {
                         const count = funnel[status] || 0;
+                        const style = STATUS_STYLES[status] || '';
                         return (
                             <button
                                 key={status}
@@ -194,7 +255,7 @@ export default function LeadsPage() {
                                 }`}
                             >
                                 <div className="text-lg font-bold">{count}</div>
-                                <div className="text-[10px] capitalize">{status.replace('_', ' ')}</div>
+                                <div className="text-[10px]">{t(labels.en, labels.ar)}</div>
                             </button>
                         );
                     })}
@@ -216,81 +277,155 @@ export default function LeadsPage() {
                     <p className="text-slate-400">{t('No leads yet. Add your first lead!', 'لا يوجد عملاء محتملين بعد.')}</p>
                 </div>
             ) : (
-                <div className="futuristic-card rounded-xl overflow-hidden">
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left border-collapse">
-                            <thead>
-                                <tr className="border-b border-cyan-500/20 bg-cyan-500/5 text-sm">
-                                    <th className="p-4 text-slate-400 font-medium">{t('Lead', 'العميل')}</th>
-                                    <th className="p-4 text-slate-400 font-medium">{t('Source', 'المصدر')}</th>
-                                    <th className="p-4 text-slate-400 font-medium">{t('Status', 'الحالة')}</th>
-                                    <th className="p-4 text-slate-400 font-medium">{t('Value', 'القيمة')}</th>
-                                    <th className="p-4 text-slate-400 font-medium">{t('Assigned', 'معين')}</th>
-                                    <th className="p-4 text-slate-400 font-medium text-right">{t('Actions', 'إجراءات')}</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {filtered.map((lead: any) => (
-                                    <tr key={lead.id} className="border-b border-slate-800/50 hover:bg-slate-800/30 transition-colors">
-                                        <td className="p-4">
-                                            <div className="text-white font-medium text-sm">{lead.name}</div>
-                                            <div className="text-slate-500 text-xs">{lead.email}</div>
-                                            {lead.company && <div className="text-slate-600 text-[10px]">{lead.company}</div>}
-                                        </td>
-                                        <td className="p-4 text-sm">
-                                            <span>{SOURCE_ICONS[lead.source] || '📦'} {lead.source?.replace('_', ' ')}</span>
-                                        </td>
-                                        <td className="p-4">
-                                            <select
-                                                value={lead.status}
-                                                onChange={e => handleStatusChange(lead.id, e.target.value)}
-                                                className={`text-xs px-2 py-1 rounded border bg-transparent outline-none cursor-pointer ${STATUS_STYLES[lead.status] || ''}`}
-                                            >
-                                                {Object.keys(STATUS_STYLES).map(s => (
-                                                    <option key={s} value={s} className="bg-slate-900">{s}</option>
-                                                ))}
-                                            </select>
-                                        </td>
-                                        <td className="p-4 text-slate-400 text-sm" dir="ltr">
-                                            {lead.estimatedValue ? `$${lead.estimatedValue.toLocaleString()}` : '—'}
-                                        </td>
-                                        <td className="p-4">
-                                            {isAdmin ? (
-                                                <select
-                                                    value={lead.assignedTo || ''}
-                                                    onChange={e => handleAssign(lead.id, e.target.value)}
-                                                    className="bg-transparent text-xs text-cyan-400 border border-slate-700 rounded px-1 py-0.5 outline-none cursor-pointer max-w-[100px]"
-                                                >
-                                                    <option value="" className="bg-slate-900">Unassigned</option>
-                                                    {usersList.map((u: any) => (
-                                                        <option key={u.id} value={u.id} className="bg-slate-900">{u.email || u.username}</option>
-                                                    ))}
-                                                </select>
-                                            ) : (
-                                                <span className="text-slate-500 text-xs">{lead.assignedToName || '—'}</span>
+                <div className="space-y-3">
+                    {filtered.map((lead: any) => {
+                        const leadQuotes = quotesByLead[lead.id] || [];
+                        const campaignName = lead.campaignId ? campaignNames[lead.campaignId] : null;
+
+                        return (
+                            <div key={lead.id} className="futuristic-card rounded-xl p-5 hover:border-cyan-500/20 transition-all">
+                                {/* Top row: Lead info + Status */}
+                                <div className="flex items-start gap-4">
+                                    {/* Avatar */}
+                                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+                                        {lead.name.charAt(0).toUpperCase()}
+                                    </div>
+
+                                    {/* Info */}
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2 mb-0.5">
+                                            <span className="text-white font-bold text-sm">{lead.name}</span>
+                                            {lead.company && (
+                                                <span className="text-slate-500 text-xs">· {lead.company}</span>
                                             )}
-                                        </td>
-                                        <td className="p-4 text-right">
-                                            <div className="flex items-center justify-end gap-2">
-                                                {lead.status !== 'won' && lead.status !== 'lost' && !lead.convertedInquiryId && (
-                                                    <button
-                                                        onClick={() => handleConvertToInquiry(lead)}
-                                                        className="text-[10px] px-2 py-1 rounded bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20 transition-colors"
-                                                        title={t('Convert to Project', 'تحويل لمشروع')}
-                                                    >
-                                                        🚀 {t('Convert', 'تحويل')}
-                                                    </button>
-                                                )}
-                                                {lead.convertedInquiryId && (
-                                                    <span className="text-[10px] text-emerald-400">✅ {t('Converted', 'تم التحويل')}</span>
-                                                )}
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
+                                        </div>
+                                        <div className="text-slate-500 text-xs">{lead.email}</div>
+                                        {lead.phone && <div className="text-slate-600 text-[10px]">{lead.phone}</div>}
+                                    </div>
+
+                                    {/* Status + Value */}
+                                    <div className="flex items-center gap-3 flex-shrink-0">
+                                        {lead.estimatedValue && (
+                                            <span className="text-amber-400 font-bold text-sm" dir="ltr">
+                                                ${lead.estimatedValue.toLocaleString()}
+                                            </span>
+                                        )}
+                                        <select
+                                            value={lead.status}
+                                            onChange={e => handleStatusChange(lead.id, e.target.value)}
+                                            className={`text-xs px-2 py-1 rounded border bg-transparent outline-none cursor-pointer ${STATUS_STYLES[lead.status] || ''}`}
+                                        >
+                                            {Object.entries(STATUS_LABELS).map(([k, v]) => (
+                                                <option key={k} value={k} className="bg-slate-900">{t(v.en, v.ar)}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </div>
+
+                                {/* Middle: Interest/Notes */}
+                                {lead.interest && (
+                                    <p className="text-slate-500 text-xs mt-2 line-clamp-2">{lead.interest}</p>
+                                )}
+
+                                {/* Tags Row: Campaign, Source, Assigned, Quotes */}
+                                <div className="flex flex-wrap items-center gap-2 mt-3 pt-3 border-t border-slate-800/30">
+                                    {/* Source */}
+                                    <span className="text-[10px] px-2 py-0.5 rounded bg-slate-800/50 text-slate-400">
+                                        {SOURCE_ICONS[lead.source] || '📦'} {lead.source?.replace('_', ' ')}
+                                    </span>
+
+                                    {/* Campaign tag */}
+                                    {campaignName && (
+                                        <Link href={`/admin/campaigns`}
+                                            className="text-[10px] px-2 py-0.5 rounded bg-purple-500/10 border border-purple-500/20 text-purple-400 hover:bg-purple-500/20 transition-colors">
+                                            📢 {campaignName}
+                                        </Link>
+                                    )}
+
+                                    {/* Existing Quotes */}
+                                    {leadQuotes.length > 0 && (
+                                        <Link href="/admin/quotations"
+                                            className="text-[10px] px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/20 text-amber-400 hover:bg-amber-500/20 transition-colors">
+                                            💰 {leadQuotes.length} {t('quote(s)', 'عرض')}
+                                        </Link>
+                                    )}
+
+                                    {/* Assigned To */}
+                                    {isAdmin ? (
+                                        <select
+                                            value={lead.assignedTo || ''}
+                                            onChange={e => handleAssign(lead.id, e.target.value)}
+                                            className="bg-transparent text-[10px] text-cyan-400 border border-slate-700 rounded px-2 py-0.5 outline-none cursor-pointer max-w-[140px]"
+                                        >
+                                            <option value="" className="bg-slate-900">{t('Unassigned', 'غير معين')}</option>
+                                            {usersList.map((u: any) => (
+                                                <option key={u.id} value={u.id} className="bg-slate-900">{u.email || u.username}</option>
+                                            ))}
+                                        </select>
+                                    ) : lead.assignedToName ? (
+                                        <span className="text-[10px] px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-400">
+                                            👤 {lead.assignedToName}
+                                        </span>
+                                    ) : null}
+
+                                    {/* Spacer */}
+                                    <div className="flex-1" />
+
+                                    {/* Actions */}
+                                    <div className="flex items-center gap-1.5">
+                                        {/* Create Quote shortcut */}
+                                        {!lead.convertedInquiryId && lead.status !== 'lost' && leadQuotes.length === 0 && (
+                                            <Link
+                                                href={`/admin/quotations?leadId=${lead.id}&name=${encodeURIComponent(lead.name)}&email=${encodeURIComponent(lead.email)}`}
+                                                className="text-[10px] px-2 py-1 rounded bg-amber-500/10 border border-amber-500/30 text-amber-400 hover:bg-amber-500/20 transition-colors"
+                                            >
+                                                💰 {t('Quote', 'عرض سعر')}
+                                            </Link>
+                                        )}
+
+                                        {/* Convert to Project */}
+                                        {lead.status !== 'won' && lead.status !== 'lost' && !lead.convertedInquiryId && (
+                                            <button
+                                                onClick={() => handleConvertToInquiry(lead)}
+                                                className="text-[10px] px-2 py-1 rounded bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20 transition-colors"
+                                            >
+                                                🚀 {t('Convert', 'تحويل')}
+                                            </button>
+                                        )}
+
+                                        {/* Converted — link to project */}
+                                        {lead.convertedInquiryId && (
+                                            <Link
+                                                href={`/admin/inquiries?selected=${lead.convertedInquiryId}`}
+                                                className="text-[10px] px-2 py-1 rounded bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20 transition-colors"
+                                            >
+                                                ✅ {t('View Project', 'عرض المشروع')}
+                                            </Link>
+                                        )}
+
+                                        {/* Delete */}
+                                        {isAdmin && (
+                                            <button
+                                                onClick={() => handleDelete(lead.id, lead.name)}
+                                                className="text-[10px] px-1.5 py-1 rounded text-slate-600 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                                                title={t('Delete', 'حذف')}
+                                            >
+                                                🗑️
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Date */}
+                                <div className="text-[10px] text-slate-600 mt-2">
+                                    {new Date(lead.createdAt).toLocaleDateString()}
+                                    {lead.lastContactDate && (
+                                        <span className="ml-2">{t('Last contact:', 'آخر تواصل:')} {new Date(lead.lastContactDate).toLocaleDateString()}</span>
+                                    )}
+                                </div>
+                            </div>
+                        );
+                    })}
                 </div>
             )}
 

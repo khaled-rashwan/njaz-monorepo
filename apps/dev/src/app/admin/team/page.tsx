@@ -9,9 +9,11 @@ export default function TeamPage() {
     const { hasAccess } = useAdminUser();
     const { data: taskData, loading } = useAdminData<{ tasks: any[] }>({ url: '/api/admin/tasks' });
     const { data: inquiryData } = useAdminData<{ inquiries: any[] }>({ url: '/api/admin/inquiries' });
+    const { data: usersData } = useAdminData<{ users: any[] }>({ url: '/api/admin/users' });
 
     const tasks = taskData?.tasks || [];
     const inquiries = inquiryData?.inquiries || [];
+    const usersList = usersData?.users || [];
 
     // ── Group tasks by assignee ──────────────────────
     const teamData = useMemo(() => {
@@ -36,8 +38,11 @@ export default function TeamPage() {
         for (const task of tasks) {
             const key = task.assignedTo || 'unassigned';
             if (!byPerson[key]) {
+                const user = usersList.find((u: any) => u.id === key);
+                const displayName = user ? (user.email || user.username) : (task.assignedToName || key.slice(0, 8));
+                
                 byPerson[key] = {
-                    name: task.assignedToName || key.slice(0, 8),
+                    name: displayName,
                     id: key,
                     tasks: [],
                     done: 0, inProgress: 0, totalHours: 0, loggedHours: 0,
@@ -50,8 +55,10 @@ export default function TeamPage() {
             byPerson[key].loggedHours += task.actualHours || 0;
         }
 
-        return Object.values(byPerson).sort((a, b) => b.inProgress - a.inProgress);
-    }, [tasks, t]);
+        return Object.values(byPerson)
+            .filter(person => person.tasks.length > 0)
+            .sort((a, b) => b.inProgress - a.inProgress);
+    }, [tasks, t, usersList]);
 
     // Inquiry name lookup
     const inquiryNames = useMemo(() => {

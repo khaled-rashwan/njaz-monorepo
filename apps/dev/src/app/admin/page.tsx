@@ -5,71 +5,88 @@ import Link from 'next/link';
 import { useLanguage } from '@/components/LanguageContext';
 import { useAdminUser, useAdminData } from '@/lib/admin/hooks';
 
-// ── Status styles ───────────────────────────────────────
-const STATUS_COLORS: Record<string, string> = {
-    new: 'bg-blue-500/15 text-blue-400 border-blue-500/30',
-    reviewing: 'bg-amber-500/15 text-amber-400 border-amber-500/30',
-    proposal_sent: 'bg-purple-500/15 text-purple-400 border-purple-500/30',
-    approved: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',
-    in_progress: 'bg-cyan-500/15 text-cyan-400 border-cyan-500/30',
-    completed: 'bg-green-500/15 text-green-400 border-green-500/30',
-    cancelled: 'bg-red-500/15 text-red-400 border-red-500/30',
-};
-
-const STATUS_LABELS: Record<string, { en: string; ar: string }> = {
-    new: { en: 'New', ar: 'جديد' },
-    reviewing: { en: 'Reviewing', ar: 'مراجعة' },
-    proposal_sent: { en: 'Proposal Sent', ar: 'تم إرسال العرض' },
-    approved: { en: 'Approved', ar: 'مقبول' },
-    in_progress: { en: 'In Progress', ar: 'قيد التنفيذ' },
-    completed: { en: 'Completed', ar: 'مكتمل' },
-    cancelled: { en: 'Cancelled', ar: 'ملغي' },
-};
-
-const PRIORITY_ICONS: Record<string, string> = {
-    urgent: '🔴', high: '🟠', medium: '🟡', low: '🟢',
-};
-
-const TYPE_ICONS: Record<string, string> = {
-    website: '🌐', mobile_app: '📱', ecommerce: '🛒',
-    branding: '🎨', campaign: '📢', cloud: '☁️', seo: '🔍',
-};
-
 export default function AdminDashboardPage() {
     const { t } = useLanguage();
     const { user, loading: userLoading, hasAccess } = useAdminUser();
-    const { data, loading: dataLoading } = useAdminData<{
-        inquiries: any[];
-    }>({ url: '/api/admin/inquiries' });
+    const { data: inquiryData, loading: inqLoading } = useAdminData<{ inquiries: any[] }>({ url: '/api/admin/inquiries' });
+    const { data: campaignData, loading: campLoading } = useAdminData<{ campaigns: any[] }>({ url: '/api/admin/campaigns' });
+    const { data: leadData, loading: leadLoading } = useAdminData<{ leads: any[] }>({ url: '/api/admin/leads' });
+    const { data: quoteData, loading: quoteLoading } = useAdminData<{ quotations: any[] }>({ url: '/api/admin/quotations' });
 
-    const inquiries = data?.inquiries || [];
+    const inquiries = inquiryData?.inquiries || [];
+    const campaigns = campaignData?.campaigns || [];
+    const leads = leadData?.leads || [];
+    const quotations = quoteData?.quotations || [];
 
     // ── Compute Stats ────────────────────────────────
     const stats = useMemo(() => {
-        const total = inquiries.length;
-        const byStatus: Record<string, number> = {};
-        let totalRevMin = 0;
-        let totalRevMax = 0;
-        let totalTasks = 0;
-        let doneTasks = 0;
+        const activeCampaigns = campaigns.filter(c => c.status === 'active').length;
+        const totalBudget = campaigns.reduce((s, c) => s + (c.budget || 0), 0);
+        const spentBudget = campaigns.reduce((s, c) => s + (c.spentAmount || 0), 0);
 
+        const newLeads = leads.filter(l => l.status === 'new').length;
+        const qualifiedLeads = leads.filter(l => ['qualified', 'proposal', 'negotiation'].includes(l.status)).length;
+        const wonLeads = leads.filter(l => l.status === 'won').length;
+        const pipelineValue = leads.reduce((s, l) => s + (l.estimatedValue || 0), 0);
+
+        const draftQuotes = quotations.filter(q => q.status === 'draft').length;
+        const sentQuotes = quotations.filter(q => q.status === 'sent' || q.status === 'viewed').length;
+        const acceptedQuotes = quotations.filter(q => q.status === 'accepted').length;
+        const totalQuoted = quotations.reduce((s, q) => s + (q.total || 0), 0);
+        const acceptedValue = quotations.filter(q => q.status === 'accepted').reduce((s, q) => s + (q.total || 0), 0);
+        const winRate = quotations.length > 0 ? Math.round((acceptedQuotes / quotations.length) * 100) : 0;
+
+        const activeProjects = inquiries.filter(i => i.status === 'approved' || i.status === 'in_progress').length;
+        const completedProjects = inquiries.filter(i => i.status === 'completed').length;
+        let totalTasks = 0, doneTasks = 0;
         for (const inq of inquiries) {
-            byStatus[inq.status] = (byStatus[inq.status] || 0) + 1;
-            totalRevMin += inq.estimatedPriceMin || 0;
-            totalRevMax += inq.estimatedPriceMax || 0;
             totalTasks += inq.taskProgress?.total || 0;
             doneTasks += inq.taskProgress?.done || 0;
         }
 
-        return { total, byStatus, totalRevMin, totalRevMax, totalTasks, doneTasks };
-    }, [inquiries]);
+        return {
+            activeCampaigns, totalBudget, spentBudget,
+            totalLeads: leads.length, newLeads, qualifiedLeads, wonLeads, pipelineValue,
+            totalQuotes: quotations.length, draftQuotes, sentQuotes, acceptedQuotes, totalQuoted, acceptedValue, winRate,
+            totalProjects: inquiries.length, activeProjects, completedProjects, totalTasks, doneTasks,
+        };
+    }, [campaigns, leads, quotations, inquiries]);
 
-    // ── Recent (last 5) ──────────────────────────────
-    const recent = useMemo(() => {
-        return [...inquiries]
-            .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-            .slice(0, 5);
-    }, [inquiries]);
+    // Recent activity across all entities
+    const recentActivity = useMemo(() => {
+        const items: { type: string; icon: string; title: string; subtitle: string; time: string; href: string; status?: string }[] = [];
+
+        for (const c of campaigns.slice(0, 3)) {
+            items.push({
+                type: 'campaign', icon: '📢', title: c.name,
+                subtitle: `${c.channel?.replace('_', ' ')} campaign`,
+                time: c.createdAt, href: '/admin/campaigns', status: c.status,
+            });
+        }
+        for (const l of leads.slice(0, 5)) {
+            items.push({
+                type: 'lead', icon: '🎯', title: l.name,
+                subtitle: l.company || l.email,
+                time: l.createdAt, href: '/admin/leads', status: l.status,
+            });
+        }
+        for (const q of quotations.slice(0, 3)) {
+            items.push({
+                type: 'quote', icon: '💰', title: q.quotationNumber,
+                subtitle: `${q.clientName} — ${q.currency || 'SAR'} ${(q.total || 0).toLocaleString()}`,
+                time: q.createdAt, href: '/admin/quotations', status: q.status,
+            });
+        }
+        for (const i of inquiries.slice(0, 3)) {
+            items.push({
+                type: 'project', icon: '📋', title: i.clientName,
+                subtitle: i.projectDescription?.slice(0, 60) || '',
+                time: i.createdAt, href: `/admin/inquiries?selected=${i.id}`, status: i.status,
+            });
+        }
+
+        return items.sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime()).slice(0, 10);
+    }, [campaigns, leads, quotations, inquiries]);
 
     // ── Auth Gate ────────────────────────────────────
     if (!userLoading && !hasAccess) {
@@ -82,29 +99,24 @@ export default function AdminDashboardPage() {
                     {t('Access Denied', 'الوصول مرفوض')}
                 </h1>
                 <p className="text-slate-400 mb-6">
-                    {t(
-                        'You need admin or developer permissions to access this page.',
-                        'تحتاج صلاحيات مدير أو مطور للوصول لهذه الصفحة.'
-                    )}
+                    {t('You need admin or developer permissions.', 'تحتاج صلاحيات مدير أو مطور.')}
                 </p>
-                <Link href="/" className="futuristic-btn">
-                    {t('Go Home', 'الرئيسية')}
-                </Link>
+                <Link href="/" className="futuristic-btn">{t('Go Home', 'الرئيسية')}</Link>
             </div>
         );
     }
 
-    const loading = userLoading || dataLoading;
+    const loading = userLoading || inqLoading || campLoading || leadLoading || quoteLoading;
 
     return (
         <div>
             {/* Page Header */}
             <div className="mb-8">
                 <h1 className="text-3xl font-extrabold text-white mb-2">
-                    {t('Admin Dashboard', 'لوحة التحكم')}
+                    {t('Command Center', 'مركز التحكم')}
                 </h1>
                 <p className="text-slate-400">
-                    {t('Overview of all project inquiries and team activity.', 'نظرة عامة على جميع استفسارات المشاريع ونشاط الفريق.')}
+                    {t('Full pipeline overview — from campaigns to delivery.', 'نظرة شاملة على خط الأنابيب — من الحملات إلى التسليم.')}
                 </p>
             </div>
 
@@ -115,61 +127,115 @@ export default function AdminDashboardPage() {
                 </div>
             ) : (
                 <>
-                    {/* KPI Cards */}
+                    {/* ── Pipeline Stages ──────────────────── */}
                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-                        <StatCard
-                            icon="📋" label={t('Total Inquiries', 'إجمالي الاستفسارات')}
-                            value={stats.total} color="cyan"
-                        />
-                        <StatCard
-                            icon="🆕" label={t('New / Pending', 'جديد / معلق')}
-                            value={(stats.byStatus['new'] || 0) + (stats.byStatus['reviewing'] || 0)} color="blue"
-                        />
-                        <StatCard
-                            icon="⚡" label={t('Active Projects', 'مشاريع نشطة')}
-                            value={(stats.byStatus['approved'] || 0) + (stats.byStatus['in_progress'] || 0)} color="amber"
-                        />
-                        <StatCard
-                            icon="✅" label={t('Completed', 'مكتملة')}
-                            value={stats.byStatus['completed'] || 0} color="emerald"
-                        />
+                        {/* Campaigns */}
+                        <Link href="/admin/campaigns" className="futuristic-card p-5 rounded-xl border border-purple-500/20 hover:border-purple-500/40 transition-all group">
+                            <div className="flex items-center gap-3 mb-3">
+                                <div className="w-10 h-10 rounded-lg bg-purple-500/15 flex items-center justify-center text-lg">📢</div>
+                                <div>
+                                    <div className="text-2xl font-extrabold text-purple-400">{stats.activeCampaigns}</div>
+                                    <div className="text-slate-500 text-[10px]">{t('Active Campaigns', 'حملات نشطة')}</div>
+                                </div>
+                            </div>
+                            <div className="text-slate-600 text-xs" dir="ltr">
+                                ${stats.totalBudget.toLocaleString()} {t('budget', 'ميزانية')}
+                            </div>
+                        </Link>
+
+                        {/* Leads */}
+                        <Link href="/admin/leads" className="futuristic-card p-5 rounded-xl border border-blue-500/20 hover:border-blue-500/40 transition-all group">
+                            <div className="flex items-center gap-3 mb-3">
+                                <div className="w-10 h-10 rounded-lg bg-blue-500/15 flex items-center justify-center text-lg">🎯</div>
+                                <div>
+                                    <div className="text-2xl font-extrabold text-blue-400">{stats.totalLeads}</div>
+                                    <div className="text-slate-500 text-[10px]">{t('Total Leads', 'إجمالي العملاء')}</div>
+                                </div>
+                            </div>
+                            <div className="flex gap-3 text-[10px]">
+                                <span className="text-blue-400">{stats.newLeads} {t('new', 'جديد')}</span>
+                                <span className="text-amber-400">{stats.qualifiedLeads} {t('qualified', 'مؤهل')}</span>
+                                <span className="text-emerald-400">{stats.wonLeads} {t('won', 'فاز')}</span>
+                            </div>
+                        </Link>
+
+                        {/* Quotations */}
+                        <Link href="/admin/quotations" className="futuristic-card p-5 rounded-xl border border-amber-500/20 hover:border-amber-500/40 transition-all group">
+                            <div className="flex items-center gap-3 mb-3">
+                                <div className="w-10 h-10 rounded-lg bg-amber-500/15 flex items-center justify-center text-lg">💰</div>
+                                <div>
+                                    <div className="text-2xl font-extrabold text-amber-400">{stats.totalQuotes}</div>
+                                    <div className="text-slate-500 text-[10px]">{t('Quotations', 'عروض أسعار')}</div>
+                                </div>
+                            </div>
+                            <div className="flex gap-3 text-[10px]">
+                                <span className="text-amber-400">{stats.winRate}% {t('win rate', 'معدل الفوز')}</span>
+                                <span className="text-slate-500" dir="ltr">${stats.acceptedValue.toLocaleString()}</span>
+                            </div>
+                        </Link>
+
+                        {/* Projects */}
+                        <Link href="/admin/inquiries" className="futuristic-card p-5 rounded-xl border border-cyan-500/20 hover:border-cyan-500/40 transition-all group">
+                            <div className="flex items-center gap-3 mb-3">
+                                <div className="w-10 h-10 rounded-lg bg-cyan-500/15 flex items-center justify-center text-lg">📋</div>
+                                <div>
+                                    <div className="text-2xl font-extrabold text-cyan-400">{stats.activeProjects}</div>
+                                    <div className="text-slate-500 text-[10px]">{t('Active Projects', 'مشاريع نشطة')}</div>
+                                </div>
+                            </div>
+                            <div className="flex gap-3 text-[10px]">
+                                <span className="text-emerald-400">{stats.completedProjects} {t('completed', 'مكتمل')}</span>
+                                <span className="text-slate-500">{stats.totalProjects} {t('total', 'إجمالي')}</span>
+                            </div>
+                        </Link>
                     </div>
 
-                    {/* Pipeline + Task Progress */}
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-                        {/* Pipeline Funnel */}
-                        <div className="futuristic-card rounded-xl p-6">
-                            <h3 className="text-white font-bold mb-4 flex items-center gap-2">
-                                <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
-                                {t('Pipeline', 'خط الأنابيب')}
-                            </h3>
-                            <div className="space-y-2">
-                                {['new', 'reviewing', 'proposal_sent', 'approved', 'in_progress', 'completed'].map(status => {
-                                    const count = stats.byStatus[status] || 0;
-                                    const pct = stats.total > 0 ? (count / stats.total) * 100 : 0;
-                                    return (
-                                        <div key={status} className="flex items-center gap-3">
-                                            <span className={`px-2 py-0.5 rounded text-xs border whitespace-nowrap ${STATUS_COLORS[status]}`}>
-                                                {t(STATUS_LABELS[status]?.en || status, STATUS_LABELS[status]?.ar || status)}
-                                            </span>
-                                            <div className="flex-1 h-2 rounded-full bg-slate-800 overflow-hidden">
-                                                <div
-                                                    className="h-full rounded-full bg-gradient-to-r from-cyan-500 to-cyan-400 transition-all duration-500"
-                                                    style={{ width: `${pct}%` }}
-                                                />
-                                            </div>
-                                            <span className="text-slate-400 text-sm w-8 text-end">{count}</span>
-                                        </div>
-                                    );
-                                })}
-                            </div>
+                    {/* ── Pipeline Flow Visual ──────────────────── */}
+                    <div className="futuristic-card rounded-xl p-6 mb-8">
+                        <h3 className="text-white font-bold mb-5 flex items-center gap-2">
+                            <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
+                            {t('Pipeline Flow', 'تدفق خط الأنابيب')}
+                        </h3>
+                        <div className="flex items-center gap-2 overflow-x-auto pb-2">
+                            <PipelineStage
+                                icon="📢" label={t('Campaigns', 'حملات')}
+                                count={stats.activeCampaigns} color="purple" href="/admin/campaigns"
+                            />
+                            <PipelineArrow />
+                            <PipelineStage
+                                icon="🎯" label={t('Leads', 'عملاء')}
+                                count={stats.totalLeads} color="blue" href="/admin/leads"
+                            />
+                            <PipelineArrow />
+                            <PipelineStage
+                                icon="💰" label={t('Quotes', 'عروض')}
+                                count={stats.totalQuotes} color="amber" href="/admin/quotations"
+                            />
+                            <PipelineArrow />
+                            <PipelineStage
+                                icon="📋" label={t('Projects', 'مشاريع')}
+                                count={stats.activeProjects} color="cyan" href="/admin/inquiries"
+                            />
+                            <PipelineArrow />
+                            <PipelineStage
+                                icon="📌" label={t('Tasks', 'مهام')}
+                                count={stats.totalTasks} color="emerald" href="/admin/board"
+                            />
+                            <PipelineArrow />
+                            <PipelineStage
+                                icon="✅" label={t('Done', 'مكتمل')}
+                                count={stats.doneTasks} color="green" href="/admin/board"
+                            />
                         </div>
+                    </div>
 
+                    {/* ── Bottom Grid: Task Progress + Recent Activity ── */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
                         {/* Task Progress */}
                         <div className="futuristic-card rounded-xl p-6">
                             <h3 className="text-white font-bold mb-4 flex items-center gap-2">
                                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                                {t('Task Progress', 'تقدم المهام')}
+                                {t('Delivery Progress', 'تقدم التسليم')}
                             </h3>
                             <div className="text-center py-4">
                                 <div className="relative w-32 h-32 mx-auto mb-4">
@@ -202,67 +268,67 @@ export default function AdminDashboardPage() {
                                     <span className="text-slate-500">/ {stats.totalTasks} {t('total', 'إجمالي')}</span>
                                 </div>
                             </div>
+                            <div className="mt-4 pt-4 border-t border-slate-700/50 text-center">
+                                <Link href="/admin/board" className="text-cyan-400 text-sm hover:text-cyan-300 transition-colors">
+                                    {t('Open Task Board →', 'فتح لوحة المهام ←')}
+                                </Link>
+                            </div>
+                        </div>
 
-                            {/* Revenue Pipeline */}
-                            {stats.totalRevMax > 0 && (
-                                <div className="mt-4 pt-4 border-t border-slate-700/50">
-                                    <div className="text-slate-400 text-xs mb-1">{t('Revenue Pipeline', 'خط الإيرادات')}</div>
-                                    <div className="text-white font-bold" dir="ltr">
-                                        ${stats.totalRevMin.toLocaleString()} – ${stats.totalRevMax.toLocaleString()}
-                                    </div>
+                        {/* Recent Activity */}
+                        <div className="futuristic-card rounded-xl p-6">
+                            <h3 className="text-white font-bold mb-4 flex items-center gap-2">
+                                <span className="w-1.5 h-1.5 rounded-full bg-purple-400" />
+                                {t('Recent Activity', 'النشاط الأخير')}
+                            </h3>
+                            {recentActivity.length === 0 ? (
+                                <p className="text-slate-500 text-sm py-4 text-center">
+                                    {t('No activity yet.', 'لا يوجد نشاط بعد.')}
+                                </p>
+                            ) : (
+                                <div className="space-y-1">
+                                    {recentActivity.map((item, i) => (
+                                        <Link
+                                            key={`${item.type}-${i}`}
+                                            href={item.href}
+                                            className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-slate-800/50 transition-colors group"
+                                        >
+                                            <span className="text-base flex-shrink-0">{item.icon}</span>
+                                            <div className="flex-1 min-w-0">
+                                                <div className="text-white text-sm font-medium truncate group-hover:text-cyan-400 transition-colors">
+                                                    {item.title}
+                                                </div>
+                                                <div className="text-slate-500 text-[10px] truncate">{item.subtitle}</div>
+                                            </div>
+                                            {item.status && (
+                                                <span className="text-[10px] text-slate-500 capitalize whitespace-nowrap">
+                                                    {item.status.replace('_', ' ')}
+                                                </span>
+                                            )}
+                                            <span className="text-slate-600 text-[10px] whitespace-nowrap">
+                                                {new Date(item.time).toLocaleDateString()}
+                                            </span>
+                                        </Link>
+                                    ))}
                                 </div>
                             )}
                         </div>
                     </div>
 
-                    {/* Recent Inquiries */}
+                    {/* ── Quick Actions ──────────────────── */}
                     <div className="futuristic-card rounded-xl p-6">
-                        <div className="flex items-center justify-between mb-4">
-                            <h3 className="text-white font-bold flex items-center gap-2">
-                                <span className="w-1.5 h-1.5 rounded-full bg-purple-400" />
-                                {t('Recent Inquiries', 'أحدث الاستفسارات')}
-                            </h3>
-                            <Link href="/admin/inquiries" className="text-cyan-400 text-sm hover:text-cyan-300 transition-colors">
-                                {t('View all →', 'عرض الكل ←')}
-                            </Link>
+                        <h3 className="text-white font-bold mb-4 flex items-center gap-2">
+                            <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+                            {t('Quick Actions', 'إجراءات سريعة')}
+                        </h3>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                            <QuickAction href="/admin/campaigns" icon="📢" label={t('New Campaign', 'حملة جديدة')} />
+                            <QuickAction href="/admin/leads" icon="🎯" label={t('Add Lead', 'إضافة عميل')} />
+                            <QuickAction href="/admin/quotations" icon="💰" label={t('Create Quote', 'إنشاء عرض')} />
+                            <QuickAction href="/admin/board" icon="📌" label={t('Task Board', 'لوحة المهام')} />
+                            <QuickAction href="/admin/team" icon="👥" label={t('Team Load', 'حمل الفريق')} />
+                            <QuickAction href="/admin/users" icon="🛡️" label={t('Manage Users', 'إدارة المستخدمين')} />
                         </div>
-                        {recent.length === 0 ? (
-                            <p className="text-slate-500 text-sm py-4 text-center">
-                                {t('No inquiries yet.', 'لا توجد استفسارات بعد.')}
-                            </p>
-                        ) : (
-                            <div className="space-y-2">
-                                {recent.map(inq => (
-                                    <Link
-                                        key={inq.id}
-                                        href={`/admin/inquiries?selected=${inq.id}`}
-                                        className="flex items-center gap-4 p-3 rounded-lg hover:bg-slate-800/50 transition-colors group"
-                                    >
-                                        <div className="flex gap-1">
-                                            {inq.projectTypes?.map((pt: string) => (
-                                                <span key={pt} className="text-lg">{TYPE_ICONS[pt] || '📦'}</span>
-                                            ))}
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <div className="text-white font-medium truncate group-hover:text-cyan-400 transition-colors">
-                                                {inq.clientName}
-                                                {inq.companyName && <span className="text-slate-500 text-sm"> · {inq.companyName}</span>}
-                                            </div>
-                                            <div className="text-slate-500 text-xs truncate">{inq.projectDescription?.slice(0, 80)}</div>
-                                        </div>
-                                        <span className={`px-2 py-0.5 rounded-full text-xs border ${STATUS_COLORS[inq.status]}`}>
-                                            {t(STATUS_LABELS[inq.status]?.en || inq.status, STATUS_LABELS[inq.status]?.ar || inq.status)}
-                                        </span>
-                                        {inq.priority && (
-                                            <span title={inq.priority}>{PRIORITY_ICONS[inq.priority] || '🟡'}</span>
-                                        )}
-                                        <span className="text-slate-600 text-xs whitespace-nowrap">
-                                            {new Date(inq.createdAt).toLocaleDateString()}
-                                        </span>
-                                    </Link>
-                                ))}
-                            </div>
-                        )}
                     </div>
                 </>
             )}
@@ -270,17 +336,36 @@ export default function AdminDashboardPage() {
     );
 }
 
-// ── Stat Card Component ─────────────────────────────────
-function StatCard({ icon, label, value, color }: {
-    icon: string; label: string; value: number; color: string;
+// ── Pipeline Stage Component ─────────────────────
+function PipelineStage({ icon, label, count, color, href }: {
+    icon: string; label: string; count: number; color: string; href: string;
 }) {
     return (
-        <div className={`futuristic-card p-5 rounded-xl border border-${color}-500/20`}>
-            <div className="flex items-center gap-3 mb-2">
-                <span className="text-2xl">{icon}</span>
-                <span className={`text-3xl font-extrabold text-${color}-400`}>{value}</span>
-            </div>
-            <span className="text-slate-400 text-sm">{label}</span>
-        </div>
+        <Link
+            href={href}
+            className={`flex-1 min-w-[90px] text-center p-3 rounded-xl border border-${color}-500/20 bg-${color}-500/5 hover:border-${color}-500/40 transition-all`}
+        >
+            <div className="text-lg mb-1">{icon}</div>
+            <div className={`text-xl font-extrabold text-${color}-400`}>{count}</div>
+            <div className="text-slate-500 text-[10px]">{label}</div>
+        </Link>
+    );
+}
+
+function PipelineArrow() {
+    return (
+        <div className="text-slate-600 text-sm flex-shrink-0">→</div>
+    );
+}
+
+function QuickAction({ href, icon, label }: { href: string; icon: string; label: string }) {
+    return (
+        <Link
+            href={href}
+            className="flex flex-col items-center gap-2 p-4 rounded-xl bg-slate-800/30 border border-slate-700/50 hover:border-cyan-500/30 hover:bg-slate-800/50 transition-all group"
+        >
+            <span className="text-2xl group-hover:scale-110 transition-transform">{icon}</span>
+            <span className="text-slate-400 text-xs text-center group-hover:text-white transition-colors">{label}</span>
+        </Link>
     );
 }

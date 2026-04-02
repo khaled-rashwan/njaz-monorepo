@@ -125,7 +125,7 @@ export default function BoardPage() {
     const handleAssign = async (taskId: string, e: React.ChangeEvent<HTMLSelectElement>) => {
         const assignedTo = e.target.value;
         const selectedUser = usersList.find((u: any) => u.id === assignedTo);
-        const assignedToName = selectedUser ? selectedUser.username : null;
+        const assignedToName = selectedUser ? (selectedUser.email || selectedUser.username) : null;
 
         try {
             const session = await fetchAuthSession();
@@ -272,16 +272,20 @@ export default function BoardPage() {
 
                                         {/* Assignee */}
                                         <div className="mt-2 flex items-center justify-between pointer-events-auto">
-                                            {task.assignedToName ? (
-                                                <div className="flex items-center gap-1.5">
-                                                    <div className="w-4 h-4 rounded-full bg-cyan-500/20 border border-cyan-500/30 flex items-center justify-center text-[8px] text-cyan-400">
-                                                        {task.assignedToName.charAt(0).toUpperCase()}
+                                            {task.assignedTo ? (() => {
+                                                const user = usersList.find((u: any) => u.id === task.assignedTo);
+                                                const displayName = user ? (user.email || user.username) : (task.assignedToName || task.assignedTo.slice(0, 8));
+                                                return (
+                                                    <div className="flex items-center gap-1.5">
+                                                        <div className="w-4 h-4 rounded-full bg-cyan-500/20 border border-cyan-500/30 flex items-center justify-center text-[8px] text-cyan-400">
+                                                            {displayName.charAt(0).toUpperCase()}
+                                                        </div>
+                                                        <span className="text-[10px] text-slate-400 truncate max-w-[80px]">
+                                                            {displayName}
+                                                        </span>
                                                     </div>
-                                                    <span className="text-[10px] text-slate-400 truncate max-w-[80px]">
-                                                        {task.assignedToName}
-                                                    </span>
-                                                </div>
-                                            ) : (
+                                                );
+                                            })() : (
                                                 <span className="text-[10px] text-slate-500 italic">Unassigned</span>
                                             )}
 
@@ -295,7 +299,7 @@ export default function BoardPage() {
                                                     <option value="" className="bg-slate-900">Unassigned</option>
                                                     {usersList.map((u: any) => (
                                                         <option key={u.id} value={u.id} className="bg-slate-900">
-                                                            {u.username}
+                                                            {u.email || u.username}
                                                         </option>
                                                     ))}
                                                 </select>

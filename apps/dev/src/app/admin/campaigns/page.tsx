@@ -25,6 +25,14 @@ const STATUS_STYLES: Record<string, string> = {
     cancelled: 'bg-red-500/15 text-red-400 border-red-500/30',
 };
 
+const STATUS_LABELS: Record<string, { en: string; ar: string }> = {
+    draft: { en: 'Draft', ar: 'مسودة' },
+    active: { en: 'Active', ar: 'نشط' },
+    paused: { en: 'Paused', ar: 'متوقف' },
+    completed: { en: 'Completed', ar: 'مكتمل' },
+    cancelled: { en: 'Cancelled', ar: 'ملغي' },
+};
+
 interface CampaignForm {
     name: string;
     description: string;
@@ -170,8 +178,8 @@ export default function CampaignsPage() {
                     className="futuristic-select text-xs !py-1.5 !px-2"
                 >
                     <option value="">{t('All Statuses', 'كل الحالات')}</option>
-                    {Object.entries(STATUS_STYLES).map(([k]) => (
-                        <option key={k} value={k}>{k.charAt(0).toUpperCase() + k.slice(1)}</option>
+                    {Object.entries(STATUS_LABELS).map(([k, v]) => (
+                        <option key={k} value={k}>{t(v.en, v.ar)}</option>
                     ))}
                 </select>
             </div>
@@ -211,8 +219,8 @@ export default function CampaignsPage() {
                                         onChange={e => handleStatusChange(c.id, e.target.value)}
                                         className={`text-[10px] px-2 py-0.5 rounded border bg-transparent outline-none cursor-pointer ${STATUS_STYLES[c.status] || STATUS_STYLES.draft}`}
                                     >
-                                        {Object.keys(STATUS_STYLES).map(s => (
-                                            <option key={s} value={s} className="bg-slate-900">{s}</option>
+                                        {Object.entries(STATUS_LABELS).map(([k, v]) => (
+                                            <option key={k} value={k} className="bg-slate-900">{t(v.en, v.ar)}</option>
                                         ))}
                                     </select>
                                 </div>
@@ -260,12 +268,21 @@ export default function CampaignsPage() {
                                         {c.startDate && new Date(c.startDate).toLocaleDateString()}
                                         {c.endDate && ` → ${new Date(c.endDate).toLocaleDateString()}`}
                                     </span>
-                                    <Link
-                                        href={`/admin/leads?campaignId=${c.id}`}
-                                        className="text-cyan-400 hover:text-cyan-300"
-                                    >
-                                        {t('View Leads →', 'عرض العملاء ←')}
-                                    </Link>
+                                    <div className="flex items-center gap-2">
+                                        <Link
+                                            href={`/admin/leads?campaignId=${c.id}`}
+                                            className="text-cyan-400 hover:text-cyan-300"
+                                        >
+                                            {t('Leads →', 'العملاء ←')}
+                                        </Link>
+                                        <span className="text-slate-700">·</span>
+                                        <Link
+                                            href={`/admin/leads?campaignId=${c.id}`}
+                                            className="text-emerald-400 hover:text-emerald-300"
+                                        >
+                                            + {t('Add Lead', 'إضافة عميل')}
+                                        </Link>
+                                    </div>
                                 </div>
                             </div>
                         );
