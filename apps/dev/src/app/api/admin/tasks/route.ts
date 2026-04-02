@@ -60,15 +60,15 @@ export async function POST(request: Request) {
     try {
         const body = await request.json();
 
-        if (!body.inquiryId || !body.title) {
+        if (!body.title) {
             return NextResponse.json(
-                { error: 'inquiryId and title are required' },
+                { error: 'title is required' },
                 { status: 400 },
             );
         }
 
         const input = {
-            inquiryId: body.inquiryId,
+            inquiryId: body.inquiryId || null,
             title: body.title,
             titleAr: body.titleAr || null,
             description: body.description || null,

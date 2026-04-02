@@ -159,7 +159,7 @@ const schema = a.schema({
 
     DevTask: a
         .model({
-            inquiryId: a.id().required(),         // FK → DevInquiry
+            inquiryId: a.id(),                     // FK → DevInquiry (optional — null for internal tasks)
             title: a.string().required(),
             titleAr: a.string(),
             description: a.string(),

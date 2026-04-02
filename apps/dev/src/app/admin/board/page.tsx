@@ -45,6 +45,7 @@ export default function BoardPage() {
     const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
     const [filterInquiry, setFilterInquiry] = useState<string>(filterInquiryId || '');
     const [filterAssignee, setFilterAssignee] = useState<string>('');
+    const [filterScope, setFilterScope] = useState<string>(''); // '' = all, 'internal' = no inquiry, 'client' = has inquiry
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [newTask, setNewTask] = useState({ title: '', inquiryId: '', type: 'development', priority: 'medium' });
 
@@ -55,6 +56,12 @@ export default function BoardPage() {
     // Client-side filtering
     const filteredTasks = useMemo(() => {
         let result = tasks;
+        // Scope filter: internal vs client tasks
+        if (filterScope === 'internal') {
+            result = result.filter(t => !t.inquiryId);
+        } else if (filterScope === 'client') {
+            result = result.filter(t => !!t.inquiryId);
+        }
         if (filterInquiry) {
             result = result.filter(t => t.inquiryId === filterInquiry);
         }
@@ -64,7 +71,7 @@ export default function BoardPage() {
             result = result.filter(t => !t.assignedTo);
         }
         return result;
-    }, [tasks, filterInquiry, filterAssignee, user]);
+    }, [tasks, filterInquiry, filterAssignee, filterScope, user]);
 
     // Group by column
     const columns = useMemo(() => {
@@ -146,7 +153,7 @@ export default function BoardPage() {
 
     // ── Create Task ─────────────────────────────────
     const handleCreateTask = useCallback(async () => {
-        if (!newTask.title || !newTask.inquiryId) return;
+        if (!newTask.title) return;
         try {
             const session = await fetchAuthSession();
             const token = session.tokens?.accessToken?.toString();
@@ -177,12 +184,24 @@ export default function BoardPage() {
                 <h1 className="text-2xl font-extrabold text-white">
                     {t('Task Board', 'لوحة المهام')}
                 </h1>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 flex-wrap">
+                    {/* Filter by Scope */}
+                    <select
+                        value={filterScope}
+                        onChange={e => { setFilterScope(e.target.value); if (e.target.value === 'internal') setFilterInquiry(''); }}
+                        className="futuristic-select text-xs !py-1.5 !px-2 max-w-[140px]"
+                    >
+                        <option value="">{t('All Tasks', 'كل المهام')}</option>
+                        <option value="client">{t('Client Tasks', 'مهام العملاء')}</option>
+                        <option value="internal">{t('Internal Tasks', 'مهام داخلية')}</option>
+                    </select>
+
                     {/* Filter by Inquiry */}
                     <select
                         value={filterInquiry}
                         onChange={e => setFilterInquiry(e.target.value)}
                         className="futuristic-select text-xs !py-1.5 !px-2 max-w-[180px]"
+                        disabled={filterScope === 'internal'}
                     >
                         <option value="">{t('All Projects', 'كل المشاريع')}</option>
                         {inquiries.map(inq => (
@@ -266,8 +285,14 @@ export default function BoardPage() {
                                         </div>
 
                                         {/* Project tag */}
-                                        <div className="mt-2 text-[10px] text-slate-600 truncate">
-                                            {inquiryNames[task.inquiryId] || task.inquiryId?.slice(0, 8)}
+                                        <div className="mt-2 text-[10px] truncate">
+                                            {task.inquiryId ? (
+                                                <span className="text-slate-600">{inquiryNames[task.inquiryId] || task.inquiryId?.slice(0, 8)}</span>
+                                            ) : (
+                                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-violet-500/15 border border-violet-500/25 text-violet-400 font-medium">
+                                                    🏢 {t('Internal', 'داخلي')}
+                                                </span>
+                                            )}
                                         </div>
 
                                         {/* Assignee */}
@@ -337,13 +362,13 @@ export default function BoardPage() {
 
                         <div className="space-y-3">
                             <div>
-                                <label className="text-xs text-slate-400 mb-1 block">{t('Project', 'المشروع')}</label>
+                                <label className="text-xs text-slate-400 mb-1 block">{t('Project', 'المشروع')} <span className="text-slate-600">({t('optional', 'اختياري')})</span></label>
                                 <select
                                     value={newTask.inquiryId}
                                     onChange={e => setNewTask({ ...newTask, inquiryId: e.target.value })}
                                     className="futuristic-select text-sm"
                                 >
-                                    <option value="">{t('Select project...', 'اختر مشروع...')}</option>
+                                    <option value="">🏢 {t('Internal Task (no project)', 'مهمة داخلية (بدون مشروع)')}</option>
                                     {inquiries.map(inq => (
                                         <option key={inq.id} value={inq.id}>{inq.clientName}</option>
                                     ))}
@@ -398,7 +423,7 @@ export default function BoardPage() {
                             </button>
                             <button
                                 onClick={handleCreateTask}
-                                disabled={!newTask.title || !newTask.inquiryId}
+                                disabled={!newTask.title}
                                 className="futuristic-btn-primary text-sm !py-2"
                             >
                                 {t('Create', 'إنشاء')}
