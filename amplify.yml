@@ -1,17 +1,13 @@
 version: 1
 applications:
-  - backend:
-      phases:
-        build:
-          commands:
-            - npm ci
-            - npx ampx pipeline-deploy --branch $AWS_BRANCH --app-id $AWS_APP_ID
-    appRoot: packages/shared-backend
   - frontend:
       phases:
         preBuild:
           commands:
             - npm ci
+            # Force backend deploy here because Amplify Console is skipping the independent backend block
+            - cd ../../packages/shared-backend && npm ci && npx ampx pipeline-deploy --branch $AWS_BRANCH --app-id $AWS_APP_ID
+            - cd ../../apps/landing
             - npx @aws-amplify/backend-cli generate outputs --branch $AWS_BRANCH --app-id $AWS_APP_ID
             - node ../../scripts/sync-assets.js
         build:
@@ -31,6 +27,9 @@ applications:
         preBuild:
           commands:
             - npm ci
+            # Force backend deploy here
+            - cd ../../packages/shared-backend && npm ci && npx ampx pipeline-deploy --branch $AWS_BRANCH --app-id $AWS_APP_ID
+            - cd ../../apps/app-selector
             - npx @aws-amplify/backend-cli generate outputs --branch $AWS_BRANCH --app-id $AWS_APP_ID
             - node ../../scripts/sync-assets.js
         build:
@@ -50,6 +49,9 @@ applications:
         preBuild:
           commands:
             - npm ci
+            # Force backend deploy here
+            - cd ../../packages/shared-backend && npm ci && npx ampx pipeline-deploy --branch $AWS_BRANCH --app-id $AWS_APP_ID
+            - cd ../../apps/estebian
             - npx @aws-amplify/backend-cli generate outputs --branch $AWS_BRANCH --app-id $AWS_APP_ID
             - node ../../scripts/sync-assets.js
         build:
@@ -69,6 +71,9 @@ applications:
         preBuild:
           commands:
             - npm ci
+            # Force backend deploy here
+            - cd ../../packages/shared-backend && npm ci && npx ampx pipeline-deploy --branch $AWS_BRANCH --app-id $AWS_APP_ID
+            - cd ../../apps/dev
             - npx @aws-amplify/backend-cli generate outputs --branch $AWS_BRANCH --app-id $AWS_APP_ID
             - node ../../scripts/sync-assets.js
         build:
