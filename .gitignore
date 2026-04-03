@@ -20,7 +20,6 @@ build/
 .env.production.local
 
 # Amplify
-amplify_outputs.json
 .amplify/
 amplify/.config/local-*
 amplify/backend/amplify-meta.json

@@ -12,7 +12,6 @@ applications:
         preBuild:
           commands:
             - npm ci
-            - npx @aws-amplify/backend-cli generate outputs --branch $AWS_BRANCH --app-id $AWS_APP_ID
             - node ../../scripts/sync-assets.js
         build:
           commands:
@@ -31,7 +30,6 @@ applications:
         preBuild:
           commands:
             - npm ci
-            - npx @aws-amplify/backend-cli generate outputs --branch $AWS_BRANCH --app-id $AWS_APP_ID
             - node ../../scripts/sync-assets.js
         build:
           commands:
@@ -50,7 +48,6 @@ applications:
         preBuild:
           commands:
             - npm ci
-            - npx @aws-amplify/backend-cli generate outputs --branch $AWS_BRANCH --app-id $AWS_APP_ID
             - node ../../scripts/sync-assets.js
         build:
           commands:
@@ -69,7 +66,6 @@ applications:
         preBuild:
           commands:
             - npm ci
-            - npx @aws-amplify/backend-cli generate outputs --branch $AWS_BRANCH --app-id $AWS_APP_ID
             - node ../../scripts/sync-assets.js
         build:
           commands:
