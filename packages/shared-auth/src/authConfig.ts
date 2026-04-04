@@ -17,6 +17,11 @@ export function getAuthDomain(): string {
     if (typeof window !== 'undefined') {
         const hostname = window.location.hostname;
 
+        // If on test subdomain, use .test.njaz.org to isolate cookies
+        if (hostname.includes('test.njaz.org')) {
+            return '.test.njaz.org';
+        }
+
         // Production: use .njaz.org for cookie sharing
         if (hostname.endsWith('.njaz.org') || hostname === 'njaz.org') {
             return '.njaz.org';
@@ -41,7 +46,7 @@ export function configureAmplifyAuth(config: any) {
     let isProduction = process.env.NODE_ENV === 'production';
     if (typeof window !== 'undefined') {
         const hostname = window.location.hostname;
-        isProduction = hostname.endsWith('.njaz.org') || hostname === 'njaz.org';
+        isProduction = hostname.endsWith('.njaz.org') || hostname === 'njaz.org' || hostname.includes('test.njaz.org');
     }
 
     // Debug: Log all available cookies on page load

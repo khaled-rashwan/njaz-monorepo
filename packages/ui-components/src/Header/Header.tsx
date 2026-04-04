@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { getLandingUrl, getDashboardUrl } from '@njaz/shared-auth';
 import { SuiteNavigation } from '../SuiteNavigation';
 
 interface HeaderProps {
@@ -20,7 +21,7 @@ export function Header({
 }: HeaderProps) {
     return (
         <header className="njaz-header">
-            <a href="https://njaz.org" className="njaz-header-logo">
+            <a href={getLandingUrl()} className="njaz-header-logo">
                 <span className="njaz-header-logo-text">{logoText}</span>
             </a>
 
@@ -43,10 +44,10 @@ export function Header({
             <div className="njaz-header-actions">
                 {showActions && (
                     <>
-                        <a href="https://app.njaz.org/login" className="njaz-btn njaz-btn-ghost">
+                        <a href={`${getDashboardUrl()}/login`} className="njaz-btn njaz-btn-ghost">
                             Sign In
                         </a>
-                        <a href="https://app.njaz.org/register" className="njaz-btn njaz-btn-primary">
+                        <a href={`${getDashboardUrl()}/register`} className="njaz-btn njaz-btn-primary">
                             Get Started
                         </a>
                     </>

@@ -10,8 +10,13 @@ export function getDashboardUrl(redirectPath?: string): string {
         baseUrl = process.env.NEXT_PUBLIC_DASHBOARD_URL;
     } else if (typeof window !== 'undefined') {
         const hostname = window.location.hostname;
+        
+        // Test environment: use dashboard.test.njaz.org
+        if (hostname.includes('test.njaz.org')) {
+            baseUrl = 'https://dashboard.test.njaz.org';
+        } 
         // Production: use dashboard.njaz.org
-        if (hostname.endsWith('.njaz.org') || hostname === 'njaz.org') {
+        else if (hostname.endsWith('.njaz.org') || hostname === 'njaz.org') {
             baseUrl = 'https://dashboard.njaz.org';
         } else {
             baseUrl = 'http://localhost:3001';
@@ -51,6 +56,12 @@ export function getLandingUrl(): string {
     // Fallback: Check hostname on client
     if (typeof window !== 'undefined') {
         const hostname = window.location.hostname;
+        
+        // Test environment: use test.njaz.org
+        if (hostname.includes('test.njaz.org')) {
+            return 'https://test.njaz.org';
+        }
+        
         // Production: use njaz.org
         if (hostname.endsWith('.njaz.org') || hostname === 'njaz.org') {
             return 'https://njaz.org';
@@ -84,6 +95,23 @@ export function getAppUrl(appId: string): string | null {
 
     if (isLocal) {
         return LOCAL_URLS[appId] || null;
+    }
+
+    // Dynamic environment detection for deployed environments
+    if (typeof window !== 'undefined') {
+        const hostname = window.location.hostname;
+        
+        // Test environment
+        if (hostname.includes('test.njaz.org')) {
+            const TEST_URLS: Record<string, string> = {
+                'dashboard': 'https://dashboard.test.njaz.org',
+                'estebian': 'https://estebian.test.njaz.org',
+                'landing': 'https://test.njaz.org',
+                'dev': 'https://dev.test.njaz.org',
+                'process': 'https://process.test.njaz.org',
+            };
+            return TEST_URLS[appId] || null;
+        }
     }
 
     return PROD_URLS[appId] || null;

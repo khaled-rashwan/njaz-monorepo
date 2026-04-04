@@ -76,7 +76,7 @@ export default function AppSelectorDashboard() {
                     if (redirectUrl) window.location.href = redirectUrl;
                 }} />
                 <a href={landingUrl} className="mt-6 text-sm text-slate-500 hover:text-cyan-400 transition-colors">
-                    ← Back to njaz.org
+                    ← Back to {typeof window !== 'undefined' && window.location.hostname.includes('test.njaz.org') ? 'test.njaz.org' : 'njaz.org'}
                 </a>
             </div>
         );
@@ -172,7 +172,7 @@ export default function AppSelectorDashboard() {
                                 {accessibleApps.map((app) => (
                                     <a
                                         key={app.id}
-                                        href={app.id === 'estebian' && typeof window !== 'undefined' && window.location.hostname === 'localhost' ? 'http://localhost:3002' : app.href}
+                                        href={getAppUrl(app.id) || app.href}
                                         className="group flex flex-col items-center gap-2 p-3 rounded-xl hover:bg-white/5 transition-all"
                                     >
                                         <div
