@@ -1,18 +1,39 @@
 version: 1
 applications:
   # ============================================================
-  # LANDING - Uses shared backend from app-selector (dashboard)
-  # Set AMPLIFY_BACKEND_APP_ID env var in Amplify Console to the
-  # App ID of your app-selector (dashboard) Amplify app.
+  # 1. THE BACKEND "INFRA" APP (The Source of Truth)
+  # CONNECT AS: A new Amplify App pointing to packages/shared-backend
+  # ROLE: Deploys the database, auth, and logic for the whole suite.
   # ============================================================
   - frontend:
       phases:
         preBuild:
           commands:
             - cd ../.. && npm ci
-            # Generate outputs from the shared backend app (app-selector owns the backend)
+        build:
+          commands:
+            # This is the ONLY app that runs pipeline-deploy
+            - cd packages/shared-backend && npx ampx pipeline-deploy --branch $AWS_BRANCH --app-id $AWS_APP_ID
+      artifacts:
+        baseDirectory: .next # Technically not used for backend-only but required by schema
+        files:
+          - '**/*'
+    appRoot: packages/shared-backend
+
+  # ============================================================
+  # 2. FRONTEND CONSUMER APPS (Landing, Dashboard, Dev, etc.)
+  # ROLE: Download settings from Infra and build the UI.
+  # REQUIREMENT: Set AMPLIFY_BACKEND_APP_ID to the Infra App ID.
+  # ============================================================
+
+  # --- LANDING ---
+  - frontend:
+      phases:
+        preBuild:
+          commands:
+            - cd ../.. && npm ci
             - cd apps/landing
-            - npx ampx generate outputs --branch $AWS_BRANCH --app-id ${AMPLIFY_BACKEND_APP_ID:-$AWS_APP_ID}
+            - npx ampx generate outputs --branch $AWS_BRANCH --app-id $AMPLIFY_BACKEND_APP_ID
             - node ../../scripts/sync-assets.js
         build:
           commands:
@@ -27,20 +48,14 @@ applications:
           - node_modules/**/*
     appRoot: apps/landing
 
-  # ============================================================
-  # DASHBOARD (app-selector) - THE BACKEND OWNER
-  # This app deploys the shared backend for all apps.
-  # Its AWS_APP_ID is what other apps should use as AMPLIFY_BACKEND_APP_ID.
-  # ============================================================
+  # --- DASHBOARD (app-selector) ---
   - frontend:
       phases:
         preBuild:
           commands:
             - cd ../.. && npm ci
-            # This app owns the backend - it deploys it for all apps
-            - cd packages/shared-backend && npx ampx pipeline-deploy --branch $AWS_BRANCH --app-id $AWS_APP_ID
-            - cd ../../apps/app-selector
-            - npx ampx generate outputs --branch $AWS_BRANCH --app-id $AWS_APP_ID
+            - cd apps/app-selector
+            - npx ampx generate outputs --branch $AWS_BRANCH --app-id $AMPLIFY_BACKEND_APP_ID
             - node ../../scripts/sync-assets.js
         build:
           commands:
@@ -55,16 +70,14 @@ applications:
           - node_modules/**/*
     appRoot: apps/app-selector
 
-  # ============================================================
-  # ESTEBIAN - Uses shared backend from app-selector (dashboard)
-  # ============================================================
+  # --- ESTEBIAN ---
   - frontend:
       phases:
         preBuild:
           commands:
             - cd ../.. && npm ci
             - cd apps/estebian
-            - npx ampx generate outputs --branch $AWS_BRANCH --app-id ${AMPLIFY_BACKEND_APP_ID:-$AWS_APP_ID}
+            - npx ampx generate outputs --branch $AWS_BRANCH --app-id $AMPLIFY_BACKEND_APP_ID
             - node ../../scripts/sync-assets.js
         build:
           commands:
@@ -79,16 +92,14 @@ applications:
           - node_modules/**/*
     appRoot: apps/estebian
 
-  # ============================================================
-  # DEV - Uses shared backend from app-selector (dashboard)
-  # ============================================================
+  # --- DEV ---
   - frontend:
       phases:
         preBuild:
           commands:
             - cd ../.. && npm ci
             - cd apps/dev
-            - npx ampx generate outputs --branch $AWS_BRANCH --app-id ${AMPLIFY_BACKEND_APP_ID:-$AWS_APP_ID}
+            - npx ampx generate outputs --branch $AWS_BRANCH --app-id $AMPLIFY_BACKEND_APP_ID
             - node ../../scripts/sync-assets.js
         build:
           commands:
