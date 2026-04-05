@@ -52,6 +52,9 @@ export function configureAmplifyAuth(config: any) {
     if (process.env.NEXT_PUBLIC_USER_POOL_CLIENT_ID) {
         overridenConfig.auth.user_pool_client_id = process.env.NEXT_PUBLIC_USER_POOL_CLIENT_ID;
     }
+    if (process.env.NEXT_PUBLIC_IDENTITY_POOL_ID) {
+        overridenConfig.auth.identity_pool_id = process.env.NEXT_PUBLIC_IDENTITY_POOL_ID;
+    }
 
     // Determine if we're in production
     let isProduction = process.env.NODE_ENV === 'production' || hostname.endsWith('.njaz.org') || hostname === 'njaz.org' || hostname.includes('test.njaz.org');
