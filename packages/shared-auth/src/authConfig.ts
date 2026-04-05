@@ -76,8 +76,11 @@ export function configureAmplifyAuth(config: any) {
     // Set cookie storage for Cognito tokens
     cognitoUserPoolsTokenProvider.setKeyValueStorage(cookieStorage);
 
+    const userPoolClientId = config?.auth?.user_pool_client_id || 'UNKNOWN';
+
     console.log('✅ Amplify configured with cookie storage', {
         domain: cookieDomain || 'current domain',
+        userPoolClientId,
         isProduction,
         sameSite: isProduction ? 'none' : 'lax',
         secure: true,

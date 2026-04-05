@@ -9,6 +9,7 @@ export class CookieStorage implements KeyValueStorageInterface {
     private domain: string;
     private secure: boolean;
     private sameSite: 'strict' | 'lax' | 'none';
+    private prefix: string;
 
     constructor(options: {
         domain?: string;
@@ -18,10 +19,14 @@ export class CookieStorage implements KeyValueStorageInterface {
         this.domain = options.domain || '';
         this.secure = options.secure ?? true;
         this.sameSite = options.sameSite || 'lax';
+        
+        // Isolate test cookies with a prefix to prevent collision with production
+        this.prefix = this.domain.includes('test.njaz.org') ? 'test-' : '';
     }
 
     async setItem(key: string, value: string): Promise<void> {
         try {
+            const saltedKey = this.prefix + key;
             const cookieOptions: Cookies.CookieAttributes = {
                 expires: 365, // 1 year
                 secure: this.secure,
@@ -34,11 +39,11 @@ export class CookieStorage implements KeyValueStorageInterface {
                 cookieOptions.domain = this.domain;
             }
 
-            Cookies.set(key, value, cookieOptions);
+            Cookies.set(saltedKey, value, cookieOptions);
 
-            // Debug logging in production
+            // Debug logging
             if (this.domain) {
-                console.log(`🍪 Set cookie: ${key.substring(0, 30)}... with domain: ${this.domain}`);
+                console.log(`🍪 Set cookie: ${saltedKey.substring(0, 30)}... with domain: ${this.domain}`);
             }
         } catch (error) {
             console.error('Error setting cookie:', error);
@@ -47,11 +52,30 @@ export class CookieStorage implements KeyValueStorageInterface {
 
     async getItem(key: string): Promise<string | null> {
         try {
-            const value = Cookies.get(key) || null;
+            const saltedKey = this.prefix + key;
+            const value = Cookies.get(saltedKey) || null;
 
             // Debug logging for auth tokens
             if (key.includes('CognitoIdentityServiceProvider')) {
-                console.log(`🔍 Cookie lookup: ${key.substring(0, 50)}... = ${value ? 'FOUND' : 'NOT FOUND'}`);
+                if (value) {
+                    console.log(`✅ Cookie FOUND: ${saltedKey.substring(0, 50)}...`);
+                } else {
+                    const allCookies = Cookies.get();
+                    const cognitoKeys = Object.keys(allCookies).filter(k => k.includes('Cognito'));
+                    console.warn(`❌ Cookie NOT FOUND: ${saltedKey.substring(0, 50)}...`);
+                    console.warn(`ℹ️ Available Cognito keys in browser:`, cognitoKeys);
+                    
+                    // Check for Client ID mismatch
+                    const expectedClientId = key.split('.')[1];
+                    const foundClientIds = [...new Set(cognitoKeys.map(k => k.split('.')[1]).filter(Boolean))];
+                    
+                    if (foundClientIds.length > 0 && !foundClientIds.includes(expectedClientId)) {
+                        console.error(`🚨 CLIENT ID MISMATCH DETECTED!`);
+                        console.error(`   - App expects: ${expectedClientId}`);
+                        console.error(`   - Browser has: ${foundClientIds.join(', ')}`);
+                        console.error(`   Check if all apps are connected to the same Amplify Backend.`);
+                    }
+                }
             }
 
             return value;
@@ -63,6 +87,7 @@ export class CookieStorage implements KeyValueStorageInterface {
 
     async removeItem(key: string): Promise<void> {
         try {
+            const saltedKey = this.prefix + key;
             const cookieOptions: Cookies.CookieAttributes = {
                 path: '/', // Must match the path used when setting
             };
@@ -72,7 +97,7 @@ export class CookieStorage implements KeyValueStorageInterface {
                 cookieOptions.domain = this.domain;
             }
 
-            Cookies.remove(key, cookieOptions);
+            Cookies.remove(saltedKey, cookieOptions);
         } catch (error) {
             console.error('Error removing cookie:', error);
         }
@@ -82,8 +107,9 @@ export class CookieStorage implements KeyValueStorageInterface {
         try {
             const allCookies = Cookies.get();
             Object.keys(allCookies).forEach((key) => {
-                if (key.startsWith('CognitoIdentityServiceProvider')) {
-                    this.removeItem(key);
+                if (key.includes('CognitoIdentityServiceProvider')) {
+                    // Try removing with and without prefix for safety
+                    Cookies.remove(key, { path: '/', domain: this.domain });
                 }
             });
         } catch (error) {
