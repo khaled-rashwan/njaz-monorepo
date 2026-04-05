@@ -67,13 +67,20 @@ export class CookieStorage implements KeyValueStorageInterface {
                     
                     // Check for Client ID mismatch
                     const expectedClientId = key.split('.')[1];
-                    const foundClientIds = [...new Set(cognitoKeys.map(k => k.split('.')[1]).filter(Boolean))];
+                    const allClientIds = cognitoKeys.map(k => k.split('.')[1]).filter(Boolean);
+                    // Filter unique IDs in a way compatible with all TS targets
+                    const foundClientIds = allClientIds.filter((value, index, self) => self.indexOf(value) === index);
                     
                     if (foundClientIds.length > 0 && !foundClientIds.includes(expectedClientId)) {
                         console.error(`🚨 CLIENT ID MISMATCH DETECTED!`);
-                        console.error(`   - App expects: ${expectedClientId}`);
-                        console.error(`   - Browser has: ${foundClientIds.join(', ')}`);
-                        console.error(`   Check if all apps are connected to the same Amplify Backend.`);
+                        console.error(`   - This App (${window.location.hostname}) expects: ${expectedClientId}`);
+                        console.error(`   - Browser actually has sessions for: ${foundClientIds.join(', ')}`);
+                        console.group('👉 HOW TO FIX THIS:');
+                        console.log('1. Go to AWS Amplify Console for this app.');
+                        console.log('2. Add Environment Variables:');
+                        console.log(`   NEXT_PUBLIC_USER_POOL_CLIENT_ID = ${foundClientIds[0]}`);
+                        console.log('3. Redeploy the app.');
+                        console.groupEnd();
                     }
                 }
             }

@@ -41,18 +41,38 @@ export function getAuthDomain(): string {
  */
 export function configureAmplifyAuth(config: any) {
     const cookieDomain = getAuthDomain();
+    const hostname = typeof window !== 'undefined' ? window.location.hostname : '';
+
+    // Support for shared backend across separate Amplify Apps
+    // You can set these in the Amplify Console to force apps to share one backend
+    const overridenConfig = { ...config };
+    if (process.env.NEXT_PUBLIC_USER_POOL_ID) {
+        overridenConfig.auth.user_pool_id = process.env.NEXT_PUBLIC_USER_POOL_ID;
+    }
+    if (process.env.NEXT_PUBLIC_USER_POOL_CLIENT_ID) {
+        overridenConfig.auth.user_pool_client_id = process.env.NEXT_PUBLIC_USER_POOL_CLIENT_ID;
+    }
 
     // Determine if we're in production
-    let isProduction = process.env.NODE_ENV === 'production';
-    if (typeof window !== 'undefined') {
-        const hostname = window.location.hostname;
-        isProduction = hostname.endsWith('.njaz.org') || hostname === 'njaz.org' || hostname.includes('test.njaz.org');
-    }
+    let isProduction = process.env.NODE_ENV === 'production' || hostname.endsWith('.njaz.org') || hostname === 'njaz.org' || hostname.includes('test.njaz.org');
 
     // Debug: Log all available cookies on page load
     if (typeof window !== 'undefined') {
         const allCookies = Cookies.get();
         const cognitoCookies = Object.keys(allCookies).filter(k => k.includes('Cognito'));
+        
+        // CLEANUP: If we're on test and find non-prefixed cookies, clear them to avoid 18-cookie mess
+        if (hostname.includes('test.njaz.org')) {
+            cognitoCookies.forEach(key => {
+                if (!key.startsWith('test-')) {
+                    console.warn(`🧹 Clearing stale non-prefixed cookie: ${key}`);
+                    Cookies.remove(key, { path: '/', domain: '.njaz.org' });
+                    Cookies.remove(key, { path: '/', domain: '.test.njaz.org' });
+                    Cookies.remove(key, { path: '/' });
+                }
+            });
+        }
+
         console.log('🍪 Available cookies on page load:', {
             total: Object.keys(allCookies).length,
             cognitoRelated: cognitoCookies.length,
@@ -69,14 +89,14 @@ export function configureAmplifyAuth(config: any) {
     });
 
     // Configure Amplify with the resource config
-    Amplify.configure(config, {
+    Amplify.configure(overridenConfig, {
         ssr: false,
     });
 
     // Set cookie storage for Cognito tokens
     cognitoUserPoolsTokenProvider.setKeyValueStorage(cookieStorage);
 
-    const userPoolClientId = config?.auth?.user_pool_client_id || 'UNKNOWN';
+    const userPoolClientId = overridenConfig?.auth?.user_pool_client_id || 'UNKNOWN';
 
     console.log('✅ Amplify configured with cookie storage', {
         domain: cookieDomain || 'current domain',
