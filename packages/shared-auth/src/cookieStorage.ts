@@ -55,8 +55,11 @@ export class CookieStorage implements KeyValueStorageInterface {
             const saltedKey = this.prefix + key;
             const value = Cookies.get(saltedKey) || null;
 
-            // Debug logging for auth tokens
-            if (key.includes('CognitoIdentityServiceProvider')) {
+            // Debug logging for auth tokens (skip device metadata - always missing and harmless)
+            const isEssentialToken = key.includes('CognitoIdentityServiceProvider') && 
+                !key.includes('deviceKey') && !key.includes('deviceGroupKey') && !key.includes('randomPasswordKey');
+            
+            if (isEssentialToken) {
                 if (value) {
                     console.log(`✅ Cookie FOUND: ${saltedKey.substring(0, 50)}...`);
                 } else {
@@ -68,8 +71,7 @@ export class CookieStorage implements KeyValueStorageInterface {
                     // Check for Client ID mismatch
                     const expectedClientId = key.split('.')[1];
                     const allClientIds = cognitoKeys.map(k => k.split('.')[1]).filter(Boolean);
-                    // Filter unique IDs in a way compatible with all TS targets
-                    const foundClientIds = allClientIds.filter((value, index, self) => self.indexOf(value) === index);
+                    const foundClientIds = allClientIds.filter((v, i, self) => self.indexOf(v) === i);
                     
                     if (foundClientIds.length > 0 && !foundClientIds.includes(expectedClientId)) {
                         console.error(`🚨 CLIENT ID MISMATCH DETECTED!`);

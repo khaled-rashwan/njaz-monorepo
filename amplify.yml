@@ -12,7 +12,7 @@ applications:
             - cd ../.. && npm ci
             # Generate outputs from the shared backend app (app-selector owns the backend)
             - cd apps/landing
-            - npx @aws-amplify/backend-cli generate outputs --branch $AWS_BRANCH --app-id ${AMPLIFY_BACKEND_APP_ID:-$AWS_APP_ID}
+            - npx ampx generate outputs --branch $AWS_BRANCH --app-id ${AMPLIFY_BACKEND_APP_ID:-$AWS_APP_ID}
             - node ../../scripts/sync-assets.js
         build:
           commands:
@@ -40,7 +40,7 @@ applications:
             # This app owns the backend - it deploys it for all apps
             - cd packages/shared-backend && npx ampx pipeline-deploy --branch $AWS_BRANCH --app-id $AWS_APP_ID
             - cd ../../apps/app-selector
-            - npx @aws-amplify/backend-cli generate outputs --branch $AWS_BRANCH --app-id $AWS_APP_ID
+            - npx ampx generate outputs --branch $AWS_BRANCH --app-id $AWS_APP_ID
             - node ../../scripts/sync-assets.js
         build:
           commands:
@@ -64,7 +64,7 @@ applications:
           commands:
             - cd ../.. && npm ci
             - cd apps/estebian
-            - npx @aws-amplify/backend-cli generate outputs --branch $AWS_BRANCH --app-id ${AMPLIFY_BACKEND_APP_ID:-$AWS_APP_ID}
+            - npx ampx generate outputs --branch $AWS_BRANCH --app-id ${AMPLIFY_BACKEND_APP_ID:-$AWS_APP_ID}
             - node ../../scripts/sync-assets.js
         build:
           commands:
@@ -88,7 +88,7 @@ applications:
           commands:
             - cd ../.. && npm ci
             - cd apps/dev
-            - npx @aws-amplify/backend-cli generate outputs --branch $AWS_BRANCH --app-id ${AMPLIFY_BACKEND_APP_ID:-$AWS_APP_ID}
+            - npx ampx generate outputs --branch $AWS_BRANCH --app-id ${AMPLIFY_BACKEND_APP_ID:-$AWS_APP_ID}
             - node ../../scripts/sync-assets.js
         build:
           commands:
