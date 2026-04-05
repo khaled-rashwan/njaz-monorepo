@@ -15,9 +15,9 @@ applications:
             # Move to the shared-backend folder to ensure ampx sees the amplify/ directory
             - cd packages/shared-backend && npx ampx pipeline-deploy --branch $AWS_BRANCH --app-id $AWS_APP_ID
       artifacts:
-        baseDirectory: .next # Technically not used for backend-only but required by schema
+        baseDirectory: .
         files:
-          - '**/*'
+          - amplify_outputs.json
     appRoot: packages/shared-backend
 
   # ============================================================
