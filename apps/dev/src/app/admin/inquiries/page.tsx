@@ -362,29 +362,41 @@ export default function InquiriesPage() {
                     </DetailSection>
 
                     {/* Task Progress */}
-                    {selectedInquiry.taskProgress?.total > 0 && (
-                        <div className="mt-6">
-                            <DetailSection title={t('Tasks', 'المهام')}>
-                                <div className="flex items-center gap-4">
-                                    <div className="flex-1 h-3 rounded-full bg-slate-800 overflow-hidden">
-                                        <div
-                                            className="h-full rounded-full bg-gradient-to-r from-cyan-500 to-emerald-400 transition-all duration-500"
-                                            style={{ width: `${(selectedInquiry.taskProgress.done / selectedInquiry.taskProgress.total) * 100}%` }}
-                                        />
+                    <div className="mt-6">
+                        <DetailSection title={t('Tasks', 'المهام')}>
+                            {selectedInquiry.taskProgress?.total > 0 ? (
+                                <>
+                                    <div className="flex items-center gap-4">
+                                        <div className="flex-1 h-3 rounded-full bg-slate-800 overflow-hidden">
+                                            <div
+                                                className="h-full rounded-full bg-gradient-to-r from-cyan-500 to-emerald-400 transition-all duration-500"
+                                                style={{ width: `${(selectedInquiry.taskProgress.done / selectedInquiry.taskProgress.total) * 100}%` }}
+                                            />
+                                        </div>
+                                        <span className="text-white text-sm font-bold">
+                                            {selectedInquiry.taskProgress.done}/{selectedInquiry.taskProgress.total}
+                                        </span>
                                     </div>
-                                    <span className="text-white text-sm font-bold">
-                                        {selectedInquiry.taskProgress.done}/{selectedInquiry.taskProgress.total}
-                                    </span>
+                                    <Link
+                                        href={`/admin/board?inquiry=${selectedInquiry.id}`}
+                                        className="text-cyan-400 text-sm hover:text-cyan-300 mt-2 inline-block font-medium"
+                                    >
+                                        {t('View Tasks →', 'عرض المهام ←')}
+                                    </Link>
+                                </>
+                            ) : (
+                                <div className="p-4 rounded-lg border border-dashed border-slate-700/50 text-center bg-slate-800/10">
+                                    <p className="text-xs text-slate-500 mb-3">{t('No tasks assigned yet.', 'لا توجد مهام معينة بعد.')}</p>
+                                    <Link
+                                        href={`/admin/board?inquiry=${selectedInquiry.id}&create=true`}
+                                        className="futuristic-btn-primary text-xs !py-1.5 !px-4 inline-block"
+                                    >
+                                        + {t('Create First Task', 'إنشاء أول مهمة')}
+                                    </Link>
                                 </div>
-                                <Link
-                                    href={`/admin/board?inquiry=${selectedInquiry.id}`}
-                                    className="text-cyan-400 text-sm hover:text-cyan-300 mt-2 inline-block"
-                                >
-                                    {t('View on Board →', 'عرض في اللوحة ←')}
-                                </Link>
-                            </DetailSection>
-                        </div>
-                    )}
+                            )}
+                        </DetailSection>
+                    </div>
 
                     {/* Admin Notes */}
                     {isAdmin && (

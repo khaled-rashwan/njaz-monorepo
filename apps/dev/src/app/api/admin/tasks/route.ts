@@ -1,8 +1,6 @@
 // ============================================
-// GET/PATCH/POST /api/admin/tasks — Task Management
-// ============================================
-// GET: List tasks (optionally filtered by inquiryId or assignedTo)
-// PATCH: Update task status, assignment, hours
+// PATCH: Update task status, assignment, hours, notes
+// DELETE: Delete a task
 // POST: Create ad-hoc tasks
 
 import { NextResponse } from 'next/server';
@@ -78,6 +76,8 @@ export async function POST(request: Request) {
             assignedTo: body.assignedTo || null,
             assignedToName: body.assignedToName || null,
             estimatedHours: body.estimatedHours || null,
+            actualHours: body.actualHours || null,
+            notes: body.notes || null,
             phase: body.phase || 'Ad-hoc',
             phaseOrder: body.phaseOrder || 99,
             dueDate: body.dueDate || null,
@@ -135,6 +135,37 @@ export async function PATCH(request: Request) {
         console.error('❌ Failed to update task:', error);
         return NextResponse.json(
             { error: 'Failed to update task', message: error.message },
+            { status: 500 },
+        );
+    }
+}
+
+// ── DELETE: Delete a task ───────────────────────────────
+export async function DELETE(request: Request) {
+    const token = getAuthToken(request);
+    if (!token) {
+        return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+    }
+
+    try {
+        const { searchParams } = new URL(request.url);
+        const id = searchParams.get('id');
+
+        if (!id) {
+            return NextResponse.json({ error: 'id is required' }, { status: 400 });
+        }
+
+        const result = await executeGraphQL<{ deleteDevTask: any }>(
+            MUTATIONS.deleteDevTask,
+            { input: { id } },
+            token,
+        );
+
+        return NextResponse.json({ task: result.deleteDevTask });
+    } catch (error: any) {
+        console.error('❌ Failed to delete task:', error);
+        return NextResponse.json(
+            { error: 'Failed to delete task', message: error.message },
             { status: 500 },
         );
     }

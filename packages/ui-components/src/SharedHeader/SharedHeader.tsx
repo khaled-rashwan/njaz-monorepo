@@ -181,14 +181,14 @@ export function SharedHeader({
                                             {/* User Avatar */}
                                             <div className="w-7 h-7 rounded-full bg-gradient-to-br from-cyan-400 to-cyan-600 flex items-center justify-center text-white font-semibold text-xs overflow-hidden border border-cyan-400/30">
                                                 {userAvatar ? (
-                                                    <img src={userAvatar} alt={user.username} className="w-full h-full object-cover" />
+                                                    <img src={userAvatar} alt={user.email || user.username} className="w-full h-full object-cover" />
                                                 ) : (
-                                                    user.username.charAt(0).toUpperCase()
+                                                    (user.email || user.username).charAt(0).toUpperCase()
                                                 )}
                                             </div>
-                                            {/* Truncated Username */}
+                                            {/* Truncated User Identifier (Email preferred) */}
                                             <span className="hidden sm:block text-sm text-slate-300 max-w-24 truncate">
-                                                {user.username.length > 8 ? user.username.slice(0, 8) + '...' : user.username}
+                                                {user.email ? (user.email.split('@')[0]) : (user.username.length > 8 ? user.username.slice(0, 8) + '...' : user.username)}
                                             </span>
                                         </button>
 
@@ -207,7 +207,7 @@ export function SharedHeader({
                                                     }}
                                                 >
                                                     <div className="p-3 border-b border-cyan-500/10">
-                                                        <p className="text-sm font-medium text-white">{user.username}</p>
+                                                        <p className="text-sm font-medium text-white line-clamp-1">{user.email || user.username}</p>
                                                         {user.email && (
                                                             <p className="text-xs text-slate-400 truncate">{user.email}</p>
                                                         )}

@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { useLanguage } from '@/components/LanguageContext';
 import { useAdminUser, useAdminData } from '@/lib/admin/hooks';
 import { fetchAuthSession } from 'aws-amplify/auth';
@@ -32,7 +32,9 @@ const PRIORITY_DOTS: Record<string, string> = {
 export default function BoardPage() {
     const { t } = useLanguage();
     const searchParams = useSearchParams();
+    const router = useRouter();
     const filterInquiryId = searchParams.get('inquiry');
+    const autoCreate = searchParams.get('create') === 'true';
     const { hasAccess, user, isAdmin } = useAdminUser();
 
     const { data: inquiryData } = useAdminData<{ inquiries: any[] }>({ url: '/api/admin/inquiries' });
@@ -47,7 +49,20 @@ export default function BoardPage() {
     const [filterAssignee, setFilterAssignee] = useState<string>('');
     const [filterScope, setFilterScope] = useState<string>(''); // '' = all, 'internal' = no inquiry, 'client' = has inquiry
     const [showCreateModal, setShowCreateModal] = useState(false);
+    const [editingTask, setEditingTask] = useState<any | null>(null);
     const [newTask, setNewTask] = useState({ title: '', inquiryId: '', type: 'development', priority: 'medium' });
+
+    // Handle auto-create from query param
+    useEffect(() => {
+        if (autoCreate) {
+            setNewTask(prev => ({ ...prev, inquiryId: filterInquiryId || '' }));
+            setShowCreateModal(true);
+            // Clear the create param so it doesn't reopen on refresh
+            const params = new URLSearchParams(searchParams.toString());
+            params.delete('create');
+            router.replace(`/admin/board?${params.toString()}`);
+        }
+    }, [autoCreate, filterInquiryId, searchParams, router]);
 
     const tasks = taskData?.tasks || [];
     const inquiries = inquiryData?.inquiries || [];
@@ -129,6 +144,46 @@ export default function BoardPage() {
         }
     }, [draggedTaskId, tasks, refetch]);
 
+    const handleUpdateTask = useCallback(async (updates: any) => {
+        const id = updates.id || editingTask?.id;
+        if (!id) return;
+
+        try {
+            const session = await fetchAuthSession();
+            const token = session.tokens?.accessToken?.toString();
+            await fetch('/api/admin/tasks', {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`,
+                },
+                body: JSON.stringify({ id, ...updates }),
+            });
+            setEditingTask(null);
+            await refetch();
+        } catch (err) {
+            console.error('Failed to update task:', err);
+        }
+    }, [editingTask, refetch]);
+
+    const handleDeleteTask = useCallback(async (taskId: string) => {
+        if (!confirm(t('Are you sure you want to delete this task?', 'هل أنت متأكد من حذف هذه المهمة؟'))) return;
+
+        try {
+            const session = await fetchAuthSession();
+            const token = session.tokens?.accessToken?.toString();
+            await fetch(`/api/admin/tasks?id=${taskId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                },
+            });
+            await refetch();
+        } catch (err) {
+            console.error('Failed to delete task:', err);
+        }
+    }, [refetch, t]);
+
     const handleAssign = async (taskId: string, e: React.ChangeEvent<HTMLSelectElement>) => {
         const assignedTo = e.target.value;
         const selectedUser = usersList.find((u: any) => u.id === assignedTo);
@@ -182,7 +237,7 @@ export default function BoardPage() {
             {/* Header & Filters */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                 <h1 className="text-2xl font-extrabold text-white">
-                    {t('Task Board', 'لوحة المهام')}
+                    {t('Tasks', 'لوحة المهام')}
                 </h1>
                 <div className="flex items-center gap-3 flex-wrap">
                     {/* Filter by Scope */}
@@ -258,16 +313,28 @@ export default function BoardPage() {
                                         key={task.id}
                                         draggable
                                         onDragStart={() => handleDragStart(task.id)}
-                                        className={`p-3 rounded-lg cursor-grab active:cursor-grabbing transition-all hover:border-cyan-500/30 ${
+                                        onClick={() => setEditingTask(task)}
+                                        className={`p-3 rounded-lg cursor-grab active:cursor-grabbing transition-all hover:border-cyan-500/30 group/card ${
                                             draggedTaskId === task.id
                                                 ? 'opacity-50 scale-95'
                                                 : 'futuristic-card'
                                         }`}
                                     >
-                                        {/* Task Title */}
-                                        <div className="flex items-start gap-2 mb-2">
-                                            <span className="text-sm flex-shrink-0">{TYPE_BADGES[task.type]?.label || '📋'}</span>
-                                            <span className="text-white text-sm font-medium leading-tight">{task.title}</span>
+                                        {/* Task Title & Delete */}
+                                        <div className="flex items-start justify-between gap-2 mb-2">
+                                            <div className="flex items-start gap-2">
+                                                <span className="text-sm flex-shrink-0">{TYPE_BADGES[task.type]?.label || '📋'}</span>
+                                                <span className="text-white text-sm font-medium leading-tight">{task.title}</span>
+                                            </div>
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); handleDeleteTask(task.id); }}
+                                                className="opacity-0 group-hover/card:opacity-100 p-1 rounded text-red-500/50 hover:text-red-400 hover:bg-red-500/10 transition-all"
+                                                title={t('Delete', 'حذف')}
+                                            >
+                                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                </svg>
+                                            </button>
                                         </div>
 
                                         {/* Meta Row */}
@@ -354,10 +421,116 @@ export default function BoardPage() {
                 </div>
             )}
 
+            {/* ── Edit Task Modal ────────────────────── */}
+            {editingTask && (
+                <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+                    <div className="futuristic-card rounded-xl p-6 w-full max-w-xl animate-in fade-in zoom-in duration-200">
+                        <div className="flex items-start justify-between mb-4">
+                            <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                                <span>{TYPE_BADGES[editingTask.type]?.label || '📋'}</span>
+                                {t('Edit Task', 'تعديل المهمة')}
+                            </h3>
+                            <button onClick={() => setEditingTask(null)} className="text-slate-500 hover:text-white">✕</button>
+                        </div>
+
+                        <div className="space-y-4">
+                            <div>
+                                <label className="text-xs text-slate-400 mb-1 block uppercase tracking-wider">{t('Title', 'العنوان')}</label>
+                                <input
+                                    defaultValue={editingTask.title}
+                                    onBlur={e => handleUpdateTask({ title: e.target.value })}
+                                    className="futuristic-input text-sm"
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="text-xs text-slate-400 mb-1 block uppercase tracking-wider">{t('Type', 'النوع')}</label>
+                                    <select
+                                        defaultValue={editingTask.type}
+                                        onChange={e => handleUpdateTask({ type: e.target.value })}
+                                        className="futuristic-select text-sm"
+                                    >
+                                        {Object.entries(TYPE_BADGES).map(([k, v]) => (
+                                            <option key={k} value={k}>{v.label} {k}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="text-xs text-slate-400 mb-1 block uppercase tracking-wider">{t('Priority', 'الأولوية')}</label>
+                                    <select
+                                        defaultValue={editingTask.priority}
+                                        onChange={e => handleUpdateTask({ priority: e.target.value })}
+                                        className="futuristic-select text-sm"
+                                    >
+                                        <option value="low">🟢 {t('Low', 'منخفض')}</option>
+                                        <option value="medium">🟡 {t('Medium', 'متوسط')}</option>
+                                        <option value="high">🟠 {t('High', 'عالي')}</option>
+                                        <option value="urgent">🔴 {t('Urgent', 'عاجل')}</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="text-xs text-slate-400 mb-1 block uppercase tracking-wider">{t('Phase', 'المرحلة')}</label>
+                                    <input
+                                        defaultValue={editingTask.phase}
+                                        onBlur={e => handleUpdateTask({ phase: e.target.value })}
+                                        className="futuristic-input text-sm"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-xs text-slate-400 mb-1 block uppercase tracking-wider">{t('Due Date', 'تاريخ الاستحقاق')}</label>
+                                    <input
+                                        type="date"
+                                        defaultValue={editingTask.dueDate}
+                                        onChange={e => handleUpdateTask({ dueDate: e.target.value })}
+                                        className="futuristic-input text-sm"
+                                    />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="text-xs text-slate-400 mb-1 block uppercase tracking-wider">{t('Description', 'الوصف')}</label>
+                                <textarea
+                                    defaultValue={editingTask.description}
+                                    onBlur={e => handleUpdateTask({ description: e.target.value })}
+                                    className="futuristic-textarea text-sm !min-h-[80px]"
+                                    placeholder={t('Initial task definition...', 'تعريف المهمة الأولي...')}
+                                />
+                            </div>
+
+                            <div>
+                                <label className="text-xs text-cyan-400/70 mb-1 block uppercase tracking-wider flex items-center gap-2">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
+                                    {t('Detailed Status & Notes', 'الحالة التفصيلية والملاحظات')}
+                                </label>
+                                <textarea
+                                    defaultValue={editingTask.notes}
+                                    onBlur={e => handleUpdateTask({ notes: e.target.value })}
+                                    className="futuristic-textarea text-sm !min-h-[100px] border-cyan-500/20 bg-cyan-500/5 focus:border-cyan-500/40"
+                                    placeholder={t('Add progress updates here...', 'أضف تحديثات التقدم هنا...')}
+                                />
+                            </div>
+                        </div>
+
+                        <div className="flex justify-end mt-6">
+                            <button
+                                onClick={() => setEditingTask(null)}
+                                className="futuristic-btn-primary text-sm px-8"
+                            >
+                                {t('Done', 'تم')}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* ── Create Task Modal ──────────────────── */}
             {showCreateModal && (
-                <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 p-4">
-                    <div className="futuristic-card rounded-xl p-6 w-full max-w-md">
+                <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+                    <div className="futuristic-card rounded-xl p-6 w-full max-w-md animate-in fade-in zoom-in duration-200">
                         <h3 className="text-lg font-bold text-white mb-4">{t('Create Task', 'إنشاء مهمة')}</h3>
 
                         <div className="space-y-3">

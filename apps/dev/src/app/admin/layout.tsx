@@ -12,7 +12,7 @@ const ADMIN_NAV = [
     { href: '/admin/leads', labelEn: 'Leads', labelAr: 'عملاء محتملين', icon: '🎯' },
     { href: '/admin/quotations', labelEn: 'Quotes', labelAr: 'عروض أسعار', icon: '💰' },
     { href: '/admin/inquiries', labelEn: 'Projects', labelAr: 'المشاريع', icon: '📋' },
-    { href: '/admin/board', labelEn: 'Board', labelAr: 'لوحة المهام', icon: '📌' },
+    { href: '/admin/board', labelEn: 'Tasks', labelAr: 'لوحة المهام', icon: '📌' },
     { href: '/admin/team', labelEn: 'Team', labelAr: 'الفريق', icon: '👥' },
 ];
 

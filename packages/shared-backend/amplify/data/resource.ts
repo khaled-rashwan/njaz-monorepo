@@ -170,6 +170,7 @@ const schema = a.schema({
             assignedToName: a.string(),
             estimatedHours: a.float(),
             actualHours: a.float(),
+            notes: a.string(),                    // Detailed status / progress notes
             phase: a.string(),                    // Workflow phase name
             phaseOrder: a.integer(),              // For ordering
             dueDate: a.date(),
