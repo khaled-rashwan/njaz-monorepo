@@ -14,6 +14,51 @@ applications:
           commands:
             # Move to the shared-backend folder to ensure ampx sees the amplify/ directory
             - cd packages/shared-backend && npx ampx pipeline-deploy --branch $AWS_BRANCH --app-id $AWS_APP_ID
+            
+            # ============================================================
+            # SEQUENTIAL DEPLOYMENT SYNC (Branch Aware)
+            # ============================================================
+            # Only the "Infra" app builds on Git Push. It then triggers
+            # the frontends sequentially to avoid parallel build race conditions.
+            # 
+            # Note: Webhooks must be created in the Amplify Console for each branch.
+            # ============================================================
+            - |
+              echo "--- Syncing Deployment for Branch: $AWS_BRANCH ---"
+              case "$AWS_BRANCH" in
+                "test")
+                  DEV_URL="https://webhooks.amplify.us-east-1.amazonaws.com/prod/webhooks?id=8d6239d8-70b5-483e-83e8-0bc254cd8cc6&token=83fa5PXtHK9O9WGAHs43c4x0nKFMKdg5PbtptcBHSA"
+                  DASHBOARD_URL="https://webhooks.amplify.us-east-1.amazonaws.com/prod/webhooks?id=26a6b3bd-7e6d-4305-83ed-00e0d44a0d9b&token=k1oRdxj4RBkdxjEWVLCxAQrkFUESF5i2NB0yAQ12e8M"
+                  LANDING_URL=""
+                  ESTEBIAN_URL=""
+                  ;;
+                "main")
+                  DEV_URL=""       # <--- ADD PRODUCTION WEBHOOK HERE
+                  DASHBOARD_URL="" # <--- ADD PRODUCTION WEBHOOK HERE
+                  LANDING_URL="" 
+                  ESTEBIAN_URL=""
+                  ;;
+                *)
+                  echo "Skipping sync: No configuration found for branch '$AWS_BRANCH'"
+                  exit 0
+                  ;;
+              esac
+
+              trigger_app() {
+                local name=$1
+                local url=$2
+                if [ -n "$url" ] && [ "$url" != "None" ]; then
+                  echo ">> Triggering $name Build ($AWS_BRANCH)..."
+                  curl -s -X POST -d {} "$url&operation=startbuild" -H "Content-Type:application/json" > /dev/null
+                else
+                  echo ">> Skipping $name: Webhook not configured for $AWS_BRANCH"
+                fi
+              }
+
+              trigger_app "Dev" "$DEV_URL"
+              trigger_app "Dashboard" "$DASHBOARD_URL"
+              trigger_app "Landing" "$LANDING_URL"
+              trigger_app "Estebian" "$ESTEBIAN_URL"
       artifacts:
         baseDirectory: .
         files:
