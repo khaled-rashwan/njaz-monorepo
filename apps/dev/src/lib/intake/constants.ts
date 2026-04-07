@@ -177,38 +177,24 @@ export const TIMELINE_OPTIONS: TimelineOption[] = [
 // ── Wizard Step Configuration ───────────────────────────
 export const WIZARD_STEPS: StepConfig[] = [
     {
-        id: 'project-type',
-        titleEn: 'Project Type',
-        titleAr: 'نوع المشروع',
-        icon: '📋',
+        id: 'start',
+        titleEn: 'Project & Identity',
+        titleAr: 'المشروع والهوية',
+        icon: '🚀',
         isVisible: () => true,
     },
     {
-        id: 'features',
-        titleEn: 'Features',
-        titleAr: 'المميزات',
+        id: 'config',
+        titleEn: 'Features & Timeline',
+        titleAr: 'المميزات والجدول الزمني',
         icon: '⚙️',
         isVisible: (data) => data.projectTypes.length > 0,
     },
     {
-        id: 'timeline',
-        titleEn: 'Timeline',
-        titleAr: 'الجدول الزمني',
-        icon: '📅',
-        isVisible: () => true,
-    },
-    {
-        id: 'brand-assets',
-        titleEn: 'Brand Assets',
-        titleAr: 'الأصول البصرية',
+        id: 'details',
+        titleEn: 'Vision & Assets',
+        titleAr: 'الرؤية والأصول',
         icon: '🎨',
-        isVisible: () => true,
-    },
-    {
-        id: 'client-info',
-        titleEn: 'Your Details',
-        titleAr: 'بياناتك',
-        icon: '👤',
         isVisible: () => true,
     },
     {

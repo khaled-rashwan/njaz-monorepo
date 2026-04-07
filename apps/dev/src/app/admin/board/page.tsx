@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { useLanguage } from '@/components/LanguageContext';
 import { useAdminUser, useAdminData } from '@/lib/admin/hooks';
 import { fetchAuthSession } from 'aws-amplify/auth';
+import { formatProjectName } from '@/lib/admin/utils';
 
 // ── Constants ───────────────────────────────────────────
 const COLUMNS = [
@@ -45,6 +46,7 @@ export default function BoardPage() {
     const { data: usersData } = useAdminData<{ users: any[] }>({ url: '/api/admin/users' });
 
     const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
+    const [dropTargetColId, setDropTargetColId] = useState<string | null>(null);
     const [filterInquiry, setFilterInquiry] = useState<string>(filterInquiryId || '');
     const [filterAssignee, setFilterAssignee] = useState<string>('');
     const [filterScope, setFilterScope] = useState<string>(''); // '' = all, 'internal' = no inquiry, 'client' = has inquiry
@@ -103,7 +105,7 @@ export default function BoardPage() {
     const inquiryNames = useMemo(() => {
         const map: Record<string, string> = {};
         for (const inq of inquiries) {
-            map[inq.id] = inq.clientName || inq.id.slice(0, 8);
+            map[inq.id] = formatProjectName(inq);
         }
         return map;
     }, [inquiries]);
@@ -233,191 +235,190 @@ export default function BoardPage() {
     }
 
     return (
-        <div>
-            {/* Header & Filters */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-                <h1 className="text-2xl font-extrabold text-white">
-                    {t('Tasks', 'لوحة المهام')}
-                </h1>
-                <div className="flex items-center gap-3 flex-wrap">
-                    {/* Filter by Scope */}
-                    <select
-                        value={filterScope}
-                        onChange={e => { setFilterScope(e.target.value); if (e.target.value === 'internal') setFilterInquiry(''); }}
-                        className="futuristic-select text-xs !py-1.5 !px-2 max-w-[140px]"
-                    >
-                        <option value="">{t('All Tasks', 'كل المهام')}</option>
-                        <option value="client">{t('Client Tasks', 'مهام العملاء')}</option>
-                        <option value="internal">{t('Internal Tasks', 'مهام داخلية')}</option>
-                    </select>
+        <div className="flex flex-col gap-4">
+            {/* ── Header: Title & Filters (Ultra-Compact) ───────── */}
+            <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-900/40 p-3 rounded-xl border border-slate-800/50 backdrop-blur-sm">
+                <div className="flex items-center gap-3">
+                    <h1 className="text-xl font-black text-white tracking-tight">Tasks</h1>
+                    <div className="h-6 w-px bg-slate-800" />
+                    <div className="flex items-center gap-2">
+                        <span className="text-[10px] uppercase tracking-widest text-slate-500 font-bold">Filters</span>
+                        <select
+                            value={filterScope}
+                            onChange={e => setFilterScope(e.target.value)}
+                            className="futuristic-select text-[10px] !py-1 !px-2 bg-slate-900/50 min-w-[90px]"
+                        >
+                            <option value="">All Tasks</option>
+                            <option value="internal">Internal Only</option>
+                            <option value="client">Client Only</option>
+                        </select>
+                    </div>
+                </div>
 
-                    {/* Filter by Inquiry */}
+                <div className="flex items-center gap-2">
                     <select
                         value={filterInquiry}
                         onChange={e => setFilterInquiry(e.target.value)}
-                        className="futuristic-select text-xs !py-1.5 !px-2 max-w-[180px]"
-                        disabled={filterScope === 'internal'}
+                        className="futuristic-select text-[10px] !py-1 !px-2 bg-slate-900/50 max-w-[140px] truncate"
                     >
                         <option value="">{t('All Projects', 'كل المشاريع')}</option>
                         {inquiries.map(inq => (
-                            <option key={inq.id} value={inq.id}>{inq.clientName}</option>
+                            <option key={inq.id} value={inq.id}>{formatProjectName(inq)}</option>
                         ))}
                     </select>
 
-                    {/* Filter by Assignee */}
                     <select
                         value={filterAssignee}
                         onChange={e => setFilterAssignee(e.target.value)}
-                        className="futuristic-select text-xs !py-1.5 !px-2 max-w-[140px]"
+                        className="futuristic-select text-[10px] !py-1 !px-2 bg-slate-900/50 min-w-[90px]"
                     >
-                        <option value="">{t('All Members', 'كل الأعضاء')}</option>
-                        <option value="me">{t('Assigned to Me', 'معينة لي')}</option>
-                        <option value="unassigned">{t('Unassigned', 'غير معينة')}</option>
+                        <option value="">All Members</option>
+                        <option value="me">Assigned to Me</option>
+                        <option value="unassigned">Unassigned</option>
                     </select>
 
-                    {/* Add Task */}
                     <button
-                        onClick={() => setShowCreateModal(true)}
-                        className="futuristic-btn-primary text-xs !py-1.5 !px-3"
+                        onClick={() => {
+                            setNewTask({ title: '', inquiryId: filterInquiry || '', type: 'development', priority: 'medium', assignedTo: '', assignedToName: '' });
+                            setShowCreateModal(true);
+                        }}
+                        className="bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-[10px] font-black px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 shadow-[0_0_15px_rgba(56,205,223,0.3)]"
                     >
-                        + {t('Task', 'مهمة')}
+                        <span className="text-sm">+</span> {t('Task', 'مهمة')}
                     </button>
                 </div>
             </div>
 
-            {loading ? (
+            {/* ── Board ─────────────── */}
+            {loading && tasks.length === 0 ? (
                 <div className="text-center py-20">
-                    <div className="w-8 h-8 border-2 border-cyan-500/30 border-t-cyan-400 rounded-full animate-spin mx-auto mb-4" />
+                    <div className="w-8 h-8 border-2 border-cyan-500/30 border-t-cyan-400 rounded-full animate-spin mx-auto" />
                 </div>
             ) : (
-                /* Kanban Columns */
-                <div className="flex gap-4 overflow-x-auto pb-4" style={{ minHeight: '500px' }}>
-                    {COLUMNS.map(col => (
-                        <div
-                            key={col.id}
-                            className="flex-shrink-0 w-64 lg:w-72"
-                            onDragOver={e => e.preventDefault()}
-                            onDrop={() => handleDrop(col.id)}
-                        >
-                            {/* Column Header */}
-                            <div className={`flex items-center gap-2 mb-3 px-3 py-2 rounded-lg bg-${col.color}-500/10 border border-${col.color}-500/20`}>
-                                <span>{col.icon}</span>
-                                <span className={`text-${col.color}-400 text-sm font-bold`}>{t(col.en, col.ar)}</span>
-                                <span className="ml-auto text-slate-500 text-xs">{columns[col.id]?.length || 0}</span>
-                            </div>
+                /* Kanban Columns (Ultra-Compact) */
+                <div className="flex gap-2.5 overflow-x-auto pb-4 custom-scrollbar snap-x snap-mandatory" style={{ minHeight: '600px', scrollBehavior: 'smooth' }}>
+                    {COLUMNS.map(col => {
+                        const isOver = dropTargetColId === col.id;
+                        return (
+                            <div
+                                key={col.id}
+                                className={`flex-shrink-0 w-[190px] lg:w-[210px] snap-center rounded-xl transition-all duration-300 p-1.5 ${
+                                    isOver ? 'bg-cyan-500/5 ring-1 ring-cyan-500/20' : ''
+                                }`}
+                                onDragOver={e => { e.preventDefault(); setDropTargetColId(col.id); }}
+                                onDragLeave={() => setDropTargetColId(null)}
+                                onDrop={() => { handleDrop(col.id); setDropTargetColId(null); }}
+                            >
+                                {/* Column Header - Ultra compact */}
+                                <div className={`flex items-center gap-1 mb-2 px-1.5 py-1 rounded-lg bg-${col.color}-500/10 border border-${col.color}-500/20`}>
+                                    <span className="text-[10px]">{col.icon}</span>
+                                    <span className={`text-${col.color}-400 text-[9px] font-black uppercase tracking-tighter`}>{t(col.en, col.ar)}</span>
+                                    <span className="ml-auto text-slate-700 text-[9px] font-mono font-bold">{columns[col.id]?.length || 0}</span>
+                                </div>
 
-                            {/* Cards */}
-                            <div className="space-y-2 min-h-[200px]">
-                                {(columns[col.id] || []).map(task => (
-                                    <div
-                                        key={task.id}
-                                        draggable
-                                        onDragStart={() => handleDragStart(task.id)}
-                                        onClick={() => setEditingTask(task)}
-                                        className={`p-3 rounded-lg cursor-grab active:cursor-grabbing transition-all hover:border-cyan-500/30 group/card ${
-                                            draggedTaskId === task.id
-                                                ? 'opacity-50 scale-95'
-                                                : 'futuristic-card'
-                                        }`}
-                                    >
-                                        {/* Task Title & Delete */}
-                                        <div className="flex items-start justify-between gap-2 mb-2">
-                                            <div className="flex items-start gap-2">
-                                                <span className="text-sm flex-shrink-0">{TYPE_BADGES[task.type]?.label || '📋'}</span>
-                                                <span className="text-white text-sm font-medium leading-tight">{task.title}</span>
-                                            </div>
-                                            <button
-                                                onClick={(e) => { e.stopPropagation(); handleDeleteTask(task.id); }}
-                                                className="opacity-0 group-hover/card:opacity-100 p-1 rounded text-red-500/50 hover:text-red-400 hover:bg-red-500/10 transition-all"
-                                                title={t('Delete', 'حذف')}
+                                {/* Cards Container */}
+                                <div className="space-y-1.5 min-h-[400px]">
+                                    {(columns[col.id] || []).map(task => {
+                                        const isDragged = draggedTaskId === task.id;
+                                        return (
+                                            <div
+                                                key={task.id}
+                                                draggable
+                                                onDragStart={(e) => {
+                                                    handleDragStart(task.id);
+                                                    e.dataTransfer.effectAllowed = 'move';
+                                                }}
+                                                onDragOver={(e) => e.preventDefault()}
+                                                onClick={() => setEditingTask(task)}
+                                                className={`
+                                                    group/card flex items-stretch gap-0 rounded-lg cursor-grab active:cursor-grabbing transition-all border border-transparent
+                                                    ${isDragged
+                                                        ? 'opacity-20 scale-95 border-dashed border-slate-700'
+                                                        : 'futuristic-card hover:border-cyan-500/30 hover:shadow-lg hover:shadow-cyan-500/10 hover:-translate-y-0.5'
+                                                    }
+                                                `}
                                             >
-                                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                </svg>
-                                            </button>
-                                        </div>
+                                                {/* 1. Drag Handle (Slim) */}
+                                                <div className="w-4 flex items-center justify-center text-slate-800 group-hover/card:text-cyan-500/40 transition-colors border-r border-slate-800/20">
+                                                    <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M8 9h.01M8 12h.01M8 15h.01M16 9h.01M16 12h.01M16 15h.01" />
+                                                    </svg>
+                                                </div>
 
-                                        {/* Meta Row */}
-                                        <div className="flex items-center gap-2 text-[10px]">
-                                            {/* Priority dot */}
-                                            <span className={`w-2 h-2 rounded-full ${PRIORITY_DOTS[task.priority] || PRIORITY_DOTS.medium}`} />
-
-                                            {/* Phase */}
-                                            <span className="text-slate-500 truncate">{task.phase}</span>
-
-                                            {/* Hours */}
-                                            {task.estimatedHours && (
-                                                <span className="text-slate-600 ml-auto">{task.estimatedHours}h</span>
-                                            )}
-                                        </div>
-
-                                        {/* Project tag */}
-                                        <div className="mt-2 text-[10px] truncate">
-                                            {task.inquiryId ? (
-                                                <span className="text-slate-600">{inquiryNames[task.inquiryId] || task.inquiryId?.slice(0, 8)}</span>
-                                            ) : (
-                                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-violet-500/15 border border-violet-500/25 text-violet-400 font-medium">
-                                                    🏢 {t('Internal', 'داخلي')}
-                                                </span>
-                                            )}
-                                        </div>
-
-                                        {/* Assignee */}
-                                        <div className="mt-2 flex items-center justify-between pointer-events-auto">
-                                            {task.assignedTo ? (() => {
-                                                const user = usersList.find((u: any) => u.id === task.assignedTo);
-                                                const displayName = user ? (user.email || user.username) : (task.assignedToName || task.assignedTo.slice(0, 8));
-                                                return (
-                                                    <div className="flex items-center gap-1.5">
-                                                        <div className="w-4 h-4 rounded-full bg-cyan-500/20 border border-cyan-500/30 flex items-center justify-center text-[8px] text-cyan-400">
-                                                            {displayName.charAt(0).toUpperCase()}
-                                                        </div>
-                                                        <span className="text-[10px] text-slate-400 truncate max-w-[80px]">
-                                                            {displayName}
+                                                {/* 2. Main Card Content (Ultra-Compact) */}
+                                                <div className="flex-1 p-1.5 min-w-0">
+                                                    {/* Row 1: Title & Priority Dot */}
+                                                    <div className="flex items-start justify-between gap-1.5 mb-1">
+                                                        <span className="text-[11px] text-white font-bold leading-tight break-words">
+                                                            {task.title}
                                                         </span>
+                                                        <span className={`w-1.5 h-1.5 rounded-full shrink-0 mt-1 shadow-[0_0_8px] ${PRIORITY_DOTS[task.priority] || PRIORITY_DOTS.medium}`} />
                                                     </div>
-                                                );
-                                            })() : (
-                                                <span className="text-[10px] text-slate-500 italic">Unassigned</span>
-                                            )}
 
-                                            {isAdmin && (
-                                                <select
-                                                    value={task.assignedTo || ''}
-                                                    onChange={e => handleAssign(task.id, e)}
-                                                    onClick={e => e.stopPropagation()}
-                                                    className="bg-transparent text-[10px] text-cyan-400 border border-slate-700 rounded px-1 py-0.5 outline-none hover:border-cyan-500/50 appearance-none cursor-pointer max-w-[80px] truncate"
-                                                >
-                                                    <option value="" className="bg-slate-900">Unassigned</option>
-                                                    {usersList.map((u: any) => (
-                                                        <option key={u.id} value={u.id} className="bg-slate-900">
-                                                            {u.email || u.username}
-                                                        </option>
-                                                    ))}
-                                                </select>
-                                            )}
-                                        </div>
+                                                    {/* Row 2: Type & Phase (Micro) */}
+                                                    <div className="flex items-center gap-1.5 text-[8px] mb-1.5 font-bold uppercase tracking-tighter">
+                                                        <span className="text-cyan-500/70 border-b border-cyan-500/30">
+                                                            {task.type}
+                                                        </span>
+                                                        <span className="text-slate-600 truncate max-w-[60px]">
+                                                            {task.phase || '...'}
+                                                        </span>
+                                                        {task.estimatedHours && (
+                                                            <span className="ml-auto text-slate-700 font-mono">
+                                                                {task.estimatedHours}h
+                                                            </span>
+                                                        )}
+                                                    </div>
 
-                                        {/* GitHub badge */}
-                                        {task.githubIssueUrl && (
-                                            <a
-                                                href={task.githubIssueUrl}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="mt-1.5 inline-flex items-center gap-1 text-[10px] text-slate-500 hover:text-white"
-                                                onClick={e => e.stopPropagation()}
-                                            >
-                                                <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
-                                                    <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z" />
-                                                </svg>
-                                                #{task.githubIssueNumber}
-                                            </a>
-                                        )}
-                                    </div>
-                                ))}
+                                                    {/* Row 3: Project Tag (Micro) */}
+                                                    <div className="mb-1.5">
+                                                        {task.inquiryId ? (
+                                                            <div className="text-[8px] text-cyan-400 font-bold bg-cyan-500/5 border border-cyan-500/10 px-1 py-0.5 rounded truncate max-w-full">
+                                                                #{inquiryNames[task.inquiryId] || task.inquiryId?.slice(0, 8)}
+                                                            </div>
+                                                        ) : (
+                                                            <div className="text-[8px] text-violet-400 font-bold bg-violet-500/10 border border-violet-500/20 px-1 py-0.5 rounded">
+                                                                🏢 {t('Internal', 'داخلي')}
+                                                            </div>
+                                                        )}
+                                                    </div>
+
+                                                    {/* Row 4: Assignee Avatar & Delete */}
+                                                    <div className="flex items-center justify-between">
+                                                        {task.assignedTo ? (() => {
+                                                            const user = usersList.find((u: any) => u.id === task.assignedTo);
+                                                            const displayName = user ? (user.email || user.username) : (task.assignedToName || task.assignedTo.slice(0, 8));
+                                                            return (
+                                                                <div className="flex items-center gap-1">
+                                                                    <div className="w-3 h-3 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-[6px] text-slate-400 font-black">
+                                                                        {displayName.charAt(0).toUpperCase()}
+                                                                    </div>
+                                                                    <span className="text-[8px] text-slate-500 truncate max-w-[60px]">
+                                                                        {displayName.split('@')[0]}
+                                                                    </span>
+                                                                </div>
+                                                            );
+                                                        })() : (
+                                                            <div className="w-1.5 h-1.5 rounded-full bg-slate-900 border border-slate-800" />
+                                                        )}
+
+                                                        <button
+                                                            onClick={(e) => { e.stopPropagation(); handleDeleteTask(task.id); }}
+                                                            className="opacity-0 group-hover/card:opacity-100 p-0.5 text-red-500/30 hover:text-red-400 transition-all ml-auto"
+                                                        >
+                                                            <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                            </svg>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
                             </div>
-                        </div>
-                    ))}
+                        );
+                    })}
                 </div>
             )}
 
@@ -592,7 +593,7 @@ export default function BoardPage() {
                                 >
                                     <option value="">🏢 {t('Internal Task (no project)', 'مهمة داخلية (بدون مشروع)')}</option>
                                     {inquiries.map(inq => (
-                                        <option key={inq.id} value={inq.id}>{inq.clientName}</option>
+                                        <option key={inq.id} value={inq.id}>{formatProjectName(inq)}</option>
                                     ))}
                                 </select>
                             </div>

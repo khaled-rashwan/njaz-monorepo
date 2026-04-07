@@ -70,17 +70,17 @@ export default function StepTimeline({ formData, dispatch }: StepTimelineProps) 
                                         <h3 className={`text-lg font-bold transition-colors ${
                                             isSelected ? 'text-white' : 'text-slate-300 group-hover:text-white'
                                         }`}>
-                                            {t(opt.labelEn, opt.labelAr)}
+                                            {opt.labelEn} <span className="text-slate-500 mx-1">/</span> <span className="font-arabic font-normal">{opt.labelAr}</span>
                                         </h3>
                                         <span className={`
-                                            text-xs font-bold px-2 py-0.5 rounded-full border
+                                            text-[10px] font-bold px-2 py-0.5 rounded-full border flex items-center gap-1
                                             ${isSelected ? BADGE_COLOR_MAP[opt.color] : 'bg-slate-800 text-slate-500 border-slate-700'}
                                         `}>
-                                            {t(opt.badgeEn, opt.badgeAr)}
+                                            {opt.badgeEn} <span className="mx-0.5 opacity-50">/</span> {opt.badgeAr}
                                         </span>
                                     </div>
-                                    <p className="text-slate-500 text-sm">
-                                        {t(opt.descEn, opt.descAr)}
+                                    <p className="text-slate-500 text-[11px]">
+                                        {opt.descEn} <span className="text-slate-700 mx-1">/</span> <span className="font-arabic">{opt.descAr}</span>
                                     </p>
                                 </div>
 

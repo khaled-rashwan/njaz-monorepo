@@ -1,8 +1,7 @@
-'use client';
-
 import { useLanguage } from '@/components/LanguageContext';
 import { PROJECT_TYPES } from '@/lib/intake';
 import type { IntakeFormData, ProjectType, WizardAction } from '@/lib/intake';
+import StepClientInfo from './StepClientInfo';
 
 interface StepProjectTypeProps {
     formData: IntakeFormData;
@@ -39,16 +38,27 @@ export default function StepProjectType({ formData, dispatch }: StepProjectTypeP
 
     return (
         <div className="wizard-step-enter">
-            <div className="mb-6">
+            {/* Identity Capture Section */}
+            <div className="mb-10">
                 <h2 className="text-2xl font-bold text-white mb-2">
-                    {t('What are you looking to build?', 'ماذا تريد أن تبني؟')}
+                    {t('Let\'s Get Started', 'لنبدأ معاً')}
                 </h2>
-                <p className="text-slate-400 text-sm">
+                <p className="text-slate-400 text-sm mb-6">
                     {t(
-                        'Select one or more project types. You can combine services for a comprehensive solution.',
-                        'اختر نوعًا واحدًا أو أكثر من المشاريع. يمكنك الجمع بين الخدمات لحل شامل.'
+                        'Who are you and what do you want to build?',
+                        'من أنت وماذا تريد أن تبني؟'
                     )}
                 </p>
+                <StepClientInfo formData={formData} dispatch={dispatch} />
+            </div>
+
+            {/* Divider */}
+            <div className="flex items-center gap-4 mb-8">
+                <div className="h-px flex-1 bg-gradient-to-r from-transparent via-slate-800 to-transparent" />
+                <span className="text-[10px] uppercase tracking-widest text-slate-500 font-bold whitespace-nowrap">
+                    {t('Project Selection', 'اختيار المشروع')}
+                </span>
+                <div className="h-px flex-1 bg-gradient-to-r from-transparent via-slate-800 to-transparent" />
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -95,10 +105,10 @@ export default function StepProjectType({ formData, dispatch }: StepProjectTypeP
                                     <h3 className={`font-bold mb-1 transition-colors ${
                                         isSelected ? 'text-white' : 'text-slate-300 group-hover:text-white'
                                     }`}>
-                                        {t(pt.labelEn, pt.labelAr)}
+                                        {pt.labelEn} <span className="text-slate-500 mx-1">/</span> <span className="font-arabic">{pt.labelAr}</span>
                                     </h3>
-                                    <p className="text-slate-500 text-xs leading-relaxed">
-                                        {t(pt.descEn, pt.descAr)}
+                                    <p className="text-slate-500 text-[10px] leading-relaxed">
+                                        {pt.descEn} <span className="text-slate-700 mx-1">/</span> <span className="font-arabic">{pt.descAr}</span>
                                     </p>
                                 </div>
                             </div>
@@ -108,11 +118,11 @@ export default function StepProjectType({ formData, dispatch }: StepProjectTypeP
             </div>
 
             {selected.length === 0 && (
-                <p className="text-amber-500/70 text-xs mt-4 flex items-center gap-1.5">
-                    <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <p className="text-amber-500/70 text-[10px] mt-4 flex items-center gap-1.5 px-2">
+                    <svg className="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M12 2a10 10 0 100 20 10 10 0 000-20z" />
                     </svg>
-                    {t('Please select at least one project type to continue.', 'يرجى اختيار نوع مشروع واحد على الأقل للمتابعة.')}
+                    Please select a project type <span className="mx-1">/</span> يرجى اختيار نوع المشروع
                 </p>
             )}
         </div>

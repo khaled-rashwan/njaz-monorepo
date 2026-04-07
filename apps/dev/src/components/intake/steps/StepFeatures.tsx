@@ -109,7 +109,7 @@ export default function StepFeatures({ formData, dispatch }: StepFeaturesProps) 
                                         </div>
 
                                         <span className={`text-sm font-medium ${isEnabled ? 'text-white' : 'text-slate-400'}`}>
-                                            {t(feature.labelEn, feature.labelAr)}
+                                            {feature.labelEn} <span className="text-slate-600 mx-1">/</span> <span className="font-arabic">{feature.labelAr}</span>
                                         </span>
                                     </button>
                                 );

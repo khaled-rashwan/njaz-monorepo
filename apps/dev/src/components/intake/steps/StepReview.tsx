@@ -65,8 +65,8 @@ export default function StepReview({ formData, dispatch, onGoToStep, isSubmittin
                 </h2>
                 <p className="text-slate-400 text-sm">
                     {t(
-                        'Please review everything before submitting. You can edit any section.',
-                        'يرجى مراجعة كل شيء قبل الإرسال. يمكنك تعديل أي قسم.'
+                        'Please review everything before submitting.',
+                        'يرجى مراجعة كل شيء قبل الإرسال.'
                     )}
                 </p>
             </div>
@@ -74,13 +74,13 @@ export default function StepReview({ formData, dispatch, onGoToStep, isSubmittin
             <div className="space-y-5">
                 {/* Estimate Banner */}
                 <div className="rounded-xl bg-gradient-to-r from-cyan-500/10 via-purple-500/10 to-pink-500/10 border border-cyan-500/20 p-6 text-center">
-                    <div className="text-xs text-slate-500 uppercase tracking-wider mb-1">
-                        {t('Your Estimated Investment', 'الاستثمار المقدر')}
+                    <div className="text-[10px] text-slate-500 uppercase tracking-widest mb-1">
+                        Estimated Investment <span className="mx-1">/</span> الاستثمار المقدر
                     </div>
                     <div className="text-3xl font-extrabold gradient-text mb-2" dir="ltr">
                         {formatCurrency(estimate.priceMin)} – {formatCurrency(estimate.priceMax)}
                     </div>
-                    <div className="text-slate-400 text-sm">
+                    <div className="text-slate-400 text-xs">
                         {estimate.estimatedWeeks} {t('weeks estimated delivery', 'أسبوع للتسليم المتوقع')}
                     </div>
                 </div>
@@ -88,180 +88,135 @@ export default function StepReview({ formData, dispatch, onGoToStep, isSubmittin
                 {/* Project Types */}
                 <div className="futuristic-card rounded-xl p-5">
                     <SectionHeader
-                        title={t('Project Types', 'أنواع المشاريع')}
+                        title="Project & Identity / المشروع والهوية"
                         stepIndex={0}
                         onEdit={onGoToStep}
                     />
-                    <div className="flex flex-wrap gap-2">
+                    <div className="mb-4 pt-2 flex flex-wrap gap-2">
                         {selectedTypes.map(pt => (
                             <span
                                 key={pt.value}
-                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-700 text-sm text-white"
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-700 text-xs text-white"
                             >
-                                {pt.icon} {t(pt.labelEn, pt.labelAr)}
+                                {pt.icon} {pt.labelEn} <span className="text-slate-600">/</span> {pt.labelAr}
                             </span>
                         ))}
                     </div>
-                </div>
-
-                {/* Features */}
-                {selectedFeatures.length > 0 && (
-                    <div className="futuristic-card rounded-xl p-5">
-                        <SectionHeader
-                            title={t('Selected Features', 'المميزات المختارة')}
-                            stepIndex={1}
-                            onEdit={onGoToStep}
-                        />
-                        <div className="flex flex-wrap gap-2">
-                            {selectedFeatures.map(f => (
-                                <span
-                                    key={f.key}
-                                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-cyan-500/10 border border-cyan-500/20 text-xs text-cyan-300"
-                                >
-                                    <svg className="w-3 h-3 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                    </svg>
-                                    {t(f.labelEn, f.labelAr)}
-                                </span>
-                            ))}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs border-t border-slate-800/50 pt-4">
+                        <div>
+                            <span className="text-slate-500">Name / الاسم:</span> <span className="text-white">{formData.clientName}</span>
+                        </div>
+                        <div>
+                            <span className="text-slate-500">Email / البريد:</span> <span className="text-white" dir="ltr">{formData.clientEmail}</span>
                         </div>
                     </div>
-                )}
-
-                {/* Timeline */}
-                <div className="futuristic-card rounded-xl p-5">
-                    <SectionHeader
-                        title={t('Timeline', 'الجدول الزمني')}
-                        stepIndex={2}
-                        onEdit={onGoToStep}
-                    />
-                    {selectedTimeline && (
-                        <div className="flex items-center gap-3">
-                            <span className="text-2xl">{selectedTimeline.icon}</span>
-                            <div>
-                                <div className="text-white font-medium">{t(selectedTimeline.labelEn, selectedTimeline.labelAr)}</div>
-                                <div className="text-slate-500 text-xs">{t(selectedTimeline.descEn, selectedTimeline.descAr)}</div>
-                            </div>
-                        </div>
-                    )}
                 </div>
 
-                {/* Brand Assets */}
+                {/* Features & Timeline (Step 1) */}
                 <div className="futuristic-card rounded-xl p-5">
                     <SectionHeader
-                        title={t('Brand Assets', 'الأصول البصرية')}
-                        stepIndex={3}
+                        title="Needs & Timeline / الاحتياجات والجدول"
+                        stepIndex={1}
                         onEdit={onGoToStep}
                     />
-                    {formData.hasBrandAssets ? (
-                        <div>
-                            <p className="text-slate-300 text-sm mb-2">
-                                📁 {formData.uploadedFiles.length} {t('file(s) uploaded', 'ملف(ات) مرفوعة')}
-                            </p>
+                    <div className="space-y-4 pt-2">
+                        {selectedTimeline && (
+                            <div className="flex items-center gap-3 bg-slate-800/30 p-3 rounded-lg border border-slate-700/30">
+                                <span className="text-2xl">{selectedTimeline.icon}</span>
+                                <div>
+                                    <div className="text-white text-xs font-medium">
+                                        {selectedTimeline.labelEn} <span className="mx-1">/</span> {selectedTimeline.labelAr}
+                                    </div>
+                                    <div className="text-slate-500 text-[10px]">
+                                        {selectedTimeline.descEn} <span className="mx-1">/</span> {selectedTimeline.descAr}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                        {selectedFeatures.length > 0 && (
                             <div className="flex flex-wrap gap-2">
-                                {formData.uploadedFiles.map((f, i) => (
-                                    <span key={i} className="text-xs text-slate-400 bg-slate-800 px-2 py-1 rounded">
-                                        {f.name}
+                                {selectedFeatures.map(f => (
+                                    <span
+                                        key={f.key}
+                                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-cyan-500/10 border border-cyan-500/20 text-[10px] text-cyan-300"
+                                    >
+                                        {f.labelEn} <span className="mx-0.5 opacity-50">/</span> {f.labelAr}
                                     </span>
                                 ))}
                             </div>
-                        </div>
-                    ) : (
-                        <div className="text-sm space-y-1">
-                            {selectedStyle && (
-                                <p className="text-slate-300">
-                                    <span className="text-slate-500">{t('Style:', 'الأسلوب:')}</span> {t(selectedStyle.labelEn, selectedStyle.labelAr)}
-                                </p>
-                            )}
-                            {formData.preferredColors && (
-                                <p className="text-slate-300">
-                                    <span className="text-slate-500">{t('Colors:', 'الألوان:')}</span> {formData.preferredColors}
-                                </p>
-                            )}
-                            {formData.competitors && (
-                                <p className="text-slate-300">
-                                    <span className="text-slate-500">{t('Inspiration:', 'الإلهام:')}</span> {formData.competitors}
-                                </p>
-                            )}
-                            {!selectedStyle && !formData.preferredColors && !formData.competitors && (
-                                <p className="text-slate-500">✨ {t('Starting from scratch', 'البدء من الصفر')}</p>
-                            )}
-                        </div>
-                    )}
-                </div>
-
-                {/* Client Info */}
-                <div className="futuristic-card rounded-xl p-5">
-                    <SectionHeader
-                        title={t('Contact Information', 'معلومات التواصل')}
-                        stepIndex={4}
-                        onEdit={onGoToStep}
-                    />
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-                        <div>
-                            <span className="text-slate-500">{t('Name:', 'الاسم:')}</span>{' '}
-                            <span className="text-white">{formData.clientName || '—'}</span>
-                        </div>
-                        <div>
-                            <span className="text-slate-500">{t('Email:', 'البريد:')}</span>{' '}
-                            <span className="text-white" dir="ltr">{formData.clientEmail || '—'}</span>
-                        </div>
-                        {formData.clientPhone && (
-                            <div>
-                                <span className="text-slate-500">{t('Phone:', 'الهاتف:')}</span>{' '}
-                                <span className="text-white" dir="ltr">{formData.clientPhone}</span>
-                            </div>
-                        )}
-                        {formData.companyName && (
-                            <div>
-                                <span className="text-slate-500">{t('Company:', 'الشركة:')}</span>{' '}
-                                <span className="text-white">{formData.companyName}</span>
-                            </div>
                         )}
                     </div>
-                    {formData.projectDescription && (
-                        <div className="mt-3 pt-3 border-t border-slate-700/50">
-                            <span className="text-slate-500 text-sm">{t('Description:', 'الوصف:')}</span>
-                            <p className="text-slate-300 text-sm mt-1 leading-relaxed">{formData.projectDescription}</p>
+                </div>
+
+                {/* Vision & Assets (Step 2) */}
+                <div className="futuristic-card rounded-xl p-5">
+                    <SectionHeader
+                        title="Vision & Assets / الرؤية والأصول"
+                        stepIndex={2}
+                        onEdit={onGoToStep}
+                    />
+                    <div className="space-y-3 pt-2">
+                        {formData.projectDescription && (
+                            <div>
+                                <span className="text-slate-500 text-[10px] uppercase">Description / وصف المشروع:</span>
+                                <p className="text-slate-300 text-xs mt-1 leading-relaxed line-clamp-3">{formData.projectDescription}</p>
+                            </div>
+                        )}
+                        
+                        <div className="flex flex-wrap items-center gap-4 text-[10px]">
+                            {formData.hasBrandAssets ? (
+                                <span className="text-emerald-400 flex items-center gap-1">
+                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                    </svg>
+                                    Files Attached <span className="mx-0.5">/</span> مرفق ملفات ({formData.uploadedFiles.length})
+                                </span>
+                            ) : selectedStyle ? (
+                                <span className="text-slate-400">
+                                    Style: <span className="text-slate-200">{selectedStyle.labelEn} / {selectedStyle.labelAr}</span>
+                                </span>
+                            ) : null}
                         </div>
-                    )}
+                    </div>
                 </div>
 
                 {/* Submit */}
-                <div className="pt-2">
-                    {!isValid && (
-                        <p className="text-amber-500/70 text-xs mb-3 flex items-center gap-1.5">
-                            <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M12 2a10 10 0 100 20 10 10 0 000-20z" />
-                            </svg>
-                            {t(
-                                'Please fill in all required fields (marked with *) to submit.',
-                                'يرجى ملء جميع الحقول المطلوبة (المحددة بـ *) للإرسال.'
-                            )}
-                        </p>
-                    )}
-
+                <div className="pt-4">
                     <button
                         type="button"
                         onClick={onSubmit}
                         disabled={!isValid || isSubmitting}
                         className={`
-                            w-full py-4 rounded-xl text-lg font-bold transition-all duration-300
+                            w-full py-4 rounded-xl text-lg font-bold transition-all duration-300 relative overflow-hidden group
                             ${isValid && !isSubmitting
                                 ? 'futuristic-btn-primary hover:scale-[1.01]'
-                                : 'bg-slate-700 text-slate-500 cursor-not-allowed'
+                                : 'bg-slate-700/30 text-slate-600 cursor-not-allowed border border-slate-700'
                             }
                         `}
                     >
                         {isSubmitting ? (
                             <span className="flex items-center justify-center gap-2">
                                 <div className="w-5 h-5 border-2 border-slate-400/30 border-t-white rounded-full animate-spin" />
-                                {t('Submitting...', 'جارِ الإرسال...')}
+                                {t('Analyzing & Sending...', 'جاري التحليل والإرسال...')}
                             </span>
                         ) : (
-                            <>🚀 {t('Submit Project Request', 'إرسال طلب المشروع')}</>
+                            <div className="flex items-center justify-center gap-3">
+                                <span className="flex items-center gap-2">
+                                    <span>Analyze & Submit</span>
+                                    <span className="text-slate-900/50">/</span>
+                                    <span className="font-arabic font-normal">تحليل وإرسال</span>
+                                </span>
+                                <svg className="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                                </svg>
+                            </div>
                         )}
                     </button>
+                    {!isValid && (
+                        <p className="text-amber-500/70 text-[10px] mt-3 text-center">
+                            Please complete all required fields <span className="mx-1">/</span> يرجى إكمال جميع الحقول
+                        </p>
+                    )}
                 </div>
             </div>
         </div>

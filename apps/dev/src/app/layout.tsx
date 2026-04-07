@@ -26,7 +26,7 @@ export default function RootLayout({
     children: React.ReactNode;
 }) {
     return (
-        <html lang="ar" dir="rtl">
+        <html lang="ar" dir="rtl" suppressHydrationWarning>
             <head>
                 <title>Dev | تطوير - حلول التسويق الرقمي والبرمجيات</title>
                 <meta name="description" content="وكالة متكاملة للتسويق الرقمي وتطوير البرمجيات - تصميم الهوية البصرية والمواقع والحملات الإعلانية" />

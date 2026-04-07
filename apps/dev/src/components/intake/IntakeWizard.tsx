@@ -1,6 +1,6 @@
 'use client';
 
-import { useReducer, useCallback, useMemo } from 'react';
+import { useReducer, useCallback, useMemo, useRef, useEffect } from 'react';
 import { useLanguage } from '@/components/LanguageContext';
 import {
     WIZARD_STEPS, DEFAULT_FORM_DATA,
@@ -113,6 +113,20 @@ export default function IntakeWizard() {
     const { t, direction } = useLanguage();
     const [state, dispatch] = useReducer(wizardReducer, initialState);
     const { currentStep, formData, isSubmitting, isSubmitted } = state;
+    const containerRef = useRef<HTMLDivElement>(null);
+
+    // Auto-scroll to top on step change
+    useEffect(() => {
+        if (containerRef.current) {
+            // Scroll to the top of the wizard container
+            const offset = 100; // Account for sticky headers
+            const elementPosition = containerRef.current.getBoundingClientRect().top + window.pageYOffset;
+            window.scrollTo({
+                top: elementPosition - offset,
+                behavior: 'smooth'
+            });
+        }
+    }, [currentStep]);
 
     // Get visible steps based on current form data
     const visibleSteps = useMemo(
@@ -130,20 +144,16 @@ export default function IntakeWizard() {
         if (!step) return false;
 
         switch (step.id) {
-            case 'project-type':
-                return formData.projectTypes.length > 0;
-            case 'features':
-                return true; // Features are optional
-            case 'timeline':
-                return true; // Always has a default
-            case 'brand-assets':
-                return true; // Optional
-            case 'client-info':
+            case 'start':
                 return (
+                    formData.projectTypes.length > 0 &&
                     formData.clientName.trim().length > 0 &&
-                    formData.clientEmail.trim().length > 0 &&
-                    formData.projectDescription.trim().length > 0
+                    formData.clientEmail.trim().length > 0
                 );
+            case 'config':
+                return true; // Features are optional, timeline has default
+            case 'details':
+                return formData.projectDescription.trim().length > 0;
             case 'review':
                 return true;
             default:
@@ -273,16 +283,26 @@ export default function IntakeWizard() {
     const stepId = visibleSteps[currentStep]?.id;
     const renderStep = () => {
         switch (stepId) {
-            case 'project-type':
+            case 'start':
                 return <StepProjectType formData={formData} dispatch={dispatch} />;
-            case 'features':
-                return <StepFeatures formData={formData} dispatch={dispatch} />;
-            case 'timeline':
-                return <StepTimeline formData={formData} dispatch={dispatch} />;
-            case 'brand-assets':
-                return <StepBrandAssets formData={formData} dispatch={dispatch} />;
-            case 'client-info':
-                return <StepClientInfo formData={formData} dispatch={dispatch} />;
+            case 'config':
+                return (
+                    <div className="space-y-10">
+                        <StepFeatures formData={formData} dispatch={dispatch} />
+                        <div className="pt-10 border-t border-slate-800/50">
+                            <StepTimeline formData={formData} dispatch={dispatch} />
+                        </div>
+                    </div>
+                );
+            case 'details':
+                return (
+                    <div className="space-y-10">
+                        <StepClientInfo formData={formData} dispatch={dispatch} isDescriptionOnly={true} />
+                        <div className="pt-10 border-t border-slate-800/50">
+                            <StepBrandAssets formData={formData} dispatch={dispatch} />
+                        </div>
+                    </div>
+                );
             case 'review':
                 return (
                     <StepReview
@@ -299,7 +319,7 @@ export default function IntakeWizard() {
     };
 
     return (
-        <div>
+        <div ref={containerRef}>
             <ProgressBar currentStep={currentStep} formData={formData} />
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -319,7 +339,7 @@ export default function IntakeWizard() {
                                 className={`
                                     flex items-center gap-2 px-5 py-2.5 rounded-lg font-medium text-sm transition-all
                                     ${isFirstStep
-                                        ? 'text-slate-600 cursor-not-allowed'
+                                        ? 'text-slate-600 cursor-not-allowed opacity-0'
                                         : 'futuristic-btn'
                                     }
                                 `}
@@ -329,14 +349,18 @@ export default function IntakeWizard() {
                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                                         </svg>
-                                        {t('Back', 'رجوع')}
+                                        <span className="flex items-center gap-1.5 grayscale opacity-70 group-hover:grayscale-0 group-hover:opacity-100 transition-all">
+                                            {t('Back', 'رجوع')}
+                                        </span>
                                     </>
                                 ) : (
                                     <>
                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                                         </svg>
-                                        {t('Back', 'رجوع')}
+                                        <span>Back</span>
+                                        <span className="text-slate-500 mx-1">/</span>
+                                        <span className="text-slate-400 font-arabic">رجوع</span>
                                     </>
                                 )}
                             </button>
@@ -346,27 +370,40 @@ export default function IntakeWizard() {
                                 onClick={goNext}
                                 disabled={!canProceed}
                                 className={`
-                                    flex items-center gap-2 px-6 py-2.5 rounded-lg font-medium text-sm transition-all
+                                    flex items-center gap-2 px-6 py-2.5 rounded-lg font-medium text-sm transition-all relative group
                                     ${canProceed
                                         ? 'futuristic-btn-primary'
-                                        : 'bg-slate-700 text-slate-500 cursor-not-allowed'
+                                        : 'bg-slate-700/30 text-slate-500 cursor-not-allowed border border-slate-700'
                                     }
                                 `}
                             >
                                 {direction === 'rtl' ? (
                                     <>
-                                        {t('Next', 'التالي')}
+                                        <span className="flex items-center gap-1.5">
+                                            {t('Next', 'التالي')}
+                                        </span>
                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                                         </svg>
                                     </>
                                 ) : (
                                     <>
-                                        {t('Next', 'التالي')}
+                                        <span>Next</span>
+                                        <span className="text-slate-800/50 mx-1">/</span>
+                                        <span className="text-slate-900/70 font-arabic">التالي</span>
                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                                         </svg>
                                     </>
+                                )}
+
+                                {/* Hover tooltip if not canProceed */}
+                                {!canProceed && currentStep === 0 && (
+                                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1 bg-slate-800 text-[10px] text-slate-300 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap border border-slate-700">
+                                        Please complete identity & project type 
+                                        <span className="mx-1">/</span> 
+                                        يرجى إكمال البيانات ونوع المشروع
+                                    </div>
                                 )}
                             </button>
                         </div>

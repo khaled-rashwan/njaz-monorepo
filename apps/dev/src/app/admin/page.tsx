@@ -192,11 +192,11 @@ export default function AdminDashboardPage() {
 
                     {/* ── Pipeline Flow Visual ──────────────────── */}
                     <div className="futuristic-card rounded-xl p-6 mb-8">
-                        <h3 className="text-white font-bold mb-5 flex items-center gap-2">
-                            <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
+                        <h3 className="text-white font-bold mb-5 flex items-center gap-2 text-sm uppercase tracking-wider">
+                            <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.5)]" />
                             {t('Pipeline Flow', 'تدفق خط الأنابيب')}
                         </h3>
-                        <div className="flex items-center gap-2 overflow-x-auto pb-2">
+                        <div className="flex items-center gap-2 overflow-x-auto pb-2 no-scrollbar snap-x snap-mandatory">
                             <PipelineStage
                                 icon="📢" label={t('Campaigns', 'حملات')}
                                 count={stats.activeCampaigns} color="purple" href="/admin/campaigns"

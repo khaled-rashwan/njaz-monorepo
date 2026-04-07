@@ -113,7 +113,7 @@ export default function StepBrandAssets({ formData, dispatch }: StepBrandAssetsP
                         <span className={`text-sm font-medium ${
                             formData.hasBrandAssets === opt.value ? 'text-white' : 'text-slate-400'
                         }`}>
-                            {t(opt.labelEn, opt.labelAr)}
+                            {opt.labelEn} <span className="text-slate-600 mx-1">/</span> <span className="font-arabic">{opt.labelAr}</span>
                         </span>
                     </button>
                 ))}
@@ -132,16 +132,10 @@ export default function StepBrandAssets({ formData, dispatch }: StepBrandAssetsP
                         >
                             <div className="text-3xl mb-3 opacity-60">📎</div>
                             <p className="text-slate-400 text-sm mb-1">
-                                {t(
-                                    'Drag & drop files here, or click to browse',
-                                    'اسحب وأفلت الملفات هنا، أو انقر للتصفح'
-                                )}
+                                Drag & drop files here, or click <span className="text-slate-600 mx-1">/</span> <span className="font-arabic">اسحب وأفلت الملفات هنا، أو انقر</span>
                             </p>
-                            <p className="text-slate-600 text-xs">
-                                {t(
-                                    `Images, PDFs, text files · Max ${MAX_FILES} files · 10MB each`,
-                                    `صور، PDF، ملفات نصية · حد أقصى ${MAX_FILES} ملفات · ١٠ ميجا لكل ملف`
-                                )}
+                            <p className="text-slate-600 text-[10px]">
+                                Images, PDFs, text files · Max {MAX_FILES} files <span className="mx-1">/</span> صور، PDF، ملفات نصية
                             </p>
                             <input
                                 ref={fileInputRef}
@@ -200,9 +194,9 @@ export default function StepBrandAssets({ formData, dispatch }: StepBrandAssetsP
             {!formData.hasBrandAssets && (
                 <div className="space-y-5 animate-fade-in">
                     {/* Style Preference */}
-                    <div>
+                     <div>
                         <label className="block text-slate-300 text-sm font-medium mb-2">
-                            {t('Design Style Preference', 'تفضيل أسلوب التصميم')}
+                            Design Style <span className="text-slate-500 mx-1">/</span> <span className="font-arabic">أسلوب التصميم</span>
                         </label>
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                             {STYLE_OPTIONS.map((style) => (
@@ -211,14 +205,15 @@ export default function StepBrandAssets({ formData, dispatch }: StepBrandAssetsP
                                     type="button"
                                     onClick={() => dispatch({ type: 'UPDATE_DATA', payload: { stylePreference: style.valueEn } })}
                                     className={`
-                                        p-3 rounded-lg border text-sm text-center transition-all
+                                        p-3 rounded-lg border text-[11px] text-center transition-all flex flex-col gap-0.5
                                         ${formData.stylePreference === style.valueEn
                                             ? 'border-cyan-500/40 bg-cyan-500/10 text-white'
                                             : 'border-slate-700/50 text-slate-400 hover:border-slate-600 hover:text-slate-300'
                                         }
                                     `}
                                 >
-                                    {t(style.labelEn, style.labelAr)}
+                                    <span>{style.labelEn}</span>
+                                    <span className="font-arabic opacity-60">{style.labelAr}</span>
                                 </button>
                             ))}
                         </div>
@@ -227,51 +222,45 @@ export default function StepBrandAssets({ formData, dispatch }: StepBrandAssetsP
                     {/* Preferred Colors */}
                     <div>
                         <label className="block text-slate-300 text-sm font-medium mb-2">
-                            {t('Preferred Colors (optional)', 'الألوان المفضلة (اختياري)')}
+                            Preferred Colors <span className="text-slate-500 mx-1">/</span> <span className="font-arabic">الألوان المفضلة</span> <span className="text-slate-500 text-[10px] lowercase italic">(optional / اختياري)</span>
                         </label>
                         <input
                             type="text"
                             value={formData.preferredColors}
                             onChange={(e) => dispatch({ type: 'UPDATE_DATA', payload: { preferredColors: e.target.value } })}
                             className="futuristic-input"
-                            placeholder={t('e.g., Blue and gold, Navy and white', 'مثال: أزرق وذهبي، كحلي وأبيض')}
-                            dir={direction}
+                            placeholder={direction === 'rtl' ? 'أزرق وذهبي / Blue and gold' : 'Blue and gold / أزرق وذهبي'}
+                            dir="auto"
                         />
                     </div>
 
                     {/* Competitors / Inspiration */}
                     <div>
                         <label className="block text-slate-300 text-sm font-medium mb-2">
-                            {t('Competitors or Inspiration Links', 'روابط المنافسين أو الإلهام')}
+                            Inspiration Links <span className="text-slate-500 mx-1">/</span> <span className="font-arabic">روابط الإلهام</span>
                         </label>
                         <textarea
                             value={formData.competitors}
                             onChange={(e) => dispatch({ type: 'UPDATE_DATA', payload: { competitors: e.target.value } })}
                             className="futuristic-textarea"
-                            placeholder={t(
-                                'Share links to websites, brands, or designs you admire...',
-                                'شارك روابط مواقع أو علامات تجارية أو تصاميم تعجبك...'
-                            )}
-                            dir={direction}
-                            rows={3}
+                            placeholder={direction === 'rtl' ? 'شارك روابط تعجبك... / Share links you admire...' : 'Share links you admire... / شارك روابط تعجبك...'}
+                            dir="auto"
+                            rows={2}
                         />
                     </div>
 
                     {/* Brand Notes */}
                     <div>
                         <label className="block text-slate-300 text-sm font-medium mb-2">
-                            {t('Additional Brand Notes', 'ملاحظات إضافية عن العلامة')}
+                            Additional Brand Notes <span className="text-slate-500 mx-1">/</span> <span className="font-arabic">ملاحظات إضافية</span>
                         </label>
                         <textarea
                             value={formData.brandNotes}
                             onChange={(e) => dispatch({ type: 'UPDATE_DATA', payload: { brandNotes: e.target.value } })}
                             className="futuristic-textarea"
-                            placeholder={t(
-                                'Anything else about your brand vision, values, or constraints...',
-                                'أي شيء آخر عن رؤية علامتك التجارية أو قيمها أو قيودها...'
-                            )}
-                            dir={direction}
-                            rows={3}
+                            placeholder={direction === 'rtl' ? 'أي شيء آخر عن رؤيتك... / Anything else about your vision...' : 'Anything else about your vision... / أي شيء آخر عن رؤيتك...'}
+                            dir="auto"
+                            rows={2}
                         />
                     </div>
                 </div>

@@ -49,11 +49,12 @@ export default function ProgressBar({ currentStep, formData }: ProgressBarProps)
                                 )}
                             </div>
                             <span
-                                className={`text-xs font-medium text-center hidden sm:block truncate max-w-[80px] ${
+                                className={`text-[10px] font-medium text-center hidden sm:flex flex-col gap-0 leading-tight max-w-[100px] ${
                                     isActive ? 'text-cyan-400' : isCompleted ? 'text-slate-400' : 'text-slate-600'
                                 }`}
                             >
-                                {t(step.titleEn, step.titleAr)}
+                                <span>{step.titleEn}</span>
+                                <span className="font-arabic opacity-60">{step.titleAr}</span>
                             </span>
                         </div>
                     );
@@ -71,14 +72,13 @@ export default function ProgressBar({ currentStep, formData }: ProgressBarProps)
             </div>
 
             {/* Step counter */}
-            <div className="flex justify-between items-center mt-2">
-                <span className="text-xs text-slate-500">
-                    {t(
-                        `Step ${currentStep + 1} of ${totalSteps}`,
-                        `الخطوة ${currentStep + 1} من ${totalSteps}`
-                    )}
+            <div className="flex justify-between items-center mt-2 px-1">
+                <span className="text-[10px] text-slate-500 flex items-center gap-1.5">
+                    <span>Step {currentStep + 1} of {totalSteps}</span>
+                    <span className="opacity-30">|</span>
+                    <span className="font-arabic opacity-70">الخطوة {currentStep + 1} من {totalSteps}</span>
                 </span>
-                <span className="text-xs text-cyan-500/60 font-mono">
+                <span className="text-[10px] text-cyan-500/60 font-mono">
                     {Math.round(progress)}%
                 </span>
             </div>

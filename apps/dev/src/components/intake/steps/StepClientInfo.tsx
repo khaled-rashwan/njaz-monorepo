@@ -6,43 +6,67 @@ import type { IntakeFormData, WizardAction } from '@/lib/intake';
 interface StepClientInfoProps {
     formData: IntakeFormData;
     dispatch: React.Dispatch<WizardAction>;
+    isDescriptionOnly?: boolean;
 }
 
-export default function StepClientInfo({ formData, dispatch }: StepClientInfoProps) {
+export default function StepClientInfo({ formData, dispatch, isDescriptionOnly = false }: StepClientInfoProps) {
     const { t, direction } = useLanguage();
 
     const update = (field: keyof IntakeFormData, value: string) => {
         dispatch({ type: 'UPDATE_DATA', payload: { [field]: value } });
     };
 
+    if (isDescriptionOnly) {
+        return (
+            <div className="wizard-step-enter">
+                <div className="mb-6">
+                    <h2 className="text-2xl font-bold text-white mb-2">
+                        {t('Project Vision', 'رؤية المشروع')}
+                    </h2>
+                    <p className="text-slate-400 text-sm">
+                        {t(
+                            'Tell us about your project goals and requirements.',
+                            'أخبرنا عن أهداف ومتطلبات مشروعك.'
+                        )}
+                    </p>
+                </div>
+
+                <div className="space-y-4">
+                    <label className="block text-slate-300 text-sm font-medium mb-2">
+                        Project Description <span className="text-slate-500 mx-1">/</span> <span className="font-arabic">وصف المشروع</span> <span className="text-pink-400">*</span>
+                    </label>
+                    <textarea
+                        value={formData.projectDescription}
+                        onChange={(e) => update('projectDescription', e.target.value)}
+                        className="futuristic-textarea"
+                        placeholder={direction === 'rtl' 
+                            ? 'أخبرنا عن أهداف مشروعك والجمهور المستهدف... / Tell us about your goals...' 
+                            : 'Tell us about your goals, target audience, and requirements... / أخبرنا عن أهداف مشروعك...'}
+                        dir="auto"
+                        rows={6}
+                        required
+                    />
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="wizard-step-enter">
-            <div className="mb-6">
-                <h2 className="text-2xl font-bold text-white mb-2">
-                    {t('Tell us about yourself', 'أخبرنا عنك')}
-                </h2>
-                <p className="text-slate-400 text-sm">
-                    {t(
-                        'We\'ll use this information to prepare your personalized proposal.',
-                        'سنستخدم هذه المعلومات لإعداد عرضك المخصص.'
-                    )}
-                </p>
-            </div>
-
-            <div className="space-y-5">
+            <div className="space-y-6">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                     {/* Name */}
                     <div>
                         <label className="block text-slate-300 text-sm font-medium mb-2">
-                            {t('Full Name', 'الاسم الكامل')} <span className="text-pink-400">*</span>
+                            Full Name <span className="text-slate-500 mx-1">/</span> <span className="font-arabic">الاسم الكامل</span> <span className="text-pink-400">*</span>
                         </label>
                         <input
                             type="text"
                             value={formData.clientName}
                             onChange={(e) => update('clientName', e.target.value)}
                             className="futuristic-input"
-                            placeholder={t('John Doe', 'أحمد محمد')}
-                            dir={direction}
+                            placeholder={direction === 'rtl' ? 'أحمد محمد / Ahmed Mohamed' : 'Ahmed Mohamed / أحمد محمد'}
+                            dir="auto"
                             required
                         />
                     </div>
@@ -50,7 +74,7 @@ export default function StepClientInfo({ formData, dispatch }: StepClientInfoPro
                     {/* Email */}
                     <div>
                         <label className="block text-slate-300 text-sm font-medium mb-2">
-                            {t('Email Address', 'البريد الإلكتروني')} <span className="text-pink-400">*</span>
+                            Email <span className="text-slate-500 mx-1">/</span> <span className="font-arabic">البريد الإلكتروني</span> <span className="text-pink-400">*</span>
                         </label>
                         <input
                             type="email"
@@ -68,14 +92,14 @@ export default function StepClientInfo({ formData, dispatch }: StepClientInfoPro
                     {/* Phone */}
                     <div>
                         <label className="block text-slate-300 text-sm font-medium mb-2">
-                            {t('Phone Number', 'رقم الهاتف')}
+                            Phone <span className="text-slate-500 mx-1">/</span> <span className="font-arabic">رقم الهاتف</span>
                         </label>
                         <input
                             type="tel"
                             value={formData.clientPhone}
                             onChange={(e) => update('clientPhone', e.target.value)}
                             className="futuristic-input"
-                            placeholder="+966 5XX XXX XXXX"
+                            placeholder="+20 1XX XXX XXXX"
                             dir="ltr"
                         />
                     </div>
@@ -83,36 +107,17 @@ export default function StepClientInfo({ formData, dispatch }: StepClientInfoPro
                     {/* Company */}
                     <div>
                         <label className="block text-slate-300 text-sm font-medium mb-2">
-                            {t('Company / Organization', 'الشركة / المؤسسة')}
+                            Company <span className="text-slate-500 mx-1">/</span> <span className="font-arabic">الشركة</span>
                         </label>
                         <input
                             type="text"
                             value={formData.companyName}
                             onChange={(e) => update('companyName', e.target.value)}
                             className="futuristic-input"
-                            placeholder={t('Acme Corp', 'شركة أكمي')}
-                            dir={direction}
+                            placeholder={direction === 'rtl' ? 'اسم الشركة / Company Name' : 'Company Name / اسم الشركة'}
+                            dir="auto"
                         />
                     </div>
-                </div>
-
-                {/* Project Description */}
-                <div>
-                    <label className="block text-slate-300 text-sm font-medium mb-2">
-                        {t('Project Description', 'وصف المشروع')} <span className="text-pink-400">*</span>
-                    </label>
-                    <textarea
-                        value={formData.projectDescription}
-                        onChange={(e) => update('projectDescription', e.target.value)}
-                        className="futuristic-textarea"
-                        placeholder={t(
-                            'Tell us about your project goals, target audience, and any specific requirements or ideas you have...',
-                            'أخبرنا عن أهداف مشروعك والجمهور المستهدف وأي متطلبات أو أفكار محددة لديك...'
-                        )}
-                        dir={direction}
-                        rows={5}
-                        required
-                    />
                 </div>
             </div>
         </div>

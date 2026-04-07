@@ -6,6 +6,7 @@ import { useLanguage } from '@/components/LanguageContext';
 import { useAdminUser, useAdminData } from '@/lib/admin/hooks';
 import { fetchAuthSession } from 'aws-amplify/auth';
 import Link from 'next/link';
+import { formatProjectName, formatDate } from '@/lib/admin/utils';
 
 // ── Constants ───────────────────────────────────────────
 const STATUS_COLORS: Record<string, string> = {
@@ -55,6 +56,7 @@ export default function InquiriesPage() {
     const { data, loading, refetch } = useAdminData<{ inquiries: any[] }>({ url: '/api/admin/inquiries' });
 
     const [activeFilter, setActiveFilter] = useState<FilterTab>('all');
+    const [sortOrder, setSortOrder] = useState<'date_desc' | 'date_asc' | 'name_asc'>('date_desc');
     const [selectedId, setSelectedId] = useState<string | null>(searchParams.get('selected'));
     const [saving, setSaving] = useState(false);
     const [syncingGithub, setSyncingGithub] = useState(false);
@@ -62,9 +64,16 @@ export default function InquiriesPage() {
     const inquiries = data?.inquiries || [];
 
     const filtered = useMemo(() => {
-        if (activeFilter === 'all') return inquiries;
-        return inquiries.filter(i => i.status === activeFilter);
-    }, [inquiries, activeFilter]);
+        let result = activeFilter === 'all' ? inquiries : inquiries.filter(i => i.status === activeFilter);
+        
+        // Sorting logic
+        return [...result].sort((a, b) => {
+            if (sortOrder === 'date_desc') return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+            if (sortOrder === 'date_asc') return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+            if (sortOrder === 'name_asc') return (a.clientName || '').localeCompare(b.clientName || '');
+            return 0;
+        });
+    }, [inquiries, activeFilter, sortOrder]);
 
     const selectedInquiry = useMemo(() => {
         return inquiries.find(i => i.id === selectedId) || null;
@@ -136,29 +145,38 @@ export default function InquiriesPage() {
         <div className="flex gap-6 min-h-[600px]">
             {/* ── Left Panel: Inquiry List ─────────────── */}
             <div className={`flex-1 ${selectedInquiry ? 'hidden lg:block lg:max-w-md' : ''}`}>
-                {/* Filter Tabs */}
-                <div className="flex gap-2 mb-4 overflow-x-auto pb-2">
-                    {(['all', 'new', 'reviewing', 'approved', 'in_progress', 'completed'] as FilterTab[]).map(tab => (
-                        <button
-                            key={tab}
-                            onClick={() => setActiveFilter(tab)}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all ${
-                                activeFilter === tab
-                                    ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/40'
-                                    : 'text-slate-400 hover:text-white border border-transparent'
-                            }`}
-                        >
-                            {t(
-                                STATUS_OPTIONS.find(s => s.value === tab)?.en || 'All',
-                                STATUS_OPTIONS.find(s => s.value === tab)?.ar || 'الكل'
-                            )}
-                            {tab !== 'all' && (
-                                <span className="ml-1 text-slate-600">
-                                    ({inquiries.filter(i => i.status === tab).length})
-                                </span>
-                            )}
-                        </button>
-                    ))}
+                {/* Filters & Sorting */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                    {/* Filter Tabs */}
+                    <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+                        {(['all', 'new', 'reviewing', 'approved', 'in_progress', 'completed'] as FilterTab[]).map(tab => (
+                            <button
+                                key={tab}
+                                onClick={() => setActiveFilter(tab)}
+                                className={`px-2.5 py-1.5 rounded-lg text-[10px] font-bold whitespace-nowrap transition-all ${
+                                    activeFilter === tab
+                                        ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/40'
+                                        : 'text-slate-500 hover:text-white border border-transparent'
+                                }`}
+                            >
+                                {t(
+                                    STATUS_OPTIONS.find(s => s.value === tab)?.en || 'All',
+                                    STATUS_OPTIONS.find(s => s.value === tab)?.ar || 'الكل'
+                                )}
+                            </button>
+                        ))}
+                    </div>
+
+                    {/* Sort Dropdown */}
+                    <select
+                        value={sortOrder}
+                        onChange={e => setSortOrder(e.target.value as any)}
+                        className="futuristic-select text-[10px] !py-1 !px-2 max-w-[120px] bg-slate-900"
+                    >
+                        <option value="date_desc">📅 {t('Newest First', 'الأحدث أولاً')}</option>
+                        <option value="date_asc">🗓️ {t('Oldest First', 'الأقدم أولاً')}</option>
+                        <option value="name_asc">👤 {t('Name A-Z', 'الاسم أ-ي')}</option>
+                    </select>
                 </div>
 
                 {/* List */}
@@ -167,7 +185,7 @@ export default function InquiriesPage() {
                         <div className="w-6 h-6 border-2 border-cyan-500/30 border-t-cyan-400 rounded-full animate-spin mx-auto" />
                     </div>
                 ) : filtered.length === 0 ? (
-                    <div className="text-center py-10 text-slate-500">
+                    <div className="text-center py-10 text-slate-500 text-xs">
                         {t('No inquiries found.', 'لا توجد استفسارات.')}
                     </div>
                 ) : (
@@ -176,41 +194,46 @@ export default function InquiriesPage() {
                             <button
                                 key={inq.id}
                                 onClick={() => setSelectedId(inq.id === selectedId ? null : inq.id)}
-                                className={`w-full text-start p-4 rounded-xl transition-all ${
+                                className={`w-full text-start p-3 rounded-xl transition-all relative group/item ${
                                     inq.id === selectedId
                                         ? 'futuristic-card border-cyan-500/40 shadow-[0_0_20px_rgba(56,205,223,0.1)]'
                                         : 'futuristic-card hover:border-cyan-500/30'
                                 }`}
                             >
-                                <div className="flex items-center gap-3">
-                                    <div className="flex gap-0.5">
-                                        {inq.projectTypes?.slice(0, 3).map((pt: string) => (
-                                            <span key={pt} className="text-sm">{TYPE_ICONS[pt] || '📦'}</span>
+                                <div className="flex items-start gap-3">
+                                    {/* Icon Column (Desktop) */}
+                                    <div className="hidden sm:flex flex-col gap-0.5 mt-0.5">
+                                        {inq.projectTypes?.slice(0, 2).map((pt: string) => (
+                                            <span key={pt} className="text-sm grayscale group-hover/item:grayscale-0 transition-all">{TYPE_ICONS[pt] || '📦'}</span>
                                         ))}
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                        <div className="text-white font-medium text-sm truncate">{inq.clientName}</div>
-                                        <div className="text-slate-500 text-xs truncate">{inq.clientEmail}</div>
-                                    </div>
-                                    <span className={`px-1.5 py-0.5 rounded text-[10px] border ${STATUS_COLORS[inq.status]}`}>
-                                        {t(
-                                            STATUS_OPTIONS.find(s => s.value === inq.status)?.en || inq.status,
-                                            STATUS_OPTIONS.find(s => s.value === inq.status)?.ar || inq.status
-                                        )}
-                                    </span>
-                                </div>
-                                {/* Progress Bar */}
-                                {inq.taskProgress?.total > 0 && (
-                                    <div className="mt-2 flex items-center gap-2">
-                                        <div className="flex-1 h-1 rounded-full bg-slate-800 overflow-hidden">
-                                            <div
-                                                className="h-full rounded-full bg-cyan-500/60 transition-all"
-                                                style={{ width: `${(inq.taskProgress.done / inq.taskProgress.total) * 100}%` }}
-                                            />
+                                        <div className="flex items-center gap-2">
+                                            <div className="text-white font-bold text-[13px] truncate">
+                                                {formatProjectName(inq)}
+                                            </div>
+                                            <span className={`px-1.5 py-0.5 rounded-[4px] text-[9px] font-bold border flex-shrink-0 ${STATUS_COLORS[inq.status]}`}>
+                                                {t(
+                                                    STATUS_OPTIONS.find(s => s.value === inq.status)?.en || inq.status,
+                                                    STATUS_OPTIONS.find(s => s.value === inq.status)?.ar || inq.status
+                                                ).toUpperCase()}
+                                            </span>
                                         </div>
-                                        <span className="text-[10px] text-slate-500">
-                                            {inq.taskProgress.done}/{inq.taskProgress.total}
-                                        </span>
+                                        <div className="flex items-center justify-between mt-1 text-[10px] text-slate-500">
+                                            <span className="truncate">{inq.clientEmail}</span>
+                                            <span className="flex-shrink-0 font-medium text-slate-600">
+                                                {formatDate(inq.createdAt)}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                                {/* Progress Bar Mini */}
+                                {inq.taskProgress?.total > 0 && (
+                                    <div className="mt-2.5 h-0.5 bg-slate-800/50 rounded-full overflow-hidden">
+                                        <div
+                                            className="h-full bg-cyan-500/40 transition-all"
+                                            style={{ width: `${(inq.taskProgress.done / inq.taskProgress.total) * 100}%` }}
+                                        />
                                     </div>
                                 )}
                             </button>
