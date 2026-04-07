@@ -190,6 +190,23 @@ body {
     background: rgba(56, 205, 223, 0.5);
 }
 
+.custom-scrollbar::-webkit-scrollbar {
+    width: 5px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(56, 205, 223, 0.2);
+    border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(56, 205, 223, 0.5);
+}
+
 /* Animations */
 @keyframes pulse-glow {
     0%, 100% {

@@ -50,7 +50,7 @@ export default function BoardPage() {
     const [filterScope, setFilterScope] = useState<string>(''); // '' = all, 'internal' = no inquiry, 'client' = has inquiry
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [editingTask, setEditingTask] = useState<any | null>(null);
-    const [newTask, setNewTask] = useState({ title: '', inquiryId: '', type: 'development', priority: 'medium' });
+    const [newTask, setNewTask] = useState({ title: '', inquiryId: '', type: 'development', priority: 'medium', assignedTo: '', assignedToName: '' });
 
     // Handle auto-create from query param
     useEffect(() => {
@@ -221,7 +221,7 @@ export default function BoardPage() {
                 body: JSON.stringify(newTask),
             });
             setShowCreateModal(false);
-            setNewTask({ title: '', inquiryId: '', type: 'development', priority: 'medium' });
+            setNewTask({ title: '', inquiryId: '', type: 'development', priority: 'medium', assignedTo: '', assignedToName: '' });
             await refetch();
         } catch (err) {
             console.error('Failed to create task:', err);
@@ -424,8 +424,8 @@ export default function BoardPage() {
             {/* ── Edit Task Modal ────────────────────── */}
             {editingTask && (
                 <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
-                    <div className="futuristic-card rounded-xl p-6 w-full max-w-xl animate-in fade-in zoom-in duration-200">
-                        <div className="flex items-start justify-between mb-4">
+                    <div className="futuristic-card rounded-xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in duration-200 custom-scrollbar">
+                        <div className="flex items-start justify-between mb-4 sticky top-0 bg-slate-900/80 backdrop-blur-md pb-2 z-10">
                             <h3 className="text-xl font-bold text-white flex items-center gap-2">
                                 <span>{TYPE_BADGES[editingTask.type]?.label || '📋'}</span>
                                 {t('Edit Task', 'تعديل المهمة')}
@@ -473,10 +473,59 @@ export default function BoardPage() {
 
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
+                                    <label className="text-xs text-slate-400 mb-1 block uppercase tracking-wider">{t('Assignee', 'المسؤول')}</label>
+                                    {isAdmin ? (
+                                        <select
+                                            defaultValue={editingTask.assignedTo || ''}
+                                            onChange={e => {
+                                                const assignedTo = e.target.value;
+                                                const selectedUser = usersList.find((u: any) => u.id === assignedTo);
+                                                const assignedToName = selectedUser ? (selectedUser.email || selectedUser.username) : null;
+                                                handleUpdateTask({ assignedTo, assignedToName });
+                                            }}
+                                            className="futuristic-select text-sm border-cyan-500/30"
+                                        >
+                                            <option value="">{t('Unassigned', 'غير معين')}</option>
+                                            {usersList.map((u: any) => (
+                                                <option key={u.id} value={u.id}>{u.email || u.username}</option>
+                                            ))}
+                                        </select>
+                                    ) : (
+                                        <div className="futuristic-input flex items-center gap-2 bg-slate-900/40 border-slate-800">
+                                            {editingTask.assignedTo ? (() => {
+                                                const user = usersList.find((u: any) => u.id === editingTask.assignedTo);
+                                                const displayName = user ? (user.email || user.username) : (editingTask.assignedToName || editingTask.assignedTo.slice(0, 8));
+                                                return (
+                                                    <>
+                                                        <div className="w-5 h-5 rounded-full bg-cyan-500/20 border border-cyan-500/30 flex items-center justify-center text-[10px] text-cyan-400">
+                                                            {displayName.charAt(0).toUpperCase()}
+                                                        </div>
+                                                        <span className="text-sm text-slate-300">{displayName}</span>
+                                                    </>
+                                                );
+                                            })() : (
+                                                <span className="text-sm text-slate-500 italic">{t('Unassigned', 'غير معين')}</span>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                                <div>
                                     <label className="text-xs text-slate-400 mb-1 block uppercase tracking-wider">{t('Phase', 'المرحلة')}</label>
                                     <input
                                         defaultValue={editingTask.phase}
                                         onBlur={e => handleUpdateTask({ phase: e.target.value })}
+                                        className="futuristic-input text-sm"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="text-xs text-slate-400 mb-1 block uppercase tracking-wider">{t('Estimated Hours', 'الساعات المتوقعة')}</label>
+                                    <input
+                                        type="number"
+                                        defaultValue={editingTask.estimatedHours}
+                                        onBlur={e => handleUpdateTask({ estimatedHours: e.target.value })}
                                         className="futuristic-input text-sm"
                                     />
                                 </div>
@@ -530,8 +579,8 @@ export default function BoardPage() {
             {/* ── Create Task Modal ──────────────────── */}
             {showCreateModal && (
                 <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
-                    <div className="futuristic-card rounded-xl p-6 w-full max-w-md animate-in fade-in zoom-in duration-200">
-                        <h3 className="text-lg font-bold text-white mb-4">{t('Create Task', 'إنشاء مهمة')}</h3>
+                    <div className="futuristic-card rounded-xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in duration-200 custom-scrollbar">
+                        <h3 className="text-lg font-bold text-white mb-4 sticky top-0 bg-slate-900/80 backdrop-blur-md pb-2 z-10">{t('Create Task', 'إنشاء مهمة')}</h3>
 
                         <div className="space-y-3">
                             <div>
@@ -584,6 +633,25 @@ export default function BoardPage() {
                                         <option value="urgent">🔴 {t('Urgent', 'عاجل')}</option>
                                     </select>
                                 </div>
+                            </div>
+
+                            <div>
+                                <label className="text-xs text-slate-400 mb-1 block">{t('Assign To', 'تعيين إلى')}</label>
+                                <select
+                                    value={newTask.assignedTo}
+                                    onChange={e => {
+                                        const assignedTo = e.target.value;
+                                        const selectedUser = usersList.find((u: any) => u.id === assignedTo);
+                                        const assignedToName = selectedUser ? (selectedUser.email || selectedUser.username) : '';
+                                        setNewTask({ ...newTask, assignedTo, assignedToName });
+                                    }}
+                                    className="futuristic-select text-sm border-cyan-500/20"
+                                >
+                                    <option value="">{t('Unassigned', 'غير معين')}</option>
+                                    {usersList.map((u: any) => (
+                                        <option key={u.id} value={u.id}>{u.email || u.username}</option>
+                                    ))}
+                                </select>
                             </div>
                         </div>
 
