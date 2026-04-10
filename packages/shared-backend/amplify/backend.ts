@@ -54,9 +54,9 @@ reportTable.grantReadWriteData(backend.initiateReport.resources.lambda);
 // Step Function Orchestration
 const pipelineStack = backend.createStack('ReportPipelineStack');
 
-// Predictable name to break circularity
-// Use a static name to break circularity between stacks
-const stateMachineName = 'EstebianReportPipeline-v1';
+// Use unique names per branch to avoid collisions in the same AWS account
+const branchName = process.env.AWS_BRANCH || 'sandbox';
+const stateMachineName = `EstebianReport-${branchName}`.substring(0, 64);
 
 // Tasks (Simplified to remove DynamoDB dependencies from the SF itself)
 // The Lambdas will handle their own status updates to break the SF -> Table link
