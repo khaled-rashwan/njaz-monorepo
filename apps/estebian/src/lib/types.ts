@@ -93,10 +93,82 @@ export interface Report {
     id: string;
     surveyId: string;
     type: 'demographic' | 'scale' | 'comprehensive';
+    status: ReportStatus;
     createdAt: string;
     createdBy: string;
+    
+    // Payment
+    paymentId?: string;
+    paymentMethod?: string;
+    paymentAmount?: number;
+    paymentCurrency?: string;
+    paidAt?: string;
+    
+    // Computation
+    stepFunctionExecutionId?: string;
+    computeStartedAt?: string;
+    computeCompletedAt?: string;
+    errorMessage?: string;
+    
+    // Output
     isPaid: boolean;
-    data: any; // Report-specific data
+    data: ReportData | null;
+    pdfS3Key?: string;
+}
+
+export type ReportStatus = 
+    | 'pending_payment'
+    | 'payment_processing'
+    | 'payment_verified'
+    | 'computing'
+    | 'generating_pdf'
+    | 'completed'
+    | 'payment_failed'
+    | 'computation_failed';
+
+export interface ReportData {
+    generatedAt: string;
+    surveyTitle: string;
+    sampleSize: number;
+    demographics?: DemographicAnalysis;
+    scaleAnalysis?: ScaleAnalysisResult[];
+    overallMetrics?: OverallMetrics;
+}
+
+export interface ScaleAnalysisResult {
+    scaleId: string;
+    scaleName: string;
+    cronbachAlpha: number;
+    mean: number;
+    standardDeviation: number;
+    min: number;
+    max: number;
+    median: number;
+    dimensions: DimensionResult[];
+}
+
+export interface DimensionResult {
+    dimensionId: string;
+    dimensionName: string;
+    mean: number;
+    standardDeviation: number;
+    statementCount: number;
+}
+
+export interface DemographicAnalysis {
+    fields: {
+        fieldId: string;
+        fieldLabel: string;
+        type: string;
+        distribution: Record<string, number>;  // value -> count
+    }[];
+    totalRespondents: number;
+}
+
+export interface OverallMetrics {
+    totalResponses: number;
+    completionRate: number;
+    averageResponseTime?: number;
 }
 
 // Default scale options (Likert 5-point) - Arabic

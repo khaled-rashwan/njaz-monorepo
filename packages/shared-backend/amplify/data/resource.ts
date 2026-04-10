@@ -2,6 +2,7 @@ import { a, defineData, type ClientSchema } from '@aws-amplify/backend';
 import { estebianSchema } from '@njaz/estebian-data';
 import { submitResponse } from '../functions/submitResponse/resource';
 import { manageUsers } from '../functions/manageUsers/resource';
+import { initiateReport } from '../functions/initiateReport/resource';
 
 /**
  * Njaz Platform Data Schema
@@ -220,6 +221,15 @@ const schema = a.schema({
         .returns(a.json())
         .handler(a.handler.function(submitResponse))
         .authorization((allow) => [allow.publicApiKey()]),
+
+    requestReport: a.mutation()
+        .arguments({
+            surveyId: a.id().required(),
+            reportType: a.string().required(),
+        })
+        .returns(a.json())
+        .handler(a.handler.function(initiateReport))
+        .authorization((allow) => [allow.authenticated()]),
 
     listUsers: a.query()
         .returns(a.json())

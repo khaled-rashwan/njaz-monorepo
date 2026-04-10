@@ -217,20 +217,60 @@ export async function saveResponse(response: SurveyResponse): Promise<string> {
  * Report Storage Functions
  */
 export async function getReports(surveyId: string): Promise<Report[]> {
+    const filter = surveyId ? { surveyId: { eq: surveyId } } : undefined;
     const { data: reports } = await getClient().models.EstebianReport.list({
-        filter: { surveyId: { eq: surveyId } }
+        filter: filter
     });
     return (reports || []).map((r: any) => ({
         ...r,
-        data: typeof r.data === 'string' ? JSON.parse(r.data) : r.data
+        data: typeof r.data === 'string' ? JSON.parse(r.data) : (r.data || null)
     })) as unknown as Report[];
 }
 
+export async function getReportById(id: string): Promise<Report | null> {
+    const { data: report } = await getClient().models.EstebianReport.get({ id });
+    if (!report) return null;
+    return {
+        ...report,
+        data: typeof report.data === 'string' ? JSON.parse(report.data) : (report.data || null)
+    } as unknown as Report;
+}
+
+/**
+ * Request a new paid report. This calls the backend Lambda which:
+ * 1. Creates a report record with PENDING_PAYMENT status
+ * 2. Creates a payment session (or bypasses in dev)
+ * 3. Starts the Step Function pipeline
+ */
+export async function requestReport(
+    surveyId: string,
+    reportType: 'demographic' | 'scale' | 'comprehensive'
+): Promise<{ reportId: string; paymentUrl: string | null; status: string }> {
+    console.log('Available Mutations:', Object.keys(getClient().mutations));
+    const { data: result, errors } = await getClient().mutations.requestReport({
+        surveyId,
+        reportType,
+    });
+
+    if (errors) {
+        throw new Error(errors[0].message);
+    }
+
+    // result is the JSON returned from the Lambda
+    const parsed = typeof result === 'string' ? JSON.parse(result) : result;
+    return parsed;
+}
+
+/**
+ * Legacy saveReport (Client-side)
+ * Still useful for testing or non-orchestrated reports
+ */
 export async function saveReport(report: Report): Promise<string> {
     const { data: created } = await getClient().models.EstebianReport.create({
         id: report.id,
         surveyId: report.surveyId,
         type: report.type,
+        status: report.status || (report.isPaid ? 'completed' : 'pending_payment'),
         isPaid: report.isPaid,
         data: JSON.stringify(report.data)
     });
