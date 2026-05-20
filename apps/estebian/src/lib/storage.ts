@@ -182,10 +182,18 @@ export async function deleteSurvey(id: string): Promise<void> {
  * Response Storage Functions (Anonymous support)
  */
 export async function getResponses(surveyId: string): Promise<SurveyResponse[]> {
-    const { data: responses } = await getClient().models.EstebianResponse.list({
-        filter: { surveyId: { eq: surveyId } }
-    });
-    return (responses || []).map((r: any) => ({
+    let nextToken: string | null = null;
+    const allResponses: any[] = [];
+    do {
+        const response: any = await getClient().models.EstebianResponse.list({
+            filter: { surveyId: { eq: surveyId } },
+            nextToken: nextToken
+        });
+        allResponses.push(...(response.data || []));
+        nextToken = response.nextToken;
+    } while (nextToken);
+
+    return allResponses.map((r: any) => ({
         ...r,
         demographics: typeof r.demographics === 'string' ? JSON.parse(r.demographics) : r.demographics,
         answers: typeof r.answers === 'string' ? JSON.parse(r.answers) : r.answers
@@ -218,10 +226,18 @@ export async function saveResponse(response: SurveyResponse): Promise<string> {
  */
 export async function getReports(surveyId: string): Promise<Report[]> {
     const filter = surveyId ? { surveyId: { eq: surveyId } } : undefined;
-    const { data: reports } = await getClient().models.EstebianReport.list({
-        filter: filter
-    });
-    return (reports || []).map((r: any) => ({
+    let nextToken: string | null = null;
+    const allReports: any[] = [];
+    do {
+        const response: any = await getClient().models.EstebianReport.list({
+            filter: filter,
+            nextToken: nextToken
+        });
+        allReports.push(...(response.data || []));
+        nextToken = response.nextToken;
+    } while (nextToken);
+
+    return allReports.map((r: any) => ({
         ...r,
         data: typeof r.data === 'string' ? JSON.parse(r.data) : (r.data || null)
     })) as unknown as Report[];
@@ -244,13 +260,18 @@ export async function getReportById(id: string): Promise<Report | null> {
  */
 export async function requestReport(
     surveyId: string,
-    reportType: 'demographic' | 'scale' | 'comprehensive'
+    reportType: 'demographic' | 'scale' | 'comprehensive',
+    reportId?: string,
+    options?: { efaConfig?: any; mediationConfig?: any }
 ): Promise<{ reportId: string; paymentUrl: string | null; status: string }> {
     console.log('Available Mutations:', Object.keys(getClient().mutations));
-    const { data: result, errors } = await getClient().mutations.requestReport({
-        surveyId,
-        reportType,
-    });
+    
+    const args: any = { surveyId, reportType };
+    if (reportId) args.reportId = reportId;
+    if (options?.efaConfig) args.efaConfig = options.efaConfig;
+    if (options?.mediationConfig) args.mediationConfig = options.mediationConfig;
+    
+    const { data: result, errors } = await getClient().mutations.requestReport(args);
 
     if (errors) {
         throw new Error(errors[0].message);

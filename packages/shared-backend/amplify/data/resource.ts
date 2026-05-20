@@ -40,6 +40,9 @@ const schema = a.schema({
         .arguments({
             surveyId: a.id().required(),
             reportType: a.string().required(),
+            reportId: a.string(),
+            efaConfig: a.json(),
+            mediationConfig: a.json(),
         })
         .returns(a.json())
         .handler(a.handler.function(initiateReport))

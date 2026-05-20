@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { useLanguage } from './LanguageContext';
 
 interface SurveyCardProps {
     id: string;
@@ -12,6 +13,7 @@ interface SurveyCardProps {
     language: 'ar' | 'en';
     onEdit: (id: string) => void;
     onResults: (id: string) => void;
+    onReports: (id: string) => void;
     onCopyLink: (id: string) => void;
     onDelete: (id: string) => void;
 }
@@ -26,101 +28,115 @@ export const SurveyCard: React.FC<SurveyCardProps> = ({
     language,
     onEdit,
     onResults,
+    onReports,
     onCopyLink,
     onDelete,
 }) => {
+    const { t, direction } = useLanguage();
+    const isRtl = direction === 'rtl';
+
     return (
         <div className="relative group">
-            {/* Background Glow Decor */}
-            <div className="absolute -inset-1 bg-gradient-to-r from-stitch-primary/50 to-cyan-600/50 rounded-xl blur opacity-25 group-hover:opacity-50 transition duration-1000"></div>
-            <div className="relative glass-card rounded-xl overflow-hidden flex flex-col">
-                {/* Card Image/Header */}
-                <div className="h-40 w-full relative bg-center bg-cover"
-                    style={{ backgroundImage: "url('https://lh3.googleusercontent.com/aida-public/AB6AXuCHsNTaIQFbH46L9TSiJWlXQ59nyPnowzmYkfGOCzq98dBcI03o-oP_APaG8-14t8k3iEilLWyvtXRWHONmj-EroJ0w2DRpsGoNsYrvrlE9KcLQAnET27BqbEAuczVBsnRtrsz6X7e-K_gBSxevUzsD8mvSodrqclfYjU3R74mvSAmfNxmNi08hd1Y1HHMvSBgkVK_EVlNCzKETDjt2fkH3LnmxCU8g4lOleF1zgR1G1-KhUP6ZWwOeXL1eX8q7TBCklvVmkN1Ce4fw')" }}>
-                    <div className="absolute inset-0 bg-gradient-to-t from-[#191022] to-transparent"></div>
-                    <div className="absolute top-4 left-4">
-                        {isPublished ? (
-                            <span className="flex items-center gap-1.5 px-3 py-1 bg-[#0bda73]/20 border border-[#0bda73]/40 rounded-full text-[#0bda73] text-[10px] font-bold uppercase status-glow">
-                                <span className="size-1.5 rounded-full bg-[#0bda73] animate-pulse"></span>
-                                Published
-                            </span>
-                        ) : (
-                            <span className="flex items-center gap-1.5 px-3 py-1 bg-yellow-500/20 border border-yellow-500/40 rounded-full text-yellow-400 text-[10px] font-bold uppercase">
-                                <span className="size-1.5 rounded-full bg-yellow-400"></span>
-                                Draft
-                            </span>
-                        )}
-                    </div>
-                </div>
-                {/* Card Content */}
-                <div className="p-5 flex flex-col gap-6">
-                    <div className="space-y-2">
-                        <h3 className="text-xl font-bold text-white leading-snug" dir={language === 'ar' ? 'rtl' : 'ltr'}>
+            {/* Subtle Outer Glow */}
+            <div className="absolute -inset-0.5 bg-gradient-to-r from-cyan-500/20 to-teal-500/20 rounded-xl blur-sm opacity-0 group-hover:opacity-100 transition duration-500"></div>
+            
+            <div className="relative glass-card border border-white/5 hover:border-cyan-500/30 rounded-xl overflow-hidden transition-all duration-300">
+                <div className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    
+                    {/* Left: Info & Status */}
+                    <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                            {isPublished ? (
+                                <span className="flex items-center gap-1 px-2 py-0.5 bg-emerald-500/10 border border-emerald-500/20 rounded text-[10px] font-bold text-emerald-400 uppercase">
+                                    <span className="size-1 rounded-full bg-emerald-500 animate-pulse"></span>
+                                    {t('Published', 'منشور')}
+                                </span>
+                            ) : (
+                                <span className="flex items-center gap-1 px-2 py-0.5 bg-amber-500/10 border border-amber-500/20 rounded text-[10px] font-bold text-amber-400 uppercase">
+                                    <span className="size-1 rounded-full bg-amber-500"></span>
+                                    {t('Draft', 'مسودة')}
+                                </span>
+                            )}
+                            <span className="text-[10px] text-slate-500 uppercase tracking-wider">{t('Last Update', 'آخر تحديث')}: {lastUpdate}</span>
+                        </div>
+                        
+                        <h3 className="text-lg font-bold text-white truncate" dir={isRtl ? 'rtl' : 'ltr'}>
                             {title}
                         </h3>
-                        {titleAr && (
-                            <h3 className="text-xl font-bold text-stitch-primary/90 leading-snug" dir="rtl">
+                        {titleAr && titleAr !== title && (
+                            <h4 className="text-sm text-slate-400 truncate" dir="rtl">
                                 {titleAr}
-                            </h3>
+                            </h4>
                         )}
                     </div>
-                    {/* Metrics */}
-                    <div className="flex items-center justify-between border-y border-white/5 py-4">
-                        <div className="flex items-center gap-3">
-                            <div className="size-10 rounded-full bg-stitch-primary/10 flex items-center justify-center border border-stitch-primary/20">
-                                <span className="material-symbols-outlined text-stitch-primary text-xl">groups</span>
-                            </div>
-                            <div>
-                                <p className="text-xs text-white/50">Total Responses</p>
-                                <p className="text-lg font-bold">{responses.toLocaleString()}</p>
-                            </div>
-                        </div>
-                        <div className="flex flex-col items-end">
-                            <p className="text-[10px] text-white/40 uppercase tracking-tighter">Last Update</p>
-                            <p className="text-xs font-medium text-white/80">{lastUpdate}</p>
+
+                    {/* Middle: Metrics */}
+                    <div className="flex items-center gap-6 px-4 md:border-x border-white/5">
+                        <div className="text-center">
+                            <p className="text-[10px] text-slate-500 uppercase mb-0.5">{t('Responses', 'الاستجابات')}</p>
+                            <p className="text-xl font-black text-cyan-400">{responses.toLocaleString()}</p>
                         </div>
                     </div>
-                    {/* Action Bar */}
-                    <div className="grid grid-cols-4 gap-2">
-                        <button
-                            onClick={() => onEdit(id)}
-                            className="flex flex-col items-center gap-1.5 p-3 rounded-lg hover:bg-stitch-primary/10 transition-colors group/btn"
-                        >
-                            <div className="size-10 rounded-full bg-white/5 flex items-center justify-center border border-white/10 group-hover/btn:border-stitch-primary/50">
-                                <span className="material-symbols-outlined text-white/70 group-hover/btn:text-stitch-primary transition-colors">edit</span>
-                            </div>
-                            <span className="text-[10px] font-medium text-white/50 group-hover/btn:text-white">Edit</span>
-                        </button>
-                        <button
-                            onClick={() => onResults(id)}
-                            className="flex flex-col items-center gap-1.5 p-3 rounded-lg hover:bg-stitch-primary/10 transition-colors group/btn"
-                        >
-                            <div className="size-10 rounded-full bg-white/5 flex items-center justify-center border border-white/10 group-hover/btn:border-stitch-primary/50">
-                                <span className="material-symbols-outlined text-white/70 group-hover/btn:text-stitch-primary transition-colors">monitoring</span>
-                            </div>
-                            <span className="text-[10px] font-medium text-white/50 group-hover/btn:text-white">Results</span>
-                        </button>
-                        <button
-                            onClick={() => onCopyLink(id)}
-                            className="flex flex-col items-center gap-1.5 p-3 rounded-lg hover:bg-stitch-primary/10 transition-colors group/btn"
-                        >
-                            <div className="size-10 rounded-full bg-white/5 flex items-center justify-center border border-white/10 group-hover/btn:border-stitch-primary/50">
-                                <span className="material-symbols-outlined text-white/70 group-hover/btn:text-stitch-primary transition-colors">content_copy</span>
-                            </div>
-                            <span className="text-[10px] font-medium text-white/50 group-hover/btn:text-white">Link</span>
-                        </button>
-                        <button
-                            onClick={() => onDelete(id)}
-                            className="flex flex-col items-center gap-1.5 p-3 rounded-lg hover:bg-red-500/10 transition-colors group/btn"
-                        >
-                            <div className="size-10 rounded-full bg-white/5 flex items-center justify-center border border-white/10 group-hover/btn:border-red-500/50">
-                                <span className="material-symbols-outlined text-white/70 group-hover/btn:text-red-500 transition-colors">delete</span>
-                            </div>
-                            <span className="text-[10px] font-medium text-white/50 group-hover/btn:text-white">Delete</span>
-                        </button>
+
+                    {/* Right: Actions */}
+                    <div className="flex items-center gap-1">
+                        <ActionButton 
+                            icon="edit" 
+                            label={t('Edit', 'تعديل')} 
+                            onClick={() => onEdit(id)} 
+                            color="hover:text-cyan-400"
+                        />
+                        <ActionButton 
+                            icon="monitoring" 
+                            label={t('Results', 'النتائج')} 
+                            onClick={() => onResults(id)} 
+                            color="hover:text-purple-400"
+                        />
+                        <ActionButton 
+                            icon="analytics" 
+                            label={t('Reports', 'التقارير')} 
+                            onClick={() => onReports(id)} 
+                            color="hover:text-emerald-400"
+                        />
+                        <ActionButton 
+                            icon="content_copy" 
+                            label={t('Link', 'الرابط')} 
+                            onClick={() => onCopyLink(id)} 
+                            color="hover:text-blue-400"
+                        />
+                        <div className="w-px h-8 bg-white/5 mx-1" />
+                        <ActionButton 
+                            icon="delete" 
+                            label={t('Delete', 'حذف')} 
+                            onClick={() => onDelete(id)} 
+                            color="hover:text-red-500"
+                        />
                     </div>
                 </div>
             </div>
         </div>
     );
 };
+
+interface ActionButtonProps {
+    icon: string;
+    label: string;
+    onClick: () => void;
+    color: string;
+}
+
+const ActionButton: React.FC<ActionButtonProps> = ({ icon, label, onClick, color }) => (
+    <button
+        onClick={onClick}
+        className={`group/btn flex flex-col items-center justify-center p-2 rounded-lg hover:bg-white/5 transition-all duration-200 min-w-[56px] ${color}`}
+        title={label}
+    >
+        <span className="material-symbols-outlined text-xl text-slate-400 group-hover/btn:scale-110 transition-transform">
+            {icon}
+        </span>
+        <span className="text-[9px] font-medium text-slate-500 group-hover/btn:text-current mt-0.5">
+            {label}
+        </span>
+    </button>
+);
+

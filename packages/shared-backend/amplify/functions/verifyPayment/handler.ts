@@ -18,7 +18,7 @@ export const handler = async (event: any) => {
         
         // 1. If bypass mode is active, we assume verification is already done or instant
         // In the initial record it was already set to 'payment_verified' if bypassed.
-        if (bypassPayment === true) {
+        if (event.bypassPayment === true || event.isPaid === true) {
             return { verified: true };
         }
 

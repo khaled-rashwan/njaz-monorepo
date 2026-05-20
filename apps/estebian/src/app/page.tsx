@@ -318,16 +318,24 @@ export default function DashboardPage() {
                     ) : (
                         <>
                             {/* Welcome Section */}
-                            <div className="mb-8 animate-fade-in">
-                                <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">
-                                    {t('Welcome to Estebian', 'مرحباً في استبيان')}
-                                </h1>
-                                <p className="text-slate-400">
-                                    {t(
-                                        'Create surveys, manage scales, and analyze your research data.',
-                                        'أنشئ استبيانات، أدر المقاييس، وحلل بيانات بحثك.'
-                                    )}
-                                </p>
+                            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4 animate-fade-in">
+                                <div>
+                                    <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">
+                                        {t('Welcome to Estebian', 'مرحباً في استبيان')}
+                                    </h1>
+                                    <p className="text-slate-400">
+                                        {t(
+                                            'Create surveys, manage scales, and analyze your research data.',
+                                            'أنشئ استبيانات، أدر المقاييس، وحلل بيانات بحثك.'
+                                        )}
+                                    </p>
+                                </div>
+                                <Link 
+                                    href="/admin" 
+                                    className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-rose-500/10 to-purple-500/10 border border-rose-500/30 hover:border-rose-500/60 text-rose-300 hover:text-white text-sm font-bold transition-all shadow-lg shadow-rose-500/5"
+                                >
+                                    ⚙️ {t('Admin Control Center', 'مركز تحكم الإدارة')}
+                                </Link>
                             </div>
 
                             {/* Quick Actions Grid */}

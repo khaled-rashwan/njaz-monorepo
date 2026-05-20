@@ -200,6 +200,7 @@ export default function SurveysPage() {
                                         language={survey.language as 'ar' | 'en'}
                                         onEdit={(id) => window.location.href = `/surveys/${id}`}
                                         onResults={(id) => window.location.href = `/surveys/${id}/results`}
+                                        onReports={(id) => window.location.href = `/surveys/${id}/reports`}
                                         onCopyLink={copyLink}
                                         onDelete={handleDelete}
                                     />

@@ -132,27 +132,111 @@ export interface ReportData {
     sampleSize: number;
     demographics?: DemographicAnalysis;
     scaleAnalysis?: ScaleAnalysisResult[];
+    interScaleCorrelations?: InterScaleCorrelation[];
+    groupDifferences?: GroupDifference[];
+    factorAnalysis?: FactorAnalysisResult[];
+    mediationAnalysis?: MediationResult[];
     overallMetrics?: OverallMetrics;
 }
 
 export interface ScaleAnalysisResult {
     scaleId: string;
     scaleName: string;
-    cronbachAlpha: number;
+    statementCount: number;
+    sampleSize: number;
+
+    // Full descriptive statistics for total scale scores
+    descriptiveStats: DescriptiveStats | null;
+
+    // Reliability analysis
+    reliability: ReliabilityResult | null;
+
+    // Per-dimension breakdown
+    dimensions: DimensionResult[];
+
+    // Per-item statistics
+    itemStatistics: ItemStatistic[];
+
+    // Pearson correlation matrix (item × item)
+    correlationMatrix?: CorrelationEntry[][];
+
+    // Legacy (backward compatibility)
     mean: number;
-    standardDeviation: number;
+    cronbachAlpha: number;
+}
+
+export interface DescriptiveStats {
+    mean: number;
+    std: number;
+    variance: number;
     min: number;
     max: number;
     median: number;
-    dimensions: DimensionResult[];
+    skewness: number;
+    kurtosis: number;
+}
+
+export interface ReliabilityResult {
+    cronbachAlpha: number;
+    standardizedAlpha: number;
+    splitHalf: {
+        rawCorrelation: number;
+        spearmanBrown: number;
+        guttman: number;
+    };
+}
+
+export interface ItemStatistic {
+    statementId: string;
+    statementText: string;
+    isReversed: boolean;
+    dimensionId: string;
+    mean: number;
+    std: number;
+    itemTotalCorrelation: number;
+    alphaIfDeleted: number;
 }
 
 export interface DimensionResult {
     dimensionId: string;
     dimensionName: string;
-    mean: number;
-    standardDeviation: number;
     statementCount: number;
+    mean: number;
+    std: number;
+    skewness?: number;
+    kurtosis?: number;
+    cronbachAlpha: number | null;
+}
+
+export interface CorrelationEntry {
+    r: number;
+    p: number;
+}
+
+export interface InterScaleCorrelation {
+    scaleA: string;
+    scaleAName: string;
+    scaleB: string;
+    scaleBName: string;
+    r: number;
+    p: number;
+    interpretation: string;
+}
+
+export interface GroupDifference {
+    fieldId: string;
+    fieldLabel: string;
+    testType: 'ttest' | 'anova';
+    results: {
+        scaleId: string;
+        scaleName: string;
+        statistic: number; // t-value or F-value
+        pValue: number;
+        groupMeans: Record<string, number>; // label -> mean
+        groupCounts: Record<string, number>; // label -> n
+        significant: boolean;
+        direction?: string; // e.g., "Higher for Group X"
+    }[];
 }
 
 export interface DemographicAnalysis {
@@ -161,6 +245,16 @@ export interface DemographicAnalysis {
         fieldLabel: string;
         type: string;
         distribution: Record<string, number>;  // value -> count
+        numericStats?: {
+            count: number;
+            min: number;
+            max: number;
+            mean: number;
+            std: number;
+            median?: number;
+            skewness?: number;
+            kurtosis?: number;
+        };
     }[];
     totalRespondents: number;
 }
@@ -169,6 +263,78 @@ export interface OverallMetrics {
     totalResponses: number;
     completionRate: number;
     averageResponseTime?: number;
+}
+
+export interface FactorAnalysisResult {
+    scaleId: string;
+    scaleName: string;
+    efa: {
+        loadings: number[][]; // [itemIndex][componentIndex]
+        componentsCount: number;
+        itemLabels: string[];
+        factorMethod: 'eigenvalue' | 'fixed';
+        eigenvalueThreshold?: number;
+        rotationMethod?: string;
+        rotated: boolean;
+        eigenvalues?: number[];
+        varianceExplained?: number[];
+        cumulativeVariance?: number[];
+        itemDimensions?: string[];
+        factorMapping?: {
+            dimensionName: string;
+            factorIndex: number;
+            factorName: string;
+            averageLoading: number;
+            strength: 'Strong' | 'Moderate' | 'Weak';
+            strengthAr: string;
+        }[];
+    };
+    cfa: {
+        loadings: { 
+            statementId: string; 
+            statementText: string; 
+            dimensionName: string; 
+            loading: number; // Correlation with intended dimension
+        }[];
+        congruenceScore: number; // Average loading on intended dimensions
+        fitIndices?: {
+            chiSquare: number;
+            df: number;
+            pValue: number;
+            rmsea: number;
+            cfi: number;
+            tli: number;
+            srmr: number;
+        };
+        dimensions?: {
+            dimensionId: string;
+            dimensionName: string;
+            itemCount: number;
+            avgLoading: number;
+            items: {
+                text: string;
+                loading: number;
+                index?: number;
+            }[];
+            covariances?: {
+                dimensionId: string;
+                dimensionName: string;
+                correlation: number;
+            }[];
+        }[];
+    };
+}
+
+export interface MediationResult {
+    independentScaleId: string;
+    independentScaleName: string;
+    mediatorScaleId: string;
+    mediatorScaleName: string;
+    dependentScaleId: string;
+    dependentScaleName: string;
+    z: number;
+    p: number;
+    significant: boolean;
 }
 
 // Default scale options (Likert 5-point) - Arabic

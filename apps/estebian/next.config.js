@@ -1,6 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-    transpilePackages: ['@njaz/ui-components', '@njaz/shared-auth'],
+    transpilePackages: ['@njaz/ui-components', '@njaz/shared-auth', 'aws-amplify', '@aws-amplify'],
     images: {
         domains: ['localhost'],
         unoptimized: true,

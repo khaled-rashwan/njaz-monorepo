@@ -3,13 +3,17 @@ import { DynamoDBDocumentClient, GetCommand, PutCommand } from "@aws-sdk/lib-dyn
 import { SFNClient, StartExecutionCommand } from "@aws-sdk/client-sfn";
 
 const ddbClient = new DynamoDBClient({});
-const docClient = DynamoDBDocumentClient.from(ddbClient);
+const docClient = DynamoDBDocumentClient.from(ddbClient, {
+    marshallOptions: {
+        removeUndefinedValues: true
+    }
+});
 const sfnClient = new SFNClient({});
 
 export const handler = async (event: any, context: any) => {
     console.log('Event:', JSON.stringify(event));
 
-    const { surveyId, reportType } = event.arguments;
+    const { surveyId, reportType, efaConfig, mediationConfig } = event.arguments;
 
     if (!surveyId || !reportType) {
         throw new Error("surveyId and reportType are required");
@@ -58,19 +62,35 @@ export const handler = async (event: any, context: any) => {
             throw new Error("Unauthorized to generate reports for this survey");
         }
 
-        // 2. Create the report record
-        const reportId = crypto.randomUUID();
+        const inputReportId = event.arguments.reportId;
+        const reportId = inputReportId || crypto.randomUUID();
         const now = new Date().toISOString();
         
-        const initialStatus = bypassPayment ? 'payment_verified' : 'pending_payment';
+        let isPaid = bypassPayment;
+        let createdAt = now;
+        
+        // If an existing report ID was provided, verify it and inherit paid status
+        if (inputReportId) {
+            const getReport = await docClient.send(new GetCommand({
+                TableName: reportTable,
+                Key: { id: inputReportId }
+            }));
+            const existingReport = getReport.Item;
+            if (existingReport) {
+                isPaid = existingReport.isPaid || bypassPayment;
+                createdAt = existingReport.createdAt || now;
+            }
+        }
+        
+        const initialStatus = isPaid ? 'payment_verified' : 'pending_payment';
 
         const reportItem = {
             id: reportId,
             surveyId: surveyId,
             type: reportType,
             status: initialStatus,
-            isPaid: bypassPayment,
-            createdAt: now,
+            isPaid: isPaid,
+            createdAt: createdAt,
             updatedAt: now,
             owner: userId,
             __typename: 'EstebianReport'
@@ -87,7 +107,10 @@ export const handler = async (event: any, context: any) => {
             surveyId,
             reportType,
             userId,
-            bypassPayment
+            bypassPayment,
+            isPaid,
+            efaConfig,
+            mediationConfig
         };
 
         const sfnResult = await sfnClient.send(new StartExecutionCommand({
@@ -95,9 +118,6 @@ export const handler = async (event: any, context: any) => {
             name: `Report-${reportId}-${Date.now()}`,
             input: JSON.stringify(sfnInput)
         }));
-
-        // 4. Update record with execution ID
-        // (Optional, but good for tracking)
 
         return {
             reportId,
