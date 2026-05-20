@@ -139,13 +139,30 @@ async function buildWordDocument(report: any, reportId: string): Promise<Documen
     // ── COVER PAGE ──
     sections.push(
         createHeading(isArabic ? 'تقرير تحليل استبيان' : 'Estebian Analysis Report', HeadingLevel.TITLE, isArabic),
-        new Paragraph({ spacing: { after: 200 }, bidirectional: isArabic }),
+        // Decorative separator
+        new Paragraph({
+            bidirectional: isArabic,
+            spacing: { after: 300 },
+            border: { bottom: { style: BorderStyle.SINGLE, size: 12, color: "0369a1", space: 8 } },
+            children: [],
+        }),
         createHeading(data.surveyTitle || 'Survey Report', HeadingLevel.HEADING_1, isArabic),
-        new Paragraph({ spacing: { after: 100 } }),
-        createParagraph(`${isArabic ? 'النوع' : 'Type'}: ${isArabic ? typeLabel.ar : typeLabel.en}`, isArabic),
-        createParagraph(`${isArabic ? 'حجم العينة' : 'Sample Size'}: ${data.sampleSize || 'N/A'}`, isArabic),
-        createParagraph(`${isArabic ? 'تاريخ الإصدار' : 'Generated'}: ${new Date().toLocaleDateString(isArabic ? 'ar-SA' : 'en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`, isArabic),
-        createParagraph(`${isArabic ? 'رقم التقرير' : 'Report ID'}: ${reportId}`, isArabic),
+        new Paragraph({ spacing: { after: 200 }, bidirectional: isArabic }),
+        // Metadata block - each line with bold label + normal value
+        ...[
+            { label: isArabic ? 'النوع' : 'Type', value: isArabic ? typeLabel.ar : typeLabel.en },
+            { label: isArabic ? 'حجم العينة' : 'Sample Size', value: String(data.sampleSize || 'N/A') },
+            { label: isArabic ? 'تاريخ الإصدار' : 'Generated', value: new Date().toLocaleDateString(isArabic ? 'ar-SA' : 'en-US', { year: 'numeric', month: 'long', day: 'numeric' }) },
+            { label: isArabic ? 'رقم التقرير' : 'Report ID', value: reportId },
+        ].map(item => new Paragraph({
+            bidirectional: isArabic,
+            alignment: AlignmentType.START,
+            spacing: { after: 80 },
+            children: [
+                new TextRun({ text: `${item.label}: `, bold: true, font: isArabic ? 'Arial' : 'Calibri', size: 22, color: "0f172a", rightToLeft: isArabic }),
+                new TextRun({ text: item.value, font: isArabic ? 'Arial' : 'Calibri', size: 22, color: "334155", rightToLeft: isArabic }),
+            ],
+        })),
         new Paragraph({ children: [new PageBreak()], bidirectional: isArabic }),
     );
 
@@ -182,7 +199,7 @@ async function buildWordDocument(report: any, reportId: string): Promise<Documen
                         statsRows,
                         isArabic
                     ),
-                    new Paragraph({ spacing: { after: 100 } })
+                    new Paragraph({ spacing: { after: 100 }, bidirectional: isArabic })
                 );
 
 
@@ -223,9 +240,9 @@ async function buildWordDocument(report: any, reportId: string): Promise<Documen
                     );
                 }
             }
-            sections.push(new Paragraph({ spacing: { after: 200 } }));
+            sections.push(new Paragraph({ spacing: { after: 200 }, bidirectional: isArabic }));
         }
-        sections.push(new Paragraph({ children: [new PageBreak()] }));
+        sections.push(new Paragraph({ children: [new PageBreak()], bidirectional: isArabic }));
     }
 
     // ── SCALE ANALYSIS SECTION ──
@@ -341,13 +358,13 @@ async function buildWordDocument(report: any, reportId: string): Promise<Documen
                     buildSimpleTable(itemHeaders, itemRows, isArabic),
                     new Paragraph({
                         bidirectional: isArabic,
-                        alignment: isArabic ? AlignmentType.RIGHT : AlignmentType.LEFT,
+                        alignment: AlignmentType.START,
                         spacing: { before: 60, after: 150 },
                         children: [
                             new TextRun({
                                 text: isArabic ? '* تشير إلى عبارات عكسية التوجيه.' : '* Indicates reverse-scored items.',
                                 font: isArabic ? 'Arial' : 'Calibri',
-                                size: 16, // Font size 8pt
+                                size: 18,
                                 italics: true,
                                 color: "64748b",
                                 rightToLeft: isArabic,
@@ -421,7 +438,7 @@ async function buildWordDocument(report: any, reportId: string): Promise<Documen
                     sections.push(
                         createHeading(isArabic ? 'مؤشرات كفاية العينة وملائمة البيانات (KMO & Bartlett)' : 'Sampling Adequacy & Sphericity Index', HeadingLevel.HEADING_3, isArabic),
                         buildSimpleTable(kmoHeaders, kmoRows, isArabic, 8),
-                        new Paragraph({ spacing: { after: 150 } })
+                        new Paragraph({ spacing: { after: 150 }, bidirectional: isArabic })
                     );
                 }
 
@@ -532,6 +549,7 @@ async function buildWordDocument(report: any, reportId: string): Promise<Documen
                                 sections.push(
                                     new Paragraph({
                                         alignment: AlignmentType.CENTER,
+                                        bidirectional: isArabic,
                                         children: [
                                             new ImageRun({
                                                 type: "png",
@@ -540,7 +558,7 @@ async function buildWordDocument(report: any, reportId: string): Promise<Documen
                                             }),
                                         ],
                                     }),
-                                    new Paragraph({ spacing: { after: 150 } })
+                                    new Paragraph({ spacing: { after: 150 }, bidirectional: isArabic })
                                 );
                             }
                         }
@@ -688,6 +706,7 @@ async function buildWordDocument(report: any, reportId: string): Promise<Documen
                                 sections.push(
                                     new Paragraph({
                                         alignment: AlignmentType.CENTER,
+                                        bidirectional: isArabic,
                                         children: [
                                             new ImageRun({
                                                 type: "png",
@@ -696,7 +715,7 @@ async function buildWordDocument(report: any, reportId: string): Promise<Documen
                                             }),
                                         ],
                                     }),
-                                    new Paragraph({ spacing: { after: 150 } })
+                                    new Paragraph({ spacing: { after: 150 }, bidirectional: isArabic })
                                 );
                                 imageEmbedded = true;
                             }
@@ -728,7 +747,7 @@ async function buildWordDocument(report: any, reportId: string): Promise<Documen
                                 diagramRows.map(r => r.map(c => typeof c === 'string' ? c : c.text)),
                                 isArabic, 8
                             ));
-                            sections.push(new Paragraph({ spacing: { after: 120 } }));
+                            sections.push(new Paragraph({ spacing: { after: 120 }, bidirectional: isArabic }));
                         }
                     }
 
@@ -755,7 +774,7 @@ async function buildWordDocument(report: any, reportId: string): Promise<Documen
                             isArabic, 9
                         ),
                         buildSimpleTable(cfaHeaders, cfaRows, isArabic, 8),
-                        new Paragraph({ spacing: { after: 150 } })
+                        new Paragraph({ spacing: { after: 150 }, bidirectional: isArabic })
                     );
 
                     // Detailed dimension loadings details
@@ -781,13 +800,13 @@ async function buildWordDocument(report: any, reportId: string): Promise<Documen
                         sections.push(
                             createParagraph(`${isArabic ? 'البعد الفرعي' : 'Sub-dimension'}: ${dim.dimensionName}`, isArabic, 9),
                             buildSimpleTable(dimHeaders, dimRows, isArabic, 8),
-                            new Paragraph({ spacing: { after: 100 } })
+                            new Paragraph({ spacing: { after: 100 }, bidirectional: isArabic })
                         );
                     }
                 }
             }
 
-            sections.push(new Paragraph({ children: [new PageBreak()] }));
+            sections.push(new Paragraph({ children: [new PageBreak()], bidirectional: isArabic }));
         }
     }
 
@@ -795,7 +814,7 @@ async function buildWordDocument(report: any, reportId: string): Promise<Documen
     if (data.groupDifferences && data.groupDifferences.length > 0) {
         sections.push(
             createHeading(isArabic ? 'اختبار الفروق الجوهرية' : 'Group Differences Analysis', HeadingLevel.HEADING_1, isArabic),
-            new Paragraph({ spacing: { after: 200 } }),
+            new Paragraph({ spacing: { after: 200 }, bidirectional: isArabic }),
         );
 
         for (const diff of data.groupDifferences) {
@@ -828,9 +847,9 @@ async function buildWordDocument(report: any, reportId: string): Promise<Documen
             });
 
             sections.push(buildSimpleTable(headers, rows, isArabic));
-            sections.push(new Paragraph({ spacing: { after: 200 } }));
+            sections.push(new Paragraph({ spacing: { after: 200 }, bidirectional: isArabic }));
         }
-        sections.push(new Paragraph({ children: [new PageBreak()] }));
+        sections.push(new Paragraph({ children: [new PageBreak()], bidirectional: isArabic }));
     }
 
     // ── INTER-SCALE CORRELATIONS (PEARSON) ──
@@ -841,7 +860,7 @@ async function buildWordDocument(report: any, reportId: string): Promise<Documen
                 ? 'يوضح الجدول التالي قوة واتجاه العلاقة بين إجمالي درجات المقاييس المختلفة.' 
                 : 'The following table shows the strength and direction of the relationship between total scores of different scales.', 
                 isArabic, 10),
-            new Paragraph({ spacing: { after: 200 } }),
+            new Paragraph({ spacing: { after: 200 }, bidirectional: isArabic }),
         );
 
         const iscHeaders = [
@@ -921,7 +940,7 @@ async function buildWordDocument(report: any, reportId: string): Promise<Documen
                     createParagraph(`Z = (${(aVal * bVal).toFixed(4)}) / √[ ${(bVal * bVal * saVal * saVal).toFixed(6)} + ${(aVal * aVal * sbVal * sbVal).toFixed(6)} ]`, false, 9),
                     createParagraph(`Z = (${(aVal * bVal).toFixed(4)}) / ${(Math.sqrt(bVal * bVal * saVal * saVal + aVal * aVal * sbVal * sbVal)).toFixed(4)} = ${zVal}`, false, 9),
                     createParagraph(`قيمة Sobel Z الناتجة هي ${zVal} بقيمة احتمالية (p-value) تساوي ${pVal}. وبناءً على ذلك، تكون النتيجة ${m.significant ? 'دالة إحصائياً (يوجد تأثير وساطة)' : 'غير دالة إحصائياً (لا يوجد تأثير وساطة)'}.`, true, 10),
-                    new Paragraph({ spacing: { after: 200 } })
+                    new Paragraph({ spacing: { after: 200 }, bidirectional: isArabic })
                 );
             } else {
                 sections.push(
@@ -938,7 +957,7 @@ async function buildWordDocument(report: any, reportId: string): Promise<Documen
                     createParagraph(`Z = (${(aVal * bVal).toFixed(4)}) / √[ ${(bVal * bVal * saVal * saVal).toFixed(6)} + ${(aVal * aVal * sbVal * sbVal).toFixed(6)} ]`, false, 9),
                     createParagraph(`Z = (${(aVal * bVal).toFixed(4)}) / ${(Math.sqrt(bVal * bVal * saVal * saVal + aVal * aVal * sbVal * sbVal)).toFixed(4)} = ${zVal}`, false, 9),
                     createParagraph(`The resulting Sobel Z is ${zVal} with a p-value of ${pVal}. Consequently, the mediation effect is ${m.significant ? 'statistically significant (Mediation confirmed)' : 'not statistically significant (No mediation)'}.`, false, 10),
-                    new Paragraph({ spacing: { after: 200 } })
+                    new Paragraph({ spacing: { after: 200 }, bidirectional: isArabic })
                 );
             }
         }
@@ -954,7 +973,7 @@ async function buildWordDocument(report: any, reportId: string): Promise<Documen
         default: {
             document: {
                 paragraph: {
-                    alignment: isArabic ? AlignmentType.RIGHT : AlignmentType.LEFT,
+                    alignment: AlignmentType.START,
                 },
                 run: {
                     font: isArabic ? 'Arial' : 'Calibri',
@@ -966,35 +985,44 @@ async function buildWordDocument(report: any, reportId: string): Promise<Documen
                     bold: true,
                     size: 56,
                     font: isArabic ? 'Arial' : 'Calibri',
+                    color: "0f172a",
                     rightToLeft: isArabic,
                 },
                 paragraph: {
-                    alignment: isArabic ? AlignmentType.RIGHT : AlignmentType.LEFT,
+                    alignment: AlignmentType.START,
                     bidirectional: isArabic,
+                    spacing: { after: 200 },
                 }
             },
             heading1: {
                 run: {
                     bold: true,
-                    size: 32,
+                    size: 36,
                     font: isArabic ? 'Arial' : 'Calibri',
+                    color: "0f172a",
                     rightToLeft: isArabic,
                 },
                 paragraph: {
-                    alignment: isArabic ? AlignmentType.RIGHT : AlignmentType.LEFT,
+                    alignment: AlignmentType.START,
                     bidirectional: isArabic,
+                    spacing: { before: 400, after: 200 },
+                    border: {
+                        bottom: { style: BorderStyle.SINGLE, size: 6, color: "0369a1", space: 4 },
+                    },
                 }
             },
             heading2: {
                 run: {
                     bold: true,
-                    size: 26,
+                    size: 28,
                     font: isArabic ? 'Arial' : 'Calibri',
+                    color: "0369a1",
                     rightToLeft: isArabic,
                 },
                 paragraph: {
-                    alignment: isArabic ? AlignmentType.RIGHT : AlignmentType.LEFT,
+                    alignment: AlignmentType.START,
                     bidirectional: isArabic,
+                    spacing: { before: 320, after: 160 },
                 }
             },
             heading3: {
@@ -1002,11 +1030,13 @@ async function buildWordDocument(report: any, reportId: string): Promise<Documen
                     bold: true,
                     size: 24,
                     font: isArabic ? 'Arial' : 'Calibri',
+                    color: "334155",
                     rightToLeft: isArabic,
                 },
                 paragraph: {
-                    alignment: isArabic ? AlignmentType.RIGHT : AlignmentType.LEFT,
+                    alignment: AlignmentType.START,
                     bidirectional: isArabic,
+                    spacing: { before: 240, after: 120 },
                 }
             },
             heading4: {
@@ -1014,10 +1044,11 @@ async function buildWordDocument(report: any, reportId: string): Promise<Documen
                     bold: true,
                     italics: true,
                     font: isArabic ? 'Arial' : 'Calibri',
+                    color: "334155",
                     rightToLeft: isArabic,
                 },
                 paragraph: {
-                    alignment: isArabic ? AlignmentType.RIGHT : AlignmentType.LEFT,
+                    alignment: AlignmentType.START,
                     bidirectional: isArabic,
                 }
             },
@@ -1025,10 +1056,11 @@ async function buildWordDocument(report: any, reportId: string): Promise<Documen
                 run: {
                     bold: true,
                     font: isArabic ? 'Arial' : 'Calibri',
+                    color: "334155",
                     rightToLeft: isArabic,
                 },
                 paragraph: {
-                    alignment: isArabic ? AlignmentType.RIGHT : AlignmentType.LEFT,
+                    alignment: AlignmentType.START,
                     bidirectional: isArabic,
                 }
             },
@@ -1036,10 +1068,11 @@ async function buildWordDocument(report: any, reportId: string): Promise<Documen
                 run: {
                     bold: true,
                     font: isArabic ? 'Arial' : 'Calibri',
+                    color: "334155",
                     rightToLeft: isArabic,
                 },
                 paragraph: {
-                    alignment: isArabic ? AlignmentType.RIGHT : AlignmentType.LEFT,
+                    alignment: AlignmentType.START,
                     bidirectional: isArabic,
                 }
             },
@@ -1049,10 +1082,6 @@ async function buildWordDocument(report: any, reportId: string): Promise<Documen
                     font: isArabic ? 'Arial' : 'Calibri',
                     rightToLeft: isArabic,
                 },
-                paragraph: {
-                    alignment: isArabic ? AlignmentType.RIGHT : AlignmentType.LEFT,
-                    bidirectional: isArabic,
-                }
             },
             listParagraph: {
                 run: {
@@ -1060,7 +1089,7 @@ async function buildWordDocument(report: any, reportId: string): Promise<Documen
                     rightToLeft: isArabic,
                 },
                 paragraph: {
-                    alignment: isArabic ? AlignmentType.RIGHT : AlignmentType.LEFT,
+                    alignment: AlignmentType.START,
                     bidirectional: isArabic,
                 }
             }
@@ -1070,11 +1099,14 @@ async function buildWordDocument(report: any, reportId: string): Promise<Documen
                 id: "Normal",
                 name: "Normal",
                 paragraph: {
-                    alignment: isArabic ? AlignmentType.RIGHT : AlignmentType.LEFT,
+                    alignment: AlignmentType.START,
                     bidirectional: isArabic,
+                    spacing: { after: 120, line: 276 },
                 },
                 run: {
                     font: isArabic ? 'Arial' : 'Calibri',
+                    size: 22,
+                    color: "334155",
                     rightToLeft: isArabic,
                 }
             }
@@ -1091,7 +1123,19 @@ async function buildWordDocument(report: any, reportId: string): Promise<Documen
             },
             headers: {
                 default: new Header({
-                    children: [createParagraph(isArabic ? 'تقرير إستبيان' : 'Estebian Report', isArabic, 8)],
+                    children: [new Paragraph({
+                        alignment: AlignmentType.START,
+                        bidirectional: isArabic,
+                        border: { bottom: { style: BorderStyle.SINGLE, size: 4, color: "e2e8f0", space: 4 } },
+                        children: [new TextRun({
+                            text: isArabic ? 'تقرير إستبيان — منصة نجاز' : 'Estebian Report — Njaz Platform',
+                            font: isArabic ? 'Arial' : 'Calibri',
+                            size: 16,
+                            color: "64748b",
+                            italics: true,
+                            rightToLeft: isArabic,
+                        })],
+                    })],
                 }),
             },
             footers: {
@@ -1117,16 +1161,29 @@ async function buildWordDocument(report: any, reportId: string): Promise<Documen
 // ============================================
 
 function createHeading(text: string, level: (typeof HeadingLevel)[keyof typeof HeadingLevel], isArabic: boolean): Paragraph {
+    const sizeMap: Record<string, number> = {
+        [HeadingLevel.TITLE]: 56,
+        [HeadingLevel.HEADING_1]: 36,
+        [HeadingLevel.HEADING_2]: 28,
+        [HeadingLevel.HEADING_3]: 24,
+    };
+    const colorMap: Record<string, string> = {
+        [HeadingLevel.TITLE]: "0f172a",
+        [HeadingLevel.HEADING_1]: "0f172a",
+        [HeadingLevel.HEADING_2]: "0369a1",
+        [HeadingLevel.HEADING_3]: "334155",
+    };
     return new Paragraph({
         heading: level,
         bidirectional: isArabic,
-        alignment: isArabic ? AlignmentType.RIGHT : AlignmentType.LEFT,
-        spacing: { before: 240, after: 120 },
+        alignment: AlignmentType.START,
         children: [
             new TextRun({
                 text,
                 bold: true,
                 font: isArabic ? 'Arial' : 'Calibri',
+                size: sizeMap[level] || 22,
+                color: colorMap[level] || "334155",
                 rightToLeft: isArabic,
             }),
         ],
@@ -1136,13 +1193,14 @@ function createHeading(text: string, level: (typeof HeadingLevel)[keyof typeof H
 function createParagraph(text: string, isArabic: boolean, fontSize?: number): Paragraph {
     return new Paragraph({
         bidirectional: isArabic,
-        alignment: isArabic ? AlignmentType.RIGHT : AlignmentType.LEFT,
-        spacing: { after: 80 },
+        alignment: AlignmentType.START,
+        spacing: { after: 120 },
         children: [
             new TextRun({
                 text,
                 font: isArabic ? 'Arial' : 'Calibri',
                 size: fontSize ? fontSize * 2 : 22,
+                color: "334155",
                 rightToLeft: isArabic,
             }),
         ],
@@ -1150,11 +1208,21 @@ function createParagraph(text: string, isArabic: boolean, fontSize?: number): Pa
 }
 
 function buildSimpleTable(headers: string[], rows: string[][], isArabic: boolean, fontSize: number = 9): Table {
+    const cellBorders = {
+        top: { style: BorderStyle.SINGLE, size: 4, color: "e2e8f0" },
+        bottom: { style: BorderStyle.SINGLE, size: 4, color: "e2e8f0" },
+        left: { style: BorderStyle.SINGLE, size: 4, color: "e2e8f0" },
+        right: { style: BorderStyle.SINGLE, size: 4, color: "e2e8f0" },
+    };
+    const cellMargins = { top: 40, bottom: 40, left: 80, right: 80 };
+
     const headerRow = new TableRow({
         tableHeader: true,
         children: headers.map(h => new TableCell({
+            borders: cellBorders,
             shading: { fill: "1e293b", type: ShadingType.SOLID, color: "1e293b" },
             width: { size: Math.floor(100 / (headers.length || 1)), type: WidthType.PERCENTAGE },
+            margins: cellMargins,
             children: [new Paragraph({
                 alignment: AlignmentType.CENTER,
                 bidirectional: isArabic,
@@ -1173,18 +1241,21 @@ function buildSimpleTable(headers: string[], rows: string[][], isArabic: boolean
 
     const dataRows = rows.map((row, rIdx) => new TableRow({
         children: row.map((cell, cIdx) => new TableCell({
+            borders: cellBorders,
             shading: rIdx % 2 === 0
                 ? { fill: "f8fafc", type: ShadingType.SOLID, color: "f8fafc" }
-                : undefined,
+                : { fill: "ffffff", type: ShadingType.SOLID, color: "ffffff" },
             width: { size: Math.floor(100 / (headers.length || 1)), type: WidthType.PERCENTAGE },
+            margins: cellMargins,
             children: [new Paragraph({
-                alignment: cIdx === 0 ? (isArabic ? AlignmentType.RIGHT : AlignmentType.LEFT) : AlignmentType.CENTER,
+                alignment: cIdx === 0 ? AlignmentType.START : AlignmentType.CENTER,
                 bidirectional: isArabic,
                 spacing: { before: 20, after: 20 },
                 children: [new TextRun({
                     text: cell || '',
                     font: cIdx > 0 && !isArabic ? 'Consolas' : (isArabic ? 'Arial' : 'Calibri'),
                     size: fontSize * 2,
+                    color: "334155",
                     rightToLeft: isArabic,
                 })],
             })],
@@ -1193,7 +1264,7 @@ function buildSimpleTable(headers: string[], rows: string[][], isArabic: boolean
 
     return new Table({
         width: { size: 100, type: WidthType.PERCENTAGE },
-        alignment: isArabic ? AlignmentType.RIGHT : AlignmentType.LEFT,
+        alignment: AlignmentType.START,
         visuallyRightToLeft: isArabic,
         rows: [headerRow, ...dataRows],
     });
