@@ -950,20 +950,139 @@ async function buildWordDocument(report: any, reportId: string): Promise<Documen
         createParagraph('© 2026 Njaz Platform (njaz.org) — All rights reserved.', false, 9),
     );
 
-    return new Document({
-        styles: {
-            default: {
-                document: {
-                    paragraph: {
-                        alignment: isArabic ? AlignmentType.RIGHT : AlignmentType.LEFT,
-                    },
-                    run: {
-                        font: isArabic ? 'Arial' : 'Calibri',
-                        rightToLeft: isArabic,
-                    }
+    const stylesConfig = {
+        default: {
+            document: {
+                paragraph: {
+                    alignment: isArabic ? AlignmentType.RIGHT : AlignmentType.LEFT,
+                },
+                run: {
+                    font: isArabic ? 'Arial' : 'Calibri',
+                    rightToLeft: isArabic,
+                }
+            },
+            title: {
+                run: {
+                    bold: true,
+                    size: 56,
+                    font: isArabic ? 'Arial' : 'Calibri',
+                    rightToLeft: isArabic,
+                },
+                paragraph: {
+                    alignment: isArabic ? AlignmentType.RIGHT : AlignmentType.LEFT,
+                    bidirectional: isArabic,
+                }
+            },
+            heading1: {
+                run: {
+                    bold: true,
+                    size: 32,
+                    font: isArabic ? 'Arial' : 'Calibri',
+                    rightToLeft: isArabic,
+                },
+                paragraph: {
+                    alignment: isArabic ? AlignmentType.RIGHT : AlignmentType.LEFT,
+                    bidirectional: isArabic,
+                }
+            },
+            heading2: {
+                run: {
+                    bold: true,
+                    size: 26,
+                    font: isArabic ? 'Arial' : 'Calibri',
+                    rightToLeft: isArabic,
+                },
+                paragraph: {
+                    alignment: isArabic ? AlignmentType.RIGHT : AlignmentType.LEFT,
+                    bidirectional: isArabic,
+                }
+            },
+            heading3: {
+                run: {
+                    bold: true,
+                    size: 24,
+                    font: isArabic ? 'Arial' : 'Calibri',
+                    rightToLeft: isArabic,
+                },
+                paragraph: {
+                    alignment: isArabic ? AlignmentType.RIGHT : AlignmentType.LEFT,
+                    bidirectional: isArabic,
+                }
+            },
+            heading4: {
+                run: {
+                    bold: true,
+                    italics: true,
+                    font: isArabic ? 'Arial' : 'Calibri',
+                    rightToLeft: isArabic,
+                },
+                paragraph: {
+                    alignment: isArabic ? AlignmentType.RIGHT : AlignmentType.LEFT,
+                    bidirectional: isArabic,
+                }
+            },
+            heading5: {
+                run: {
+                    bold: true,
+                    font: isArabic ? 'Arial' : 'Calibri',
+                    rightToLeft: isArabic,
+                },
+                paragraph: {
+                    alignment: isArabic ? AlignmentType.RIGHT : AlignmentType.LEFT,
+                    bidirectional: isArabic,
+                }
+            },
+            heading6: {
+                run: {
+                    bold: true,
+                    font: isArabic ? 'Arial' : 'Calibri',
+                    rightToLeft: isArabic,
+                },
+                paragraph: {
+                    alignment: isArabic ? AlignmentType.RIGHT : AlignmentType.LEFT,
+                    bidirectional: isArabic,
+                }
+            },
+            strong: {
+                run: {
+                    bold: true,
+                    font: isArabic ? 'Arial' : 'Calibri',
+                    rightToLeft: isArabic,
+                },
+                paragraph: {
+                    alignment: isArabic ? AlignmentType.RIGHT : AlignmentType.LEFT,
+                    bidirectional: isArabic,
+                }
+            },
+            listParagraph: {
+                run: {
+                    font: isArabic ? 'Arial' : 'Calibri',
+                    rightToLeft: isArabic,
+                },
+                paragraph: {
+                    alignment: isArabic ? AlignmentType.RIGHT : AlignmentType.LEFT,
+                    bidirectional: isArabic,
                 }
             }
         },
+        paragraphStyles: [
+            {
+                id: "Normal",
+                name: "Normal",
+                paragraph: {
+                    alignment: isArabic ? AlignmentType.RIGHT : AlignmentType.LEFT,
+                    bidirectional: isArabic,
+                },
+                run: {
+                    font: isArabic ? 'Arial' : 'Calibri',
+                    rightToLeft: isArabic,
+                }
+            }
+        ]
+    };
+
+    return new Document({
+        styles: stylesConfig,
         sections: [{
             properties: {
                 page: {
