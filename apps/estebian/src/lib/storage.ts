@@ -268,8 +268,8 @@ export async function requestReport(
     
     const args: any = { surveyId, reportType };
     if (reportId) args.reportId = reportId;
-    if (options?.efaConfig) args.efaConfig = options.efaConfig;
-    if (options?.mediationConfig) args.mediationConfig = options.mediationConfig;
+    if (options?.efaConfig) args.efaConfig = JSON.stringify(options.efaConfig);
+    if (options?.mediationConfig) args.mediationConfig = JSON.stringify(options.mediationConfig);
     
     const { data: result, errors } = await getClient().mutations.requestReport(args);
 
