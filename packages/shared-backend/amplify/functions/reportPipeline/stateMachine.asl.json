@@ -1,0 +1,112 @@
+{
+  "Comment": "Estebian Report Generation Pipeline",
+  "StartAt": "VerifyPayment",
+  "States": {
+    "VerifyPayment": {
+      "Type": "Task",
+      "Resource": "arn:aws:lambda:REGION:ACCOUNT:function:verifyPayment",
+      "InputPath": "$",
+      "ResultPath": "$.paymentResult",
+      "Next": "CheckPaymentResult",
+      "Catch": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "Next": "HandlePaymentError",
+          "ResultPath": "$.error"
+        }
+      ]
+    },
+    
+    "CheckPaymentResult": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.paymentResult.verified",
+          "BooleanEquals": true,
+          "Next": "ComputeReport"
+        }
+      ],
+      "Default": "HandlePaymentFailed"
+    },
+    
+    "ComputeReport": {
+      "Type": "Task",
+      "Resource": "arn:aws:lambda:REGION:ACCOUNT:function:computeReport",
+      "InputPath": "$",
+      "ResultPath": "$.computeResult",
+      "TimeoutSeconds": 300,
+      "Next": "MarkCompleted",
+      "Catch": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "Next": "HandleComputeError",
+          "ResultPath": "$.error"
+        }
+      ]
+    },
+    
+    "MarkCompleted": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::dynamodb:updateItem",
+      "Parameters": {
+        "TableName": "${ReportTableName}",
+        "Key": { "id": { "S.$": "$.reportId" } },
+        "UpdateExpression": "SET #status = :s, computeCompletedAt = :t, isPaid = :p",
+        "ExpressionAttributeNames": { "#status": "status" },
+        "ExpressionAttributeValues": {
+          ":s": { "S": "completed" },
+          ":t": { "S.$": "$$.State.EnteredTime" },
+          ":p": { "BOOL": true }
+        }
+      },
+      "End": true
+    },
+    
+    "HandlePaymentFailed": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::dynamodb:updateItem",
+      "Parameters": {
+        "TableName": "${ReportTableName}",
+        "Key": { "id": { "S.$": "$.reportId" } },
+        "UpdateExpression": "SET #status = :s",
+        "ExpressionAttributeNames": { "#status": "status" },
+        "ExpressionAttributeValues": {
+          ":s": { "S": "payment_failed" }
+        }
+      },
+      "End": true
+    },
+    
+    "HandlePaymentError": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::dynamodb:updateItem",
+      "Parameters": {
+        "TableName": "${ReportTableName}",
+        "Key": { "id": { "S.$": "$.reportId" } },
+        "UpdateExpression": "SET #status = :s, errorMessage = :e",
+        "ExpressionAttributeNames": { "#status": "status" },
+        "ExpressionAttributeValues": {
+          ":s": { "S": "payment_failed" },
+          ":e": { "S.$": "$.error.Cause" }
+        }
+      },
+      "End": true
+    },
+    
+    "HandleComputeError": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::dynamodb:updateItem",
+      "Parameters": {
+        "TableName": "${ReportTableName}",
+        "Key": { "id": { "S.$": "$.reportId" } },
+        "UpdateExpression": "SET #status = :s, errorMessage = :e",
+        "ExpressionAttributeNames": { "#status": "status" },
+        "ExpressionAttributeValues": {
+          ":s": { "S": "computation_failed" },
+          ":e": { "S.$": "$.error.Cause" }
+        }
+      },
+      "End": true
+    }
+  }
+}

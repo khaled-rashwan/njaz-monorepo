@@ -145,9 +145,19 @@ export default function SurveyDetailPage() {
                                 <button
                                     onClick={handlePublish}
                                     disabled={isPublishing}
-                                    className="futuristic-btn-primary"
+                                    className="flex items-center gap-2.5 px-6 py-3 bg-gradient-to-r from-cyan-400 to-cyan-500 hover:from-cyan-300 hover:to-cyan-400 text-slate-950 font-bold rounded-xl transition-all shadow-lg shadow-cyan-500/20 hover:shadow-cyan-400/40 hover:scale-[1.03] active:scale-[0.98] disabled:opacity-50"
                                 >
-                                    {isPublishing ? t('Publishing...', 'جاري النشر...') : t('Publish Now', 'انشر الآن')}
+                                    {isPublishing ? (
+                                        <>
+                                            <span className="w-4 h-4 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
+                                            <span>{t('Publishing...', 'جاري النشر...')}</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <span className="text-base">🚀</span>
+                                            <span>{t('Publish Now', 'انشر الآن')}</span>
+                                        </>
+                                    )}
                                 </button>
                             )}
                         </div>
@@ -160,9 +170,9 @@ export default function SurveyDetailPage() {
                                 <h3 className="text-sm text-slate-500 mb-4 uppercase tracking-wider font-semibold">
                                     {t('Public Participation Link', 'رابط المشاركة العامة')}
                                 </h3>
-                                <div className="flex items-center gap-3 p-4 rounded-xl bg-slate-9Exec800/50 border border-slate-700/50">
+                                <div className="flex items-center gap-3 p-4 rounded-xl bg-slate-900/50 border border-slate-700/50">
                                     <code className="flex-1 text-cyan-400 break-all">
-                                        {window.location.origin}/respond/{surveyId}
+                                        {typeof window !== 'undefined' ? window.location.origin : ''}/respond/{surveyId}
                                     </code>
                                     <button
                                         onClick={copyLink}

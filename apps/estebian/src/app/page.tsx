@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { useLanguage, LanguageSwitcher } from '@/components/LanguageContext';
 import { SharedHeader, SharedFooter, FuturisticPanel } from '@njaz/ui-components';
 import { getDashboardUrl, getCurrentUrl } from '@njaz/shared-auth';
+import { getSurveys, getResponses, getReports } from '@/lib/storage';
 
 interface User {
     username: string;
@@ -17,6 +18,7 @@ export default function DashboardPage() {
     const { t, language, direction } = useLanguage();
     const [user, setUser] = useState<User | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [stats, setStats] = useState({ surveys: 0, responses: 0, reports: 0 });
 
     useEffect(() => {
         checkAuth();
@@ -29,9 +31,33 @@ export default function DashboardPage() {
                 username: currentUser.username,
                 email: currentUser.signInDetails?.loginId,
             });
+            loadStats();
         } catch {
-            // User not authenticated - that's okay, they can use Sign In button
             setUser(null);
+            setIsLoading(false);
+        }
+    }
+
+    async function loadStats() {
+        try {
+            const surveys = await getSurveys();
+            
+            // Collect all response counts
+            let totalResponses = 0;
+            await Promise.all(surveys.map(async (s) => {
+                const res = await getResponses(s.id);
+                totalResponses += res.length;
+            }));
+
+            const reports = await getReports("");
+            
+            setStats({
+                surveys: surveys.length,
+                responses: totalResponses,
+                reports: reports.length
+            });
+        } catch (error) {
+            console.error("Error loading dashboard stats:", error);
         } finally {
             setIsLoading(false);
         }
@@ -292,16 +318,24 @@ export default function DashboardPage() {
                     ) : (
                         <>
                             {/* Welcome Section */}
-                            <div className="mb-8 animate-fade-in">
-                                <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">
-                                    {t('Welcome to Estebian', 'مرحباً في استبيان')}
-                                </h1>
-                                <p className="text-slate-400">
-                                    {t(
-                                        'Create surveys, manage scales, and analyze your research data.',
-                                        'أنشئ استبيانات، أدر المقاييس، وحلل بيانات بحثك.'
-                                    )}
-                                </p>
+                            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4 animate-fade-in">
+                                <div>
+                                    <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">
+                                        {t('Welcome to Estebian', 'مرحباً في استبيان')}
+                                    </h1>
+                                    <p className="text-slate-400">
+                                        {t(
+                                            'Create surveys, manage scales, and analyze your research data.',
+                                            'أنشئ استبيانات، أدر المقاييس، وحلل بيانات بحثك.'
+                                        )}
+                                    </p>
+                                </div>
+                                <Link 
+                                    href="/admin" 
+                                    className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-rose-500/10 to-purple-500/10 border border-rose-500/30 hover:border-rose-500/60 text-rose-300 hover:text-white text-sm font-bold transition-all shadow-lg shadow-rose-500/5"
+                                >
+                                    ⚙️ {t('Admin Control Center', 'مركز تحكم الإدارة')}
+                                </Link>
                             </div>
 
                             {/* Quick Actions Grid */}
@@ -383,12 +417,11 @@ export default function DashboardPage() {
                                 </Link>
                             </div>
 
-                            {/* Stats Overview */}
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                                 <FuturisticPanel glowColor="cyan" size="sm">
                                     <div className="flex items-center gap-4">
                                         <div className="w-12 h-12 rounded-lg bg-cyan-500/10 flex items-center justify-center">
-                                            <span className="text-2xl font-bold text-cyan-400">0</span>
+                                            <span className="text-2xl font-bold text-cyan-400">{stats.surveys}</span>
                                         </div>
                                         <div>
                                             <p className="text-sm text-slate-400">{t('Total Surveys', 'إجمالي الاستبيانات')}</p>
@@ -400,11 +433,11 @@ export default function DashboardPage() {
                                 <FuturisticPanel glowColor="purple" size="sm">
                                     <div className="flex items-center gap-4">
                                         <div className="w-12 h-12 rounded-lg bg-purple-500/10 flex items-center justify-center">
-                                            <span className="text-2xl font-bold text-purple-400">0</span>
+                                            <span className="text-2xl font-bold text-purple-400">{stats.responses}</span>
                                         </div>
                                         <div>
                                             <p className="text-sm text-slate-400">{t('Total Responses', 'إجمالي الاستجابات')}</p>
-                                            <p className="text-white font-medium">{t('This month', 'هذا الشهر')}</p>
+                                            <p className="text-white font-medium">{t('All time', 'كل الوقت')}</p>
                                         </div>
                                     </div>
                                 </FuturisticPanel>
@@ -412,7 +445,7 @@ export default function DashboardPage() {
                                 <FuturisticPanel glowColor="gold" size="sm">
                                     <div className="flex items-center gap-4">
                                         <div className="w-12 h-12 rounded-lg bg-amber-500/10 flex items-center justify-center">
-                                            <span className="text-2xl font-bold text-amber-400">0</span>
+                                            <span className="text-2xl font-bold text-amber-400">{stats.reports}</span>
                                         </div>
                                         <div>
                                             <p className="text-sm text-slate-400">{t('Reports Generated', 'التقارير المُنشأة')}</p>

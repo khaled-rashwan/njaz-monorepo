@@ -10,11 +10,17 @@
         "sandbox:delete": "npx ampx sandbox delete"
     },
     "dependencies": {
-        "aws-amplify": "^6.0.0",
-        "@njaz/estebian-data": "*",
+        "@aws-sdk/client-cognito-identity-provider": "^3.0.0",
         "@aws-sdk/client-dynamodb": "^3.0.0",
+        "@aws-sdk/client-s3": "^3.1028.0",
+        "@aws-sdk/client-sfn": "^3.1028.0",
         "@aws-sdk/lib-dynamodb": "^3.0.0",
-        "@aws-sdk/client-cognito-identity-provider": "^3.0.0"
+        "@njaz/estebian-data": "*",
+        "arabic-persian-reshaper": "^1.0.1",
+        "aws-amplify": "^6.0.0",
+        "docx": "^9.6.1",
+        "jspdf": "^4.2.1",
+        "pdfmake": "^0.3.8"
     },
     "devDependencies": {
         "@aws-amplify/backend": "^1.0.0",

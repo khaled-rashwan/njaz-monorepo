@@ -182,10 +182,18 @@ export async function deleteSurvey(id: string): Promise<void> {
  * Response Storage Functions (Anonymous support)
  */
 export async function getResponses(surveyId: string): Promise<SurveyResponse[]> {
-    const { data: responses } = await getClient().models.EstebianResponse.list({
-        filter: { surveyId: { eq: surveyId } }
-    });
-    return (responses || []).map((r: any) => ({
+    let nextToken: string | null = null;
+    const allResponses: any[] = [];
+    do {
+        const response: any = await getClient().models.EstebianResponse.list({
+            filter: { surveyId: { eq: surveyId } },
+            nextToken: nextToken
+        });
+        allResponses.push(...(response.data || []));
+        nextToken = response.nextToken;
+    } while (nextToken);
+
+    return allResponses.map((r: any) => ({
         ...r,
         demographics: typeof r.demographics === 'string' ? JSON.parse(r.demographics) : r.demographics,
         answers: typeof r.answers === 'string' ? JSON.parse(r.answers) : r.answers
@@ -217,20 +225,73 @@ export async function saveResponse(response: SurveyResponse): Promise<string> {
  * Report Storage Functions
  */
 export async function getReports(surveyId: string): Promise<Report[]> {
-    const { data: reports } = await getClient().models.EstebianReport.list({
-        filter: { surveyId: { eq: surveyId } }
-    });
-    return (reports || []).map((r: any) => ({
+    const filter = surveyId ? { surveyId: { eq: surveyId } } : undefined;
+    let nextToken: string | null = null;
+    const allReports: any[] = [];
+    do {
+        const response: any = await getClient().models.EstebianReport.list({
+            filter: filter,
+            nextToken: nextToken
+        });
+        allReports.push(...(response.data || []));
+        nextToken = response.nextToken;
+    } while (nextToken);
+
+    return allReports.map((r: any) => ({
         ...r,
-        data: typeof r.data === 'string' ? JSON.parse(r.data) : r.data
+        data: typeof r.data === 'string' ? JSON.parse(r.data) : (r.data || null)
     })) as unknown as Report[];
 }
 
+export async function getReportById(id: string): Promise<Report | null> {
+    const { data: report } = await getClient().models.EstebianReport.get({ id });
+    if (!report) return null;
+    return {
+        ...report,
+        data: typeof report.data === 'string' ? JSON.parse(report.data) : (report.data || null)
+    } as unknown as Report;
+}
+
+/**
+ * Request a new paid report. This calls the backend Lambda which:
+ * 1. Creates a report record with PENDING_PAYMENT status
+ * 2. Creates a payment session (or bypasses in dev)
+ * 3. Starts the Step Function pipeline
+ */
+export async function requestReport(
+    surveyId: string,
+    reportType: 'demographic' | 'scale' | 'comprehensive',
+    reportId?: string,
+    options?: { efaConfig?: any; mediationConfig?: any }
+): Promise<{ reportId: string; paymentUrl: string | null; status: string }> {
+    console.log('Available Mutations:', Object.keys(getClient().mutations));
+    
+    const args: any = { surveyId, reportType };
+    if (reportId) args.reportId = reportId;
+    if (options?.efaConfig) args.efaConfig = options.efaConfig;
+    if (options?.mediationConfig) args.mediationConfig = options.mediationConfig;
+    
+    const { data: result, errors } = await getClient().mutations.requestReport(args);
+
+    if (errors) {
+        throw new Error(errors[0].message);
+    }
+
+    // result is the JSON returned from the Lambda
+    const parsed = typeof result === 'string' ? JSON.parse(result) : result;
+    return parsed;
+}
+
+/**
+ * Legacy saveReport (Client-side)
+ * Still useful for testing or non-orchestrated reports
+ */
 export async function saveReport(report: Report): Promise<string> {
     const { data: created } = await getClient().models.EstebianReport.create({
         id: report.id,
         surveyId: report.surveyId,
         type: report.type,
+        status: report.status || (report.isPaid ? 'completed' : 'pending_payment'),
         isPaid: report.isPaid,
         data: JSON.stringify(report.data)
     });

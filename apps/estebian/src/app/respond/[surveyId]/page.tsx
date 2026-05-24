@@ -135,6 +135,8 @@ export default function RespondPage() {
             }
         } else if (step === 'scales') {
             const currentST = allStatements[currentStatementIndex];
+            if (!currentST) return;
+
             if (scaleAnswers[currentST.id] === undefined) {
                 alert(t('Please answer the current question', 'يرجى الإجابة على السؤال الحالي'));
                 return;

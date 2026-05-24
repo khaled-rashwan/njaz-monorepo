@@ -26,7 +26,7 @@ export default function RootLayout({
     children: React.ReactNode;
 }) {
     return (
-        <html lang="ar" dir="rtl">
+        <html lang="ar" dir="rtl" suppressHydrationWarning>
             <head>
                 <title>استبيان | Estebian - منصة الاستبيانات والمقاييس</title>
                 <meta name="description" content="منصة عربية متكاملة لإنشاء الاستبيانات والمقاييس النفسية وجمع البيانات وتحليلها" />
@@ -37,7 +37,7 @@ export default function RootLayout({
                 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
                 <link rel="icon" href="/images/favicon.png" />
             </head>
-            <body className="antialiased">
+            <body className="antialiased" suppressHydrationWarning>
                 <Providers>
                     <LayoutContent>
                         {children}

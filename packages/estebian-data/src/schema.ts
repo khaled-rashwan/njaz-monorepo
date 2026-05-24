@@ -90,9 +90,36 @@ export const estebianSchema = {
         .model({
             surveyId: a.id().required(),
             type: a.enum(['demographic', 'scale', 'comprehensive']),
+            status: a.enum([
+                'pending_payment',
+                'payment_processing',
+                'payment_verified',
+                'computing',
+                'generating_pdf',
+                'completed',
+                'payment_failed',
+                'computation_failed'
+            ]),
+            
+            // Payment tracking
+            paymentId: a.string(),           // External payment gateway transaction ID
+            paymentMethod: a.string(),       // 'moyasar' | 'stripe' | 'bypass'
+            paymentAmount: a.float(),        // Amount charged
+            paymentCurrency: a.string(),     // 'SAR' | 'USD'
+            paidAt: a.datetime(),            // When payment was confirmed
+            
+            // Computation tracking
+            stepFunctionExecutionId: a.string(),
+            computeStartedAt: a.datetime(),
+            computeCompletedAt: a.datetime(),
+            errorMessage: a.string(),
+            
+            // Report output
+            data: a.json(),                  // Computed statistical results
+            pdfS3Key: a.string(),            // S3 key for the generated PDF
+            
+            // Legacy/Legacy-derived
             isPaid: a.boolean().default(false),
-            // Report data (charts, statistics, etc.)
-            data: a.json(),
         })
         .authorization((allow) => [
             allow.owner(),

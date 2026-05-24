@@ -63,3 +63,6 @@ apps/*/public/images/estebian-logo.png
 apps/*/public/images/dev-logo.png
 apps/*/public/images/process-logo.png
 apps/*/public/images/favicon.png
+
+# Estebian docs — client sample data (not for public)
+apps/estebian/docs/Asmaa Sayed/
