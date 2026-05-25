@@ -13,7 +13,7 @@ export const handler = async (event: any) => {
     console.log('Event:', JSON.stringify(event));
 
     // Input might be from verifyPayment or direct start
-    const { reportId, surveyId, reportType, efaConfig, mediationConfig } = event;
+    const { reportId, surveyId, reportType, efaConfig, mediationConfig, excludedResponseIds, excludedStatementIds } = event;
 
     if (!reportId || !surveyId) {
         throw new Error("Missing reportId or surveyId in event");
@@ -80,9 +80,12 @@ export const handler = async (event: any) => {
             } while (lastEvaluatedKey);
         }
         
-        const sampleSize = responses.length;
+        const activeExcludedResponseIds = excludedResponseIds || [];
+        const filteredResponses = responses.filter(r => !activeExcludedResponseIds.includes(r.id));
+
+        const sampleSize = filteredResponses.length;
         if (sampleSize === 0) {
-            throw new Error("Cannot generate report: No responses found for this survey.");
+            throw new Error("Cannot generate report: No responses found for this survey after quality screening.");
         }
 
         // 4. Computation Logic
@@ -92,15 +95,25 @@ export const handler = async (event: any) => {
             sampleSize: sampleSize,
             language: survey.language || 'ar',
             efaConfig,
-            mediationConfig
+            mediationConfig,
+            excludedResponseIds: activeExcludedResponseIds,
+            excludedStatementIds: excludedStatementIds || [],
+            rawSampleSize: responses.length
         };
 
         // Deep parse JSON strings if they were stored as strings
         const demographicsSchema = typeof survey.demographics === 'string' ? JSON.parse(survey.demographics) : (survey.demographics || []);
-        const scaleSnapshots = typeof survey.scaleSnapshots === 'string' ? JSON.parse(survey.scaleSnapshots) : (survey.scaleSnapshots || []);
+        const rawScaleSnapshots = typeof survey.scaleSnapshots === 'string' ? JSON.parse(survey.scaleSnapshots) : (survey.scaleSnapshots || []);
+
+        // Filter out virtually excluded statements
+        const activeExcludedStatementIds = excludedStatementIds || [];
+        const scaleSnapshots = rawScaleSnapshots.map((scale: any) => ({
+            ...scale,
+            statements: (scale.statements || []).filter((s: any) => !activeExcludedStatementIds.includes(s.id))
+        }));
 
         // Process actual response data (parse strings if necessary)
-        const processedResponses = responses.map(r => ({
+        const processedResponses = filteredResponses.map(r => ({
             ...r,
             answers: typeof r.answers === 'string' ? JSON.parse(r.answers) : (r.answers || {}),
             demographics: typeof r.demographics === 'string' ? JSON.parse(r.demographics) : (r.demographics || {})

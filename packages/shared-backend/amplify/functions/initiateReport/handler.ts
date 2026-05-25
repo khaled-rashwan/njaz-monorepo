@@ -13,7 +13,7 @@ const sfnClient = new SFNClient({});
 export const handler = async (event: any, context: any) => {
     console.log('Event:', JSON.stringify(event));
 
-    const { surveyId, reportType, efaConfig, mediationConfig } = event.arguments;
+    const { surveyId, reportType, efaConfig, mediationConfig, excludedResponseIds, excludedStatementIds } = event.arguments;
 
     if (!surveyId || !reportType) {
         throw new Error("surveyId and reportType are required");
@@ -93,6 +93,8 @@ export const handler = async (event: any, context: any) => {
             createdAt: createdAt,
             updatedAt: now,
             owner: userId,
+            excludedResponseIds: excludedResponseIds || [],
+            excludedStatementIds: excludedStatementIds || [],
             __typename: 'EstebianReport'
         };
 
@@ -110,7 +112,9 @@ export const handler = async (event: any, context: any) => {
             bypassPayment,
             isPaid,
             efaConfig,
-            mediationConfig
+            mediationConfig,
+            excludedResponseIds,
+            excludedStatementIds
         };
 
         const sfnResult = await sfnClient.send(new StartExecutionCommand({

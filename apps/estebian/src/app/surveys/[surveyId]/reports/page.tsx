@@ -8,7 +8,7 @@ import { useLanguage, LanguageSwitcher } from '@/components/LanguageContext';
 import { SharedHeader, SharedFooter, FuturisticPanel } from '@njaz/ui-components';
 import { Survey, Report } from '@/lib/types';
 import { getSurveyById, getResponses, getReports } from '@/lib/storage';
-import ReportGenerationModal from '@/components/ReportGenerationModal';
+
 
 export default function SurveyReportsPage() {
     const params = useParams();
@@ -54,15 +54,7 @@ export default function SurveyReportsPage() {
     }
 
     const handleGenerateClick = (type: 'demographic' | 'scale' | 'comprehensive', existingId?: string) => {
-        setSelectedType(type);
-        setSelectedReportId(existingId || null);
-        setShowModal(true);
-    };
-
-    const handleGenerationSuccess = (reportId: string) => {
-        setShowModal(false);
-        loadData();
-        router.push(`/reports/${reportId}`);
+        router.push(`/surveys/${surveyId}/reports/new?type=${type}${existingId ? `&existingReportId=${existingId}` : ''}`);
     };
 
     if (isLoading) {
@@ -233,16 +225,7 @@ export default function SurveyReportsPage() {
 
             <SharedFooter direction={direction} t={t} />
 
-            {survey && (
-                <ReportGenerationModal
-                    isOpen={showModal}
-                    onClose={() => setShowModal(false)}
-                    survey={survey}
-                    reportType={selectedType}
-                    existingReportId={selectedReportId}
-                    onSuccess={handleGenerationSuccess}
-                />
-            )}
+
         </div>
     );
 }

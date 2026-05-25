@@ -43,6 +43,8 @@ const schema = a.schema({
             reportId: a.string(),
             efaConfig: a.json(),
             mediationConfig: a.json(),
+            excludedResponseIds: a.string().array(),
+            excludedStatementIds: a.string().array(),
         })
         .returns(a.json())
         .handler(a.handler.function(initiateReport))

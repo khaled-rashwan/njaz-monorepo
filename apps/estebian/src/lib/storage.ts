@@ -262,7 +262,12 @@ export async function requestReport(
     surveyId: string,
     reportType: 'demographic' | 'scale' | 'comprehensive',
     reportId?: string,
-    options?: { efaConfig?: any; mediationConfig?: any }
+    options?: { 
+        efaConfig?: any; 
+        mediationConfig?: any;
+        excludedResponseIds?: string[];
+        excludedStatementIds?: string[];
+    }
 ): Promise<{ reportId: string; paymentUrl: string | null; status: string }> {
     console.log('Available Mutations:', Object.keys(getClient().mutations));
     
@@ -270,6 +275,8 @@ export async function requestReport(
     if (reportId) args.reportId = reportId;
     if (options?.efaConfig) args.efaConfig = JSON.stringify(options.efaConfig);
     if (options?.mediationConfig) args.mediationConfig = JSON.stringify(options.mediationConfig);
+    if (options?.excludedResponseIds) args.excludedResponseIds = options.excludedResponseIds;
+    if (options?.excludedStatementIds) args.excludedStatementIds = options.excludedStatementIds;
     
     const { data: result, errors } = await getClient().mutations.requestReport(args);
 
