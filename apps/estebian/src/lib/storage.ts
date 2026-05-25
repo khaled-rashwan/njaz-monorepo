@@ -181,6 +181,23 @@ export async function deleteSurvey(id: string): Promise<void> {
 /**
  * Response Storage Functions (Anonymous support)
  */
+function ensureObject(val: any): any {
+    if (!val) return {};
+    let current = val;
+    while (typeof current === 'string') {
+        try {
+            const parsed = JSON.parse(current);
+            if (typeof parsed === 'string' && parsed === current) {
+                break;
+            }
+            current = parsed;
+        } catch {
+            break;
+        }
+    }
+    return typeof current === 'object' && current !== null ? current : {};
+}
+
 export async function getResponses(surveyId: string): Promise<SurveyResponse[]> {
     let nextToken: string | null = null;
     const allResponses: any[] = [];
@@ -195,8 +212,8 @@ export async function getResponses(surveyId: string): Promise<SurveyResponse[]> 
 
     return allResponses.map((r: any) => ({
         ...r,
-        demographics: typeof r.demographics === 'string' ? JSON.parse(r.demographics) : r.demographics,
-        answers: typeof r.answers === 'string' ? JSON.parse(r.answers) : r.answers
+        demographics: ensureObject(r.demographics),
+        answers: ensureObject(r.answers)
     })) as unknown as SurveyResponse[];
 }
 

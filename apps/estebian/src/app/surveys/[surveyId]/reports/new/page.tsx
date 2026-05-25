@@ -46,14 +46,23 @@ export default function NewReportStudioPage() {
     // Structure: Record<scaleId, string[]> containing excluded statement IDs
     const [excludedStatementIdsMap, setExcludedStatementIdsMap] = useState<Record<string, string[]>>({});
     const [expandedScaleId, setExpandedScaleId] = useState<string | null>(null);
+    
+    // Sorting configurations for statements inside scales
+    const [statementSortConfigs, setStatementSortConfigs] = useState<Record<string, {
+        sortBy: 'schema' | 'correlation' | 'alphaIfDeleted';
+        sortOrder: 'asc' | 'desc';
+    }>>({});
 
     // Step 3: Advanced Analysis Settings states
-    const [efaConfig, setEfaConfig] = useState({
-        factorMethod: 'fixed' as 'fixed' | 'eigenvalue',
-        factorCount: 3,
-        eigenvalueThreshold: 1.0,
-        rotation: 'varimax' as 'varimax' | 'none',
-    });
+    // Record<scaleId, { factorMethod: 'fixed' | 'eigenvalue', factorCount: number, eigenvalueThreshold: number }>
+    const [scaleEfaConfigs, setScaleEfaConfigs] = useState<Record<string, {
+        factorMethod: 'fixed' | 'eigenvalue';
+        factorCount: number;
+        eigenvalueThreshold: number;
+    }>>({});
+    
+    const [globalRotation, setGlobalRotation] = useState<'varimax' | 'none'>('varimax');
+
     const [mediationConfig, setMediationConfig] = useState({
         independentScaleId: '',
         mediatorScaleId: '',
@@ -90,14 +99,27 @@ export default function NewReportStudioPage() {
                         });
                     }
 
-                    // Initialize scale configurations
+                    // Initialize scale configurations (exclusions, EFA defaults, sorting)
                     if (surveyData.scaleSnapshots && surveyData.scaleSnapshots.length > 0) {
                         setExpandedScaleId(surveyData.scaleSnapshots[0].id);
-                        const initialMap: Record<string, string[]> = {};
+                        
+                        const initialExclusions: Record<string, string[]> = {};
+                        const initialEfa: Record<string, any> = {};
+                        const initialSort: Record<string, any> = {};
+                        
                         surveyData.scaleSnapshots.forEach(s => {
-                            initialMap[s.id] = [];
+                            initialExclusions[s.id] = [];
+                            initialSort[s.id] = { sortBy: 'schema', sortOrder: 'desc' };
+                            initialEfa[s.id] = {
+                                factorMethod: 'fixed',
+                                factorCount: s.dimensions?.length || 1, // Default factor count to match dimension count
+                                eigenvalueThreshold: 1.0
+                            };
                         });
-                        setExcludedStatementIdsMap(initialMap);
+                        
+                        setExcludedStatementIdsMap(initialExclusions);
+                        setScaleEfaConfigs(initialEfa);
+                        setStatementSortConfigs(initialSort);
                     }
                 }
             } catch (err) {
@@ -108,6 +130,35 @@ export default function NewReportStudioPage() {
         }
         loadData();
     }, [surveyId]);
+
+    // Ensure all 3 mediation variables are always unique (UX duplicate prevention)
+    useEffect(() => {
+        if (!survey || !survey.scaleSnapshots || survey.scaleSnapshots.length < 3) return;
+        
+        const { independentScaleId, mediatorScaleId, dependentScaleId } = mediationConfig;
+        if (!independentScaleId || !mediatorScaleId || !dependentScaleId) return;
+
+        const scaleIds = survey.scaleSnapshots.map(s => s.id);
+        
+        let newIV = independentScaleId;
+        let newM = mediatorScaleId;
+        let newDV = dependentScaleId;
+        
+        if (newM === newIV) {
+            newM = scaleIds.find(id => id !== newIV) || '';
+        }
+        if (newDV === newIV || newDV === newM) {
+            newDV = scaleIds.find(id => id !== newIV && id !== newM) || '';
+        }
+        
+        if (newIV !== independentScaleId || newM !== mediatorScaleId || newDV !== dependentScaleId) {
+            setMediationConfig({
+                independentScaleId: newIV,
+                mediatorScaleId: newM,
+                dependentScaleId: newDV,
+            });
+        }
+    }, [mediationConfig, survey]);
 
     // Cleanup polling on unmount
     useEffect(() => {
@@ -373,7 +424,10 @@ export default function NewReportStudioPage() {
                 selectedTier === 'basic' ? 'demographic' : 'comprehensive',
                 undefined,
                 {
-                    efaConfig,
+                    efaConfig: {
+                        ...scaleEfaConfigs,
+                        rotation: globalRotation
+                    },
                     mediationConfig,
                     excludedResponseIds,
                     excludedStatementIds
@@ -696,64 +750,121 @@ export default function NewReportStudioPage() {
 
                                                     {/* ACCORDION EXPANDABLE BODY */}
                                                     {isExpanded && (
-                                                        <div className="p-4 pt-0 border-t border-white/5 divide-y divide-white/5 max-h-[350px] overflow-y-auto custom-scrollbar text-xs">
-                                                            {scale.statements.map((stmt, idx) => {
-                                                                const excludedList = excludedStatementIdsMap[scale.id] || [];
-                                                                const isExcluded = excludedList.includes(stmt.id);
-                                                                const itemStat = stat?.items?.find(item => item.id === stmt.id);
+                                                        <div className="p-4 pt-0 border-t border-white/5 max-h-[400px] overflow-y-auto custom-scrollbar text-xs">
+                                                            {/* SORT CONTROL BAR */}
+                                                            <div className="flex items-center gap-2 mb-3 py-2 border-b border-white/5 justify-end text-xs">
+                                                                <span className="text-slate-500">{t('Sort by:', 'ترتيب حسب:')}</span>
+                                                                <select
+                                                                    value={statementSortConfigs[scale.id]?.sortBy || 'schema'}
+                                                                    onChange={(e) => setStatementSortConfigs(prev => ({
+                                                                        ...prev,
+                                                                        [scale.id]: {
+                                                                            sortBy: e.target.value as any,
+                                                                            sortOrder: prev[scale.id]?.sortOrder || 'desc'
+                                                                        }
+                                                                    }))}
+                                                                    className="bg-slate-800 border border-slate-700 text-slate-300 rounded px-2 py-1 text-[11px] focus:outline-none focus:border-purple-500"
+                                                                >
+                                                                    <option value="schema">{t('Original Order', 'الترتيب الأصلي (الزمن)')}</option>
+                                                                    <option value="correlation">{t('Item-Total Correlation', 'الارتباط الكلي للفقرة')}</option>
+                                                                    <option value="alphaIfDeleted">{t('Alpha if Deleted', 'ألفا في حال حذف الفقرة')}</option>
+                                                                </select>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => setStatementSortConfigs(prev => ({
+                                                                        ...prev,
+                                                                        [scale.id]: {
+                                                                            sortBy: prev[scale.id]?.sortBy || 'schema',
+                                                                            sortOrder: prev[scale.id]?.sortOrder === 'asc' ? 'desc' : 'asc'
+                                                                        }
+                                                                    }))}
+                                                                    className="p-1 hover:bg-slate-800 rounded border border-slate-700 text-slate-400 hover:text-white transition-colors"
+                                                                    title={t('Toggle Sort Direction', 'تغيير اتجاه الترتيب')}
+                                                                >
+                                                                    <span className="material-symbols-outlined text-[14px] flex items-center justify-center">
+                                                                        {statementSortConfigs[scale.id]?.sortOrder === 'asc' ? 'arrow_upward' : 'arrow_downward'}
+                                                                    </span>
+                                                                </button>
+                                                            </div>
 
-                                                                const correlation = itemStat?.correlation ?? 0.45;
-                                                                const alphaIfDeleted = itemStat?.alphaIfDeleted ?? 0.72;
+                                                            <div className="divide-y divide-white/5">
+                                                                {[...scale.statements].sort((a, b) => {
+                                                                    const sortConfig = statementSortConfigs[scale.id] || { sortBy: 'schema', sortOrder: 'desc' };
+                                                                    if (sortConfig.sortBy === 'schema') return 0;
+                                                                    
+                                                                    const aStat = stat?.items?.find(item => item.id === a.id);
+                                                                    const bStat = stat?.items?.find(item => item.id === b.id);
+                                                                    
+                                                                    let valA = 0;
+                                                                    let valB = 0;
+                                                                    
+                                                                    if (sortConfig.sortBy === 'correlation') {
+                                                                        valA = aStat?.correlation ?? 0;
+                                                                        valB = bStat?.correlation ?? 0;
+                                                                    } else if (sortConfig.sortBy === 'alphaIfDeleted') {
+                                                                        valA = aStat?.alphaIfDeleted ?? 0;
+                                                                        valB = bStat?.alphaIfDeleted ?? 0;
+                                                                    }
+                                                                    
+                                                                    return sortConfig.sortOrder === 'asc' ? valA - valB : valB - valA;
+                                                                }).map((stmt, idx) => {
+                                                                    const excludedList = excludedStatementIdsMap[scale.id] || [];
+                                                                    const isExcluded = excludedList.includes(stmt.id);
+                                                                    const itemStat = stat?.items?.find(item => item.id === stmt.id);
 
-                                                                // Flag weak correlation
-                                                                const isWeak = correlation < 0.3;
+                                                                    const correlation = itemStat?.correlation ?? 0.45;
+                                                                    const alphaIfDeleted = itemStat?.alphaIfDeleted ?? 0.72;
 
-                                                                return (
-                                                                    <div key={stmt.id} className={`py-3 flex items-start justify-between gap-4 transition-colors ${isExcluded ? 'opacity-40' : (isWeak ? 'bg-amber-500/2' : '')}`}>
-                                                                        <div className="flex items-start gap-2.5">
-                                                                            <input
-                                                                                type="checkbox"
-                                                                                checked={!isExcluded}
-                                                                                onChange={() => toggleStatementExclude(scale.id, stmt.id)}
-                                                                                className="mt-1 cursor-pointer rounded border-slate-700 bg-slate-800 text-purple-600 focus:ring-purple-500"
-                                                                            />
-                                                                            <div>
-                                                                                <p className="text-slate-300 font-medium">{stmt.text}</p>
-                                                                                {stmt.isReversed && (
-                                                                                    <span className="text-[9px] px-1 py-0.2 bg-slate-800 text-slate-500 font-bold uppercase rounded mt-1 inline-block">
-                                                                                        {t('Reverse Scored', 'سؤال عكسي')}
+                                                                    // Flag weak correlation
+                                                                    const isWeak = correlation < 0.3;
+
+                                                                    return (
+                                                                        <div key={stmt.id} className={`py-3 flex items-start justify-between gap-4 transition-colors ${isExcluded ? 'opacity-40' : (isWeak ? 'bg-amber-500/2' : '')}`}>
+                                                                            <div className="flex items-start gap-2.5">
+                                                                                <input
+                                                                                    type="checkbox"
+                                                                                    checked={!isExcluded}
+                                                                                    onChange={() => toggleStatementExclude(scale.id, stmt.id)}
+                                                                                    className="mt-1 cursor-pointer rounded border-slate-700 bg-slate-800 text-purple-600 focus:ring-purple-500"
+                                                                                />
+                                                                                <div>
+                                                                                    <p className="text-slate-300 font-medium">{stmt.text}</p>
+                                                                                    {stmt.isReversed && (
+                                                                                        <span className="text-[9px] px-1 py-0.2 bg-slate-800 text-slate-500 font-bold uppercase rounded mt-1 inline-block">
+                                                                                            {t('Reverse Scored', 'سؤال عكسي')}
+                                                                                        </span>
+                                                                                    )}
+                                                                                </div>
+                                                                            </div>
+
+                                                                            {/* ITEM METRICS COMPARISON */}
+                                                                            <div className="flex gap-4 items-center whitespace-nowrap text-end font-mono">
+                                                                                <div>
+                                                                                    <span className="text-[10px] text-slate-500 block">{t('Item-Total Corr.', 'ارتباط السؤال')}</span>
+                                                                                    <span className={`text-xs font-bold ${isWeak ? 'text-amber-400' : 'text-slate-300'}`}>
+                                                                                        {correlation.toFixed(3)}
+                                                                                    </span>
+                                                                                </div>
+                                                                                <div>
+                                                                                    <span className="text-[10px] text-slate-500 block">{t('α If Deleted', 'ألفا في حال الحذف')}</span>
+                                                                                    <span className="text-xs font-bold text-purple-400">
+                                                                                        {alphaIfDeleted.toFixed(3)}
+                                                                                    </span>
+                                                                                </div>
+                                                                                
+                                                                                {/* Warning badge */}
+                                                                                {isWeak && !isExcluded && (
+                                                                                    <span className="px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 font-bold text-[9px]" title="Weak loading recommendation to exclude">
+                                                                                        {t('Weak Loading', 'حمولة ضعيفة')}
                                                                                     </span>
                                                                                 )}
                                                                             </div>
                                                                         </div>
-
-                                                                        {/* ITEM METRICS COMPARISON */}
-                                                                        <div className="flex gap-4 items-center whitespace-nowrap text-end font-mono">
-                                                                            <div>
-                                                                                <span className="text-[10px] text-slate-500 block">{t('Item-Total Corr.', 'ارتباط السؤال')}</span>
-                                                                                <span className={`text-xs font-bold ${isWeak ? 'text-amber-400' : 'text-slate-300'}`}>
-                                                                                    {correlation.toFixed(3)}
-                                                                                </span>
-                                                                            </div>
-                                                                            <div>
-                                                                                <span className="text-[10px] text-slate-500 block">{t('α If Deleted', 'ألفا في حال الحذف')}</span>
-                                                                                <span className="text-xs font-bold text-purple-400">
-                                                                                    {alphaIfDeleted.toFixed(3)}
-                                                                                </span>
-                                                                            </div>
-                                                                            
-                                                                            {/* Warning badge */}
-                                                                            {isWeak && !isExcluded && (
-                                                                                <span className="px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 font-bold text-[9px]" title="Weak loading recommendation to exclude">
-                                                                                    {t('Weak Loading', 'حمولة ضعيفة')}
-                                                                                </span>
-                                                                            )}
-                                                                        </div>
-                                                                    </div>
                                                                 );
                                                             })}
                                                         </div>
-                                                    )}
+                                                    </div>
+                                                )}
                                                 </div>
                                             );
                                         })}
@@ -789,74 +900,119 @@ export default function NewReportStudioPage() {
 
                                     {/* FACTOR ANALYSIS CONFIG DECK */}
                                     <div className="p-4 rounded-xl border border-white/5 bg-slate-900/30 space-y-4">
-                                        <h3 className="text-xs font-black text-cyan-400 uppercase tracking-widest">{t('Factor Extraction (PCA/EFA)', 'استخلاص العوامل (التحليل العاملي)')}</h3>
-                                        
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            <div>
-                                                <label className="block text-xs text-slate-400 mb-1.5">{t('Factor Extraction Method', 'طريقة استخلاص العوامل')}</label>
-                                                <div className="flex gap-2 text-xs">
-                                                    {(['fixed', 'eigenvalue'] as const).map(method => (
-                                                        <button
-                                                            key={method}
-                                                            onClick={() => setEfaConfig(c => ({ ...c, factorMethod: method }))}
-                                                            className={`flex-1 py-2 font-bold rounded-lg transition-colors border ${
-                                                                efaConfig.factorMethod === method
-                                                                    ? 'bg-cyan-500/10 text-cyan-400 border-cyan-500/30'
-                                                                    : 'bg-slate-900/20 border-slate-800 text-slate-400 hover:border-slate-700'
-                                                            }`}
-                                                        >
-                                                            {method === 'fixed' ? t('Fixed Count', 'عدد عوامل ثابت') : t('Eigenvalue ≥ 1.0', 'القيمة الذاتية ≥ 1.0')}
-                                                        </button>
-                                                    ))}
-                                                </div>
-                                            </div>
-
-                                            <div>
-                                                <label className="block text-xs text-slate-400 mb-1.5">{t('Rotation Method', 'طريقة تدوير المحاور')}</label>
-                                                <div className="flex gap-2 text-xs">
+                                        <div className="flex justify-between items-center border-b border-white/5 pb-2">
+                                            <h3 className="text-xs font-black text-cyan-400 uppercase tracking-widest">{t('Factor Extraction per Scale (PCA/EFA)', 'استخلاص العوامل لكل مقياس (التحليل العاملي)')}</h3>
+                                            
+                                            {/* Global Rotation Option */}
+                                            <div className="flex items-center gap-2 text-xs">
+                                                <span className="text-slate-400 text-[10px]">{t('Rotation:', 'التدوير:')}</span>
+                                                <div className="flex bg-slate-950/40 border border-slate-800 rounded p-0.5">
                                                     {(['varimax', 'none'] as const).map(rot => (
                                                         <button
                                                             key={rot}
-                                                            onClick={() => setEfaConfig(c => ({ ...c, rotation: rot }))}
-                                                            className={`flex-1 py-2 font-bold rounded-lg transition-colors border ${
-                                                                efaConfig.rotation === rot
-                                                                    ? 'bg-cyan-500/10 text-cyan-400 border-cyan-500/30'
-                                                                    : 'bg-slate-900/20 border-slate-800 text-slate-400 hover:border-slate-700'
+                                                            type="button"
+                                                            onClick={() => setGlobalRotation(rot)}
+                                                            className={`px-2 py-0.5 font-bold rounded transition-colors text-[9px] ${
+                                                                globalRotation === rot
+                                                                    ? 'bg-cyan-500 text-white shadow-sm'
+                                                                    : 'text-slate-400 hover:text-white'
                                                             }`}
                                                         >
-                                                            {rot === 'varimax' ? 'Varimax' : t('None', 'بدون تدوير')}
+                                                            {rot === 'varimax' ? 'Varimax' : t('None', 'بدون')}
                                                         </button>
                                                     ))}
                                                 </div>
                                             </div>
                                         </div>
 
-                                        {efaConfig.factorMethod === 'fixed' ? (
-                                            <div>
-                                                <label className="block text-xs text-slate-400 mb-1.5">{t('Number of Factors to Extract', 'عدد العوامل المراد استخلاصها')}</label>
-                                                <input 
-                                                    type="number"
-                                                    min="1"
-                                                    max="8"
-                                                    value={efaConfig.factorCount}
-                                                    onChange={e => setEfaConfig(c => ({ ...c, factorCount: Math.max(1, parseInt(e.target.value) || 3) }))}
-                                                    className="w-full px-3 py-2 bg-slate-950/40 rounded-lg border border-slate-800 text-white text-xs focus:border-cyan-500/40 outline-none font-mono"
-                                                />
-                                            </div>
-                                        ) : (
-                                            <div>
-                                                <label className="block text-xs text-slate-400 mb-1.5">{t('Eigenvalue Threshold', 'حد القيمة الذاتية')}</label>
-                                                <input 
-                                                    type="number"
-                                                    min="0.1"
-                                                    max="4.0"
-                                                    step="0.1"
-                                                    value={efaConfig.eigenvalueThreshold}
-                                                    onChange={e => setEfaConfig(c => ({ ...c, eigenvalueThreshold: Math.max(0.1, parseFloat(e.target.value) || 1.0) }))}
-                                                    className="w-full px-3 py-2 bg-slate-950/40 rounded-lg border border-slate-800 text-white text-xs focus:border-cyan-500/40 outline-none font-mono"
-                                                />
-                                            </div>
-                                        )}
+                                        <div className="space-y-4">
+                                            {survey.scaleSnapshots?.map(scale => {
+                                                const config = scaleEfaConfigs[scale.id] || { factorMethod: 'fixed', factorCount: scale.dimensions?.length || 1, eigenvalueThreshold: 1.0 };
+                                                return (
+                                                    <div key={scale.id} className="p-3 rounded-lg border border-slate-800/80 bg-slate-950/20 space-y-3">
+                                                        <div className="flex justify-between items-center text-xs border-b border-white/5 pb-1.5">
+                                                            <span className="font-bold text-white">{scale.title}</span>
+                                                            <span className="text-[10px] text-slate-500 font-mono">({scale.dimensions?.length || 0} {t('dimensions', 'أبعاد')})</span>
+                                                        </div>
+                                                        
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                            <div>
+                                                                <label className="block text-[10px] text-slate-400 mb-1">{t('Extraction Method', 'طريقة الاستخلاص')}</label>
+                                                                <div className="flex gap-2 text-xs">
+                                                                    {(['fixed', 'eigenvalue'] as const).map(method => (
+                                                                        <button
+                                                                            key={method}
+                                                                            type="button"
+                                                                            onClick={() => setScaleEfaConfigs(prev => ({
+                                                                                ...prev,
+                                                                                [scale.id]: {
+                                                                                    ...config,
+                                                                                    factorMethod: method
+                                                                                }
+                                                                            }))}
+                                                                            className={`flex-1 py-1 px-2 font-bold rounded transition-colors border text-[10px] ${
+                                                                                config.factorMethod === method
+                                                                                    ? 'bg-cyan-500/10 text-cyan-400 border-cyan-500/30'
+                                                                                    : 'bg-slate-900/20 border-slate-800 text-slate-400 hover:border-slate-700'
+                                                                            }`}
+                                                                        >
+                                                                            {method === 'fixed' ? t('Fixed Count', 'عدد عوامل ثابت') : t('Eigenvalue ≥ 1.0', 'القيمة الذاتية')}
+                                                                        </button>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+
+                                                            <div>
+                                                                {config.factorMethod === 'fixed' ? (
+                                                                    <div>
+                                                                        <label className="block text-[10px] text-slate-400 mb-1">{t('Number of Factors', 'عدد العوامل')}</label>
+                                                                        <input 
+                                                                            type="number"
+                                                                            min="1"
+                                                                            max="8"
+                                                                            value={config.factorCount}
+                                                                            onChange={e => {
+                                                                                const val = Math.max(1, parseInt(e.target.value) || 1);
+                                                                                setScaleEfaConfigs(prev => ({
+                                                                                    ...prev,
+                                                                                    [scale.id]: {
+                                                                                        ...config,
+                                                                                        factorCount: val
+                                                                                    }
+                                                                                }));
+                                                                            }}
+                                                                            className="w-full px-3 py-1 bg-slate-900 border border-slate-800 rounded text-white text-xs outline-none font-mono focus:border-cyan-500/40"
+                                                                        />
+                                                                    </div>
+                                                                ) : (
+                                                                    <div>
+                                                                        <label className="block text-[10px] text-slate-400 mb-1">{t('Eigenvalue Threshold', 'حد القيمة الذاتية')}</label>
+                                                                        <input 
+                                                                            type="number"
+                                                                            min="0.1"
+                                                                            max="4.0"
+                                                                            step="0.1"
+                                                                            value={config.eigenvalueThreshold}
+                                                                            onChange={e => {
+                                                                                const val = Math.max(0.1, parseFloat(e.target.value) || 1.0);
+                                                                                setScaleEfaConfigs(prev => ({
+                                                                                    ...prev,
+                                                                                    [scale.id]: {
+                                                                                        ...config,
+                                                                                        eigenvalueThreshold: val
+                                                                                    }
+                                                                                }));
+                                                                            }}
+                                                                            className="w-full px-3 py-1 bg-slate-900 border border-slate-800 rounded text-white text-xs outline-none font-mono focus:border-cyan-500/40"
+                                                                        />
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
                                     </div>
 
                                     {/* SOBEL MEDIATION MAPPING */}
@@ -873,9 +1029,14 @@ export default function NewReportStudioPage() {
                                                         onChange={e => setMediationConfig(c => ({ ...c, independentScaleId: e.target.value }))}
                                                         className="w-full px-3 py-2 bg-slate-950/40 border border-slate-800 rounded-lg text-white text-xs focus:border-cyan-500 outline-none"
                                                     >
-                                                        {survey.scaleSnapshots.map(s => (
-                                                            <option key={s.id} value={s.id}>{s.title}</option>
-                                                        ))}
+                                                        {survey.scaleSnapshots.map(s => {
+                                                            const isDuplicate = s.id === mediationConfig.mediatorScaleId || s.id === mediationConfig.dependentScaleId;
+                                                            return (
+                                                                <option key={s.id} value={s.id} disabled={s.id !== mediationConfig.independentScaleId && isDuplicate}>
+                                                                    {s.title}
+                                                                </option>
+                                                            );
+                                                        })}
                                                     </select>
                                                 </div>
 
@@ -886,9 +1047,14 @@ export default function NewReportStudioPage() {
                                                         onChange={e => setMediationConfig(c => ({ ...c, mediatorScaleId: e.target.value }))}
                                                         className="w-full px-3 py-2 bg-slate-950/40 border border-slate-800 rounded-lg text-white text-xs focus:border-cyan-500 outline-none"
                                                     >
-                                                        {survey.scaleSnapshots.map(s => (
-                                                            <option key={s.id} value={s.id}>{s.title}</option>
-                                                        ))}
+                                                        {survey.scaleSnapshots.map(s => {
+                                                            const isDuplicate = s.id === mediationConfig.independentScaleId || s.id === mediationConfig.dependentScaleId;
+                                                            return (
+                                                                <option key={s.id} value={s.id} disabled={s.id !== mediationConfig.mediatorScaleId && isDuplicate}>
+                                                                    {s.title}
+                                                                </option>
+                                                            );
+                                                        })}
                                                     </select>
                                                 </div>
 
@@ -899,9 +1065,14 @@ export default function NewReportStudioPage() {
                                                         onChange={e => setMediationConfig(c => ({ ...c, dependentScaleId: e.target.value }))}
                                                         className="w-full px-3 py-2 bg-slate-950/40 border border-slate-800 rounded-lg text-white text-xs focus:border-cyan-500 outline-none"
                                                     >
-                                                        {survey.scaleSnapshots.map(s => (
-                                                            <option key={s.id} value={s.id}>{s.title}</option>
-                                                        ))}
+                                                        {survey.scaleSnapshots.map(s => {
+                                                            const isDuplicate = s.id === mediationConfig.independentScaleId || s.id === mediationConfig.mediatorScaleId;
+                                                            return (
+                                                                <option key={s.id} value={s.id} disabled={s.id !== mediationConfig.dependentScaleId && isDuplicate}>
+                                                                    {s.title}
+                                                                </option>
+                                                            );
+                                                        })}
                                                     </select>
                                                 </div>
                                             </div>

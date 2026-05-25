@@ -694,9 +694,7 @@ function solveOptimalMapping(dimensions: any[], loadings: number[][], statements
 }
 
 function computeFactorAnalysis(responses: any[], scales: any[], config?: any) {
-    const factorMethod = config?.factorMethod || 'fixed';
-    const eigenvalueThreshold = config?.eigenvalueThreshold || 1.0;
-    const rotation = config?.rotation || 'varimax';
+    const globalRotation = config?.rotation || 'varimax';
     const selectedScaleId = config?.selectedScaleId;
 
     // Filter scales to only calculate EFA/CFA for the selected scale if specified
@@ -705,10 +703,17 @@ function computeFactorAnalysis(responses: any[], scales: any[], config?: any) {
         : scales;
 
     return targetScales.map((scale: any) => {
+        // Support both scale-specific config maps and flat legacy config structures
+        const scaleConfig = (config && config[scale.id]) ? config[scale.id] : config;
+        
+        const factorMethod = scaleConfig?.factorMethod || 'fixed';
+        const eigenvalueThreshold = scaleConfig?.eigenvalueThreshold || 1.0;
+        const rotation = scaleConfig?.rotation || globalRotation;
+
         const statements = scale.statements || [];
         const dimensions = scale.dimensions || [];
         const defaultFactorCount = dimensions.length > 0 ? dimensions.length : 3;
-        const factorCount = config?.factorCount || defaultFactorCount;
+        const factorCount = scaleConfig?.factorCount || defaultFactorCount;
         const options = scale.options || [];
         const optionValues = options.map((o: any) => Number(o.value)).filter((v: number) => !isNaN(v));
         const maxOptionValue = optionValues.length > 0 ? Math.max(...optionValues) : 5;
