@@ -131,34 +131,8 @@ export default function NewReportStudioPage() {
         loadData();
     }, [surveyId]);
 
-    // Ensure all 3 mediation variables are always unique (UX duplicate prevention)
-    useEffect(() => {
-        if (!survey || !survey.scaleSnapshots || survey.scaleSnapshots.length < 3) return;
-        
-        const { independentScaleId, mediatorScaleId, dependentScaleId } = mediationConfig;
-        if (!independentScaleId || !mediatorScaleId || !dependentScaleId) return;
-
-        const scaleIds = survey.scaleSnapshots.map(s => s.id);
-        
-        let newIV = independentScaleId;
-        let newM = mediatorScaleId;
-        let newDV = dependentScaleId;
-        
-        if (newM === newIV) {
-            newM = scaleIds.find(id => id !== newIV) || '';
-        }
-        if (newDV === newIV || newDV === newM) {
-            newDV = scaleIds.find(id => id !== newIV && id !== newM) || '';
-        }
-        
-        if (newIV !== independentScaleId || newM !== mediatorScaleId || newDV !== dependentScaleId) {
-            setMediationConfig({
-                independentScaleId: newIV,
-                mediatorScaleId: newM,
-                dependentScaleId: newDV,
-            });
-        }
-    }, [mediationConfig, survey]);
+    // Mediation variables are initialized in loadData. No duplicate prevention useEffect is needed
+    // because handleAssignScale and handleUnassignScale handle deduplication explicitly and cleanly.
 
     // Cleanup polling on unmount
     useEffect(() => {
@@ -480,6 +454,33 @@ export default function NewReportStudioPage() {
                 : [...currentList, statementId];
             return { ...prev, [scaleId]: updated };
         });
+    };
+
+    const [activeDragScaleId, setActiveDragScaleId] = useState<string | null>(null);
+    const [isDragOverIV, setIsDragOverIV] = useState(false);
+    const [isDragOverM, setIsDragOverM] = useState(false);
+    const [isDragOverDV, setIsDragOverDV] = useState(false);
+    const [isDragOverPool, setIsDragOverPool] = useState(false);
+
+    const handleAssignScale = (scaleId: string, slot: 'independentScaleId' | 'mediatorScaleId' | 'dependentScaleId') => {
+        setMediationConfig(prev => {
+            const updated = { ...prev };
+            
+            // Clear duplicates across slots to prevent overlap and avoid selection gridlock
+            if (updated.independentScaleId === scaleId) updated.independentScaleId = '';
+            if (updated.mediatorScaleId === scaleId) updated.mediatorScaleId = '';
+            if (updated.dependentScaleId === scaleId) updated.dependentScaleId = '';
+            
+            updated[slot] = scaleId;
+            return updated;
+        });
+    };
+
+    const handleUnassignScale = (slot: 'independentScaleId' | 'mediatorScaleId' | 'dependentScaleId') => {
+        setMediationConfig(prev => ({
+            ...prev,
+            [slot]: ''
+        }));
     };
 
     if (isLoading || !survey) {
@@ -1017,63 +1018,279 @@ export default function NewReportStudioPage() {
 
                                     {/* SOBEL MEDIATION MAPPING */}
                                     {survey.scaleSnapshots && survey.scaleSnapshots.length >= 3 && (
-                                        <div className="p-4 rounded-xl border border-white/5 bg-slate-900/30 space-y-4">
-                                            <h3 className="text-xs font-black text-pink-400 uppercase tracking-widest">{t('Sobel Mediation Structural Mapping', 'رسم مسارات الوساطة (سوبل)')}</h3>
-                                            <p className="text-[10px] text-slate-500">{t('Establish a mediation hypothesis (X -> M -> Y) to run structural path calculations.', 'صمّم فرضية الوساطة (مستقل -> وسيط -> تابع) لحساب مسارات العلاقة وتأثيرها.')}</p>
+                                        <div className="p-4 rounded-xl border border-white/5 bg-slate-900/30 space-y-6">
+                                            <div>
+                                                <h3 className="text-xs font-black text-pink-400 uppercase tracking-widest">{t('Sobel Mediation Structural Mapping (SEM Board)', 'رسم مسارات الوساطة التفاعلي (SEM Board)')}</h3>
+                                                <p className="text-[10px] text-slate-500 mt-1">{t('Drag and drop scales into path slots, or click to assign them. Establishes X -> M -> Y pathway validation with 0% selection gridlock.', 'اسحب وأسقط المقاييس في خانات المسار، أو انقر لتعيينها. يصمم فرضية العلاقة (مستقل -> وسيط -> تابع) بمرونة 100% دون أي تعارض.')}</p>
+                                            </div>
 
-                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-                                                <div>
-                                                    <label className="block text-xs text-slate-400 mb-1.5">{t('Independent Variable (IV)', 'المتغير المستقل')}</label>
-                                                    <select
-                                                        value={mediationConfig.independentScaleId}
-                                                        onChange={e => setMediationConfig(c => ({ ...c, independentScaleId: e.target.value }))}
-                                                        className="w-full px-3 py-2 bg-slate-950/40 border border-slate-800 rounded-lg text-white text-xs focus:border-cyan-500 outline-none"
-                                                    >
-                                                        {survey.scaleSnapshots.map(s => {
-                                                            const isDuplicate = s.id === mediationConfig.mediatorScaleId || s.id === mediationConfig.dependentScaleId;
-                                                            return (
-                                                                <option key={s.id} value={s.id} disabled={s.id !== mediationConfig.independentScaleId && isDuplicate}>
-                                                                    {s.title}
-                                                                </option>
-                                                            );
-                                                        })}
-                                                    </select>
+                                            {/* VISUAL DRAG & DROP BOARD ROW */}
+                                            <div className="flex flex-col lg:flex-row items-stretch justify-between gap-6 py-4 bg-slate-950/30 p-4 rounded-xl border border-slate-900">
+                                                
+                                                {/* SLOT 1: IV (X) */}
+                                                <div 
+                                                    onDragOver={(e) => e.preventDefault()}
+                                                    onDragEnter={() => setIsDragOverIV(true)}
+                                                    onDragLeave={() => setIsDragOverIV(false)}
+                                                    onDrop={(e) => {
+                                                        setIsDragOverIV(false);
+                                                        const id = e.dataTransfer.getData("scaleId");
+                                                        if (id) handleAssignScale(id, 'independentScaleId');
+                                                    }}
+                                                    className={`flex-1 flex flex-col items-center justify-center p-4 rounded-xl border-2 border-dashed transition-all relative ${
+                                                        isDragOverIV
+                                                            ? 'border-cyan-400 bg-cyan-950/20 scale-[1.02] shadow-[0_0_20px_rgba(6,182,212,0.25)]'
+                                                            : mediationConfig.independentScaleId
+                                                                ? 'border-cyan-500/30 bg-cyan-950/5 shadow-[0_0_15px_rgba(6,182,212,0.03)]'
+                                                                : activeDragScaleId
+                                                                    ? 'border-cyan-500/50 bg-cyan-950/10 animate-pulse'
+                                                                    : 'border-slate-800 bg-slate-900/10 hover:border-slate-700'
+                                                    }`}
+                                                >
+                                                    <span className="text-[10px] uppercase font-black text-cyan-400 tracking-wider mb-2">X — {t('Independent Variable', 'المتغير المستقل')}</span>
+                                                    {mediationConfig.independentScaleId ? (
+                                                        <div 
+                                                            draggable={true}
+                                                            onDragStart={(e) => {
+                                                                e.dataTransfer.setData("scaleId", mediationConfig.independentScaleId);
+                                                                e.dataTransfer.setData("sourceSlot", "independentScaleId");
+                                                                setActiveDragScaleId(mediationConfig.independentScaleId);
+                                                            }}
+                                                            onDragEnd={() => setActiveDragScaleId(null)}
+                                                            className="w-full flex items-center justify-between bg-slate-900/90 border border-cyan-500/20 px-3 py-2.5 rounded-lg cursor-grab active:cursor-grabbing hover:border-cyan-400/50 transition-all"
+                                                        >
+                                                            <div className="flex items-center gap-2 overflow-hidden select-none">
+                                                                <span className="material-symbols-outlined text-cyan-400 text-sm flex-shrink-0 animate-pulse">psychology</span>
+                                                                <span className="text-xs font-bold text-white truncate">{survey.scaleSnapshots.find(s => s.id === mediationConfig.independentScaleId)?.title}</span>
+                                                            </div>
+                                                            <button 
+                                                                type="button"
+                                                                onClick={() => handleUnassignScale('independentScaleId')}
+                                                                className="text-slate-500 hover:text-red-400 transition-colors ml-2 flex items-center justify-center animate-pulse"
+                                                            >
+                                                                <span className="material-symbols-outlined text-xs">close</span>
+                                                            </button>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="text-center py-4 text-slate-500">
+                                                            <span className="material-symbols-outlined text-base block mb-1">move_to_inbox</span>
+                                                            <span className="text-[10px] block">{t('Drag here or select below', 'اسحب للمربع أو اختر من الأسفل')}</span>
+                                                        </div>
+                                                    )}
                                                 </div>
 
-                                                <div>
-                                                    <label className="block text-xs text-slate-400 mb-1.5">{t('Mediator Variable (M)', 'الوسيط')}</label>
-                                                    <select
-                                                        value={mediationConfig.mediatorScaleId}
-                                                        onChange={e => setMediationConfig(c => ({ ...c, mediatorScaleId: e.target.value }))}
-                                                        className="w-full px-3 py-2 bg-slate-950/40 border border-slate-800 rounded-lg text-white text-xs focus:border-cyan-500 outline-none"
-                                                    >
-                                                        {survey.scaleSnapshots.map(s => {
-                                                            const isDuplicate = s.id === mediationConfig.independentScaleId || s.id === mediationConfig.dependentScaleId;
-                                                            return (
-                                                                <option key={s.id} value={s.id} disabled={s.id !== mediationConfig.mediatorScaleId && isDuplicate}>
-                                                                    {s.title}
-                                                                </option>
-                                                            );
-                                                        })}
-                                                    </select>
+                                                {/* PATH ARROW 1 */}
+                                                <div className="flex items-center justify-center lg:h-auto py-2 lg:py-0 text-slate-600">
+                                                    <span className="material-symbols-outlined text-xl rotate-90 lg:rotate-0 select-none">trending_flat</span>
                                                 </div>
 
-                                                <div>
-                                                    <label className="block text-xs text-slate-400 mb-1.5">{t('Dependent Variable (DV)', 'المتغير التابع')}</label>
-                                                    <select
-                                                        value={mediationConfig.dependentScaleId}
-                                                        onChange={e => setMediationConfig(c => ({ ...c, dependentScaleId: e.target.value }))}
-                                                        className="w-full px-3 py-2 bg-slate-950/40 border border-slate-800 rounded-lg text-white text-xs focus:border-cyan-500 outline-none"
-                                                    >
-                                                        {survey.scaleSnapshots.map(s => {
-                                                            const isDuplicate = s.id === mediationConfig.independentScaleId || s.id === mediationConfig.mediatorScaleId;
-                                                            return (
-                                                                <option key={s.id} value={s.id} disabled={s.id !== mediationConfig.dependentScaleId && isDuplicate}>
-                                                                    {s.title}
-                                                                </option>
-                                                            );
-                                                        })}
-                                                    </select>
+                                                {/* SLOT 2: MEDIATOR (M) */}
+                                                <div 
+                                                    onDragOver={(e) => e.preventDefault()}
+                                                    onDragEnter={() => setIsDragOverM(true)}
+                                                    onDragLeave={() => setIsDragOverM(false)}
+                                                    onDrop={(e) => {
+                                                        setIsDragOverM(false);
+                                                        const id = e.dataTransfer.getData("scaleId");
+                                                        if (id) handleAssignScale(id, 'mediatorScaleId');
+                                                    }}
+                                                    className={`flex-1 flex flex-col items-center justify-center p-4 rounded-xl border-2 border-dashed transition-all relative ${
+                                                        isDragOverM
+                                                            ? 'border-purple-400 bg-purple-950/20 scale-[1.02] shadow-[0_0_20px_rgba(168,85,247,0.25)]'
+                                                            : mediationConfig.mediatorScaleId
+                                                                ? 'border-purple-500/30 bg-purple-950/5 shadow-[0_0_15px_rgba(168,85,247,0.03)]'
+                                                                : activeDragScaleId
+                                                                    ? 'border-purple-500/50 bg-purple-950/10 animate-pulse'
+                                                                    : 'border-slate-800 bg-slate-900/10 hover:border-slate-700'
+                                                    }`}
+                                                >
+                                                    <span className="text-[10px] uppercase font-black text-purple-400 tracking-wider mb-2">M — {t('Mediator Variable', 'المتغير الوسيط')}</span>
+                                                    {mediationConfig.mediatorScaleId ? (
+                                                        <div 
+                                                            draggable={true}
+                                                            onDragStart={(e) => {
+                                                                e.dataTransfer.setData("scaleId", mediationConfig.mediatorScaleId);
+                                                                e.dataTransfer.setData("sourceSlot", "mediatorScaleId");
+                                                                setActiveDragScaleId(mediationConfig.mediatorScaleId);
+                                                            }}
+                                                            onDragEnd={() => setActiveDragScaleId(null)}
+                                                            className="w-full flex items-center justify-between bg-slate-900/90 border border-purple-500/20 px-3 py-2.5 rounded-lg cursor-grab active:cursor-grabbing hover:border-purple-400/50 transition-all"
+                                                        >
+                                                            <div className="flex items-center gap-2 overflow-hidden select-none">
+                                                                <span className="material-symbols-outlined text-purple-400 text-sm flex-shrink-0 animate-pulse">mediation</span>
+                                                                <span className="text-xs font-bold text-white truncate">{survey.scaleSnapshots.find(s => s.id === mediationConfig.mediatorScaleId)?.title}</span>
+                                                            </div>
+                                                            <button 
+                                                                type="button"
+                                                                onClick={() => handleUnassignScale('mediatorScaleId')}
+                                                                className="text-slate-500 hover:text-red-400 transition-colors ml-2 flex items-center justify-center animate-pulse"
+                                                            >
+                                                                <span className="material-symbols-outlined text-xs">close</span>
+                                                            </button>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="text-center py-4 text-slate-500">
+                                                            <span className="material-symbols-outlined text-base block mb-1">move_to_inbox</span>
+                                                            <span className="text-[10px] block">{t('Drag here or select below', 'اسحب للمربع أو اختر من الأسفل')}</span>
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                {/* PATH ARROW 2 */}
+                                                <div className="flex items-center justify-center lg:h-auto py-2 lg:py-0 text-slate-600">
+                                                    <span className="material-symbols-outlined text-xl rotate-90 lg:rotate-0 select-none">trending_flat</span>
+                                                </div>
+
+                                                {/* SLOT 3: DV (Y) */}
+                                                <div 
+                                                    onDragOver={(e) => e.preventDefault()}
+                                                    onDragEnter={() => setIsDragOverDV(true)}
+                                                    onDragLeave={() => setIsDragOverDV(false)}
+                                                    onDrop={(e) => {
+                                                        setIsDragOverDV(false);
+                                                        const id = e.dataTransfer.getData("scaleId");
+                                                        if (id) handleAssignScale(id, 'dependentScaleId');
+                                                    }}
+                                                    className={`flex-1 flex flex-col items-center justify-center p-4 rounded-xl border-2 border-dashed transition-all relative ${
+                                                        isDragOverDV
+                                                            ? 'border-pink-400 bg-pink-950/20 scale-[1.02] shadow-[0_0_20px_rgba(236,72,153,0.25)]'
+                                                            : mediationConfig.dependentScaleId
+                                                                ? 'border-pink-500/30 bg-pink-950/5 shadow-[0_0_15px_rgba(236,72,153,0.03)]'
+                                                                : activeDragScaleId
+                                                                    ? 'border-pink-500/50 bg-pink-950/10 animate-pulse'
+                                                                    : 'border-slate-800 bg-slate-900/10 hover:border-slate-700'
+                                                    }`}
+                                                >
+                                                    <span className="text-[10px] uppercase font-black text-pink-400 tracking-wider mb-2">Y — {t('Dependent Variable', 'المتغير التابع')}</span>
+                                                    {mediationConfig.dependentScaleId ? (
+                                                        <div 
+                                                            draggable={true}
+                                                            onDragStart={(e) => {
+                                                                e.dataTransfer.setData("scaleId", mediationConfig.dependentScaleId);
+                                                                e.dataTransfer.setData("sourceSlot", "dependentScaleId");
+                                                                setActiveDragScaleId(mediationConfig.dependentScaleId);
+                                                            }}
+                                                            onDragEnd={() => setActiveDragScaleId(null)}
+                                                            className="w-full flex items-center justify-between bg-slate-900/90 border border-pink-500/20 px-3 py-2.5 rounded-lg cursor-grab active:cursor-grabbing hover:border-pink-400/50 transition-all"
+                                                        >
+                                                            <div className="flex items-center gap-2 overflow-hidden select-none">
+                                                                <span className="material-symbols-outlined text-pink-400 text-sm flex-shrink-0 animate-pulse">insights</span>
+                                                                <span className="text-xs font-bold text-white truncate">{survey.scaleSnapshots.find(s => s.id === mediationConfig.dependentScaleId)?.title}</span>
+                                                            </div>
+                                                            <button 
+                                                                type="button"
+                                                                onClick={() => handleUnassignScale('dependentScaleId')}
+                                                                className="text-slate-500 hover:text-red-400 transition-colors ml-2 flex items-center justify-center animate-pulse"
+                                                            >
+                                                                <span className="material-symbols-outlined text-xs">close</span>
+                                                            </button>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="text-center py-4 text-slate-500">
+                                                            <span className="material-symbols-outlined text-base block mb-1">move_to_inbox</span>
+                                                            <span className="text-[10px] block">{t('Drag here or select below', 'اسحب للمربع أو اختر من الأسفل')}</span>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            {/* INTERACTIVE AVAILABLE POOL OF CARDS */}
+                                            <div 
+                                                onDragOver={(e) => e.preventDefault()}
+                                                onDragEnter={() => setIsDragOverPool(true)}
+                                                onDragLeave={() => setIsDragOverPool(false)}
+                                                onDrop={(e) => {
+                                                    setIsDragOverPool(false);
+                                                    const sourceSlot = e.dataTransfer.getData("sourceSlot");
+                                                    if (sourceSlot === 'independentScaleId') handleUnassignScale('independentScaleId');
+                                                    if (sourceSlot === 'mediatorScaleId') handleUnassignScale('mediatorScaleId');
+                                                    if (sourceSlot === 'dependentScaleId') handleUnassignScale('dependentScaleId');
+                                                }}
+                                                className={`space-y-2 p-3 rounded-xl border transition-all ${
+                                                    isDragOverPool 
+                                                        ? 'border-dashed border-slate-400 bg-slate-900/40' 
+                                                        : 'border-slate-800/40 bg-slate-900/10'
+                                                }`}
+                                            >
+                                                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{t('Available Scales Pool (Drag card or click to assign):', 'مخزن المقاييس المتاحة (اسحب أو انقر للتعيين مباشرة):')}</span>
+                                                <div className="flex flex-wrap gap-2.5 mt-2">
+                                                    {survey.scaleSnapshots.map(scale => {
+                                                        const isIV = mediationConfig.independentScaleId === scale.id;
+                                                        const isM = mediationConfig.mediatorScaleId === scale.id;
+                                                        const isDV = mediationConfig.dependentScaleId === scale.id;
+                                                        
+                                                        // Active/Assigned styles
+                                                        let cardStyles = 'border-slate-750 bg-slate-850 hover:border-slate-650 hover:bg-slate-800 shadow-[0_2px_5px_rgba(0,0,0,0.2)]';
+                                                        if (isIV) {
+                                                            cardStyles = 'border-cyan-500/50 bg-cyan-950/20 shadow-[0_0_12px_rgba(6,182,212,0.15)]';
+                                                        } else if (isM) {
+                                                            cardStyles = 'border-purple-500/50 bg-purple-950/20 shadow-[0_0_12px_rgba(168,85,247,0.15)]';
+                                                        } else if (isDV) {
+                                                            cardStyles = 'border-pink-500/50 bg-pink-950/20 shadow-[0_0_12px_rgba(236,72,153,0.15)]';
+                                                        }
+
+                                                        return (
+                                                            <div 
+                                                                key={scale.id}
+                                                                draggable={true}
+                                                                onDragStart={(e) => {
+                                                                    e.dataTransfer.setData("scaleId", scale.id);
+                                                                    let source = "";
+                                                                    if (isIV) source = "independentScaleId";
+                                                                    if (isM) source = "mediatorScaleId";
+                                                                    if (isDV) source = "dependentScaleId";
+                                                                    e.dataTransfer.setData("sourceSlot", source);
+                                                                    setActiveDragScaleId(scale.id);
+                                                                }}
+                                                                onDragEnd={() => setActiveDragScaleId(null)}
+                                                                className={`cursor-grab active:cursor-grabbing border rounded-xl px-3 py-2 flex items-center justify-between gap-3 transition-all text-xs font-bold select-none ${cardStyles}`}
+                                                            >
+                                                                <div className="flex items-center gap-2 overflow-hidden">
+                                                                    <span className="material-symbols-outlined text-[14px] text-slate-400 flex-shrink-0 select-none">drag_indicator</span>
+                                                                    <span className="text-white truncate">{scale.title}</span>
+                                                                </div>
+                                                                
+                                                                <div className="flex gap-1 items-center select-none flex-shrink-0">
+                                                                    <button 
+                                                                        type="button" 
+                                                                        onClick={() => isIV ? handleUnassignScale('independentScaleId') : handleAssignScale(scale.id, 'independentScaleId')}
+                                                                        className={`px-2 py-0.5 rounded font-mono font-bold text-[9px] transition-all ${
+                                                                            isIV 
+                                                                                ? 'bg-cyan-500 text-slate-950 border border-cyan-400 shadow-[0_0_8px_rgba(6,182,212,0.4)]' 
+                                                                                : 'bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-400'
+                                                                        }`}
+                                                                        title={isIV ? t('Unassign X', 'إلغاء التعيين') : t('Set as IV (X)', 'تحديد كمستقل')}
+                                                                    >
+                                                                        IV
+                                                                    </button>
+                                                                    <button 
+                                                                        type="button" 
+                                                                        onClick={() => isM ? handleUnassignScale('mediatorScaleId') : handleAssignScale(scale.id, 'mediatorScaleId')}
+                                                                        className={`px-2 py-0.5 rounded font-mono font-bold text-[9px] transition-all ${
+                                                                            isM 
+                                                                                ? 'bg-purple-500 text-slate-950 border border-purple-400 shadow-[0_0_8px_rgba(168,85,247,0.4)]' 
+                                                                                : 'bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-400'
+                                                                        }`}
+                                                                        title={isM ? t('Unassign M', 'إلغاء التعيين') : t('Set as Mediator (M)', 'تحديد كوسيط')}
+                                                                    >
+                                                                        M
+                                                                    </button>
+                                                                    <button 
+                                                                        type="button" 
+                                                                        onClick={() => isDV ? handleUnassignScale('dependentScaleId') : handleAssignScale(scale.id, 'dependentScaleId')}
+                                                                        className={`px-2 py-0.5 rounded font-mono font-bold text-[9px] transition-all ${
+                                                                            isDV 
+                                                                                ? 'bg-pink-500 text-slate-950 border border-pink-400 shadow-[0_0_8px_rgba(236,72,153,0.4)]' 
+                                                                                : 'bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-400'
+                                                                        }`}
+                                                                        title={isDV ? t('Unassign Y', 'إلغاء التعيين') : t('Set as DV (Y)', 'تحديد كتابع')}
+                                                                    >
+                                                                        DV
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })}
                                                 </div>
                                             </div>
                                         </div>
