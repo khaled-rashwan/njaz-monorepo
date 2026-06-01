@@ -1,0 +1,38 @@
+{
+  "name": "استبيان | Estebian",
+  "short_name": "استبيان",
+  "description": "منصة عربية متكاملة لإنشاء الاستبيانات والمقاييس النفسية وجمع البيانات وتحليلها",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#121318",
+  "theme_color": "#7C5DFA",
+  "orientation": "portrait-primary",
+  "dir": "rtl",
+  "lang": "ar",
+  "icons": [
+    {
+      "src": "/images/favicon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/images/favicon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/images/favicon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/images/favicon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
