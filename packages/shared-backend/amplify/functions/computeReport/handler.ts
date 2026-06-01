@@ -89,13 +89,39 @@ export const handler = async (event: any) => {
         }
 
         // 4. Computation Logic
+        // Robust deep-parse: handles multiple levels of JSON stringification
+        // (GraphQL a.json() + Step Functions JSON.stringify can cause double/triple encoding)
+        function deepParseJSON(val: any): any {
+            if (val === null || val === undefined) return val;
+            if (typeof val !== 'string') return val;
+            try {
+                const parsed = JSON.parse(val);
+                // If the result is still a string, it might be double-encoded
+                if (typeof parsed === 'string') return deepParseJSON(parsed);
+                return parsed;
+            } catch {
+                return val;
+            }
+        }
+        
+        const parsedEfaConfig = deepParseJSON(efaConfig);
+        const parsedMediationConfig = deepParseJSON(mediationConfig);
+        
+        console.log('[CONFIG_DEBUG] Raw efaConfig type:', typeof efaConfig);
+        console.log('[CONFIG_DEBUG] Raw efaConfig value:', JSON.stringify(efaConfig));
+        console.log('[CONFIG_DEBUG] Parsed efaConfig:', JSON.stringify(parsedEfaConfig));
+        console.log('[CONFIG_DEBUG] Parsed efaConfig keys:', parsedEfaConfig ? Object.keys(parsedEfaConfig) : 'null');
+        console.log('[CONFIG_DEBUG] Raw mediationConfig type:', typeof mediationConfig);
+        console.log('[CONFIG_DEBUG] Raw mediationConfig value:', JSON.stringify(mediationConfig));
+        console.log('[CONFIG_DEBUG] Parsed mediationConfig:', JSON.stringify(parsedMediationConfig));
+
         let reportData: any = {
             generatedAt: new Date().toISOString(),
             surveyTitle: survey.title,
             sampleSize: sampleSize,
             language: survey.language || 'ar',
-            efaConfig,
-            mediationConfig,
+            efaConfig: parsedEfaConfig,
+            mediationConfig: parsedMediationConfig,
             excludedResponseIds: activeExcludedResponseIds,
             excludedStatementIds: excludedStatementIds || [],
             rawSampleSize: responses.length
@@ -140,12 +166,12 @@ export const handler = async (event: any) => {
 
             // Advanced Analytics: EFA/CFA
             if (sampleSize >= 10) {
-                reportData.factorAnalysis = computeFactorAnalysis(processedResponses, scaleSnapshots, efaConfig);
+                reportData.factorAnalysis = computeFactorAnalysis(processedResponses, scaleSnapshots, parsedEfaConfig);
             }
 
             // Advanced Analytics: Mediation (Sobel)
             if (scaleSnapshots.length >= 3 && sampleSize >= 10) {
-                reportData.mediationAnalysis = computeMediationAnalysis(processedResponses, scaleSnapshots, mediationConfig);
+                reportData.mediationAnalysis = computeMediationAnalysis(processedResponses, scaleSnapshots, parsedMediationConfig);
             }
         }
 
@@ -694,6 +720,10 @@ function solveOptimalMapping(dimensions: any[], loadings: number[][], statements
 }
 
 function computeFactorAnalysis(responses: any[], scales: any[], config?: any) {
+    console.log('[EFA_DEBUG] computeFactorAnalysis called. Config:', JSON.stringify(config));
+    console.log('[EFA_DEBUG] Config keys:', config ? Object.keys(config) : 'null');
+    console.log('[EFA_DEBUG] Scale IDs:', scales.map(s => s.id));
+    
     const globalRotation = config?.rotation || 'varimax';
     const selectedScaleId = config?.selectedScaleId;
 
@@ -706,6 +736,8 @@ function computeFactorAnalysis(responses: any[], scales: any[], config?: any) {
         // Support both scale-specific config maps and flat legacy config structures
         const scaleConfig = (config && config[scale.id]) ? config[scale.id] : config;
         
+        console.log(`[EFA_DEBUG] Scale "${scale.title}" (${scale.id}): configHasKey=${!!(config && config[scale.id])}, scaleConfig=${JSON.stringify(scaleConfig)}`);
+        
         const factorMethod = scaleConfig?.factorMethod || 'fixed';
         const eigenvalueThreshold = scaleConfig?.eigenvalueThreshold || 1.0;
         const rotation = scaleConfig?.rotation || globalRotation;
@@ -714,6 +746,8 @@ function computeFactorAnalysis(responses: any[], scales: any[], config?: any) {
         const dimensions = scale.dimensions || [];
         const defaultFactorCount = dimensions.length > 0 ? dimensions.length : 3;
         const factorCount = scaleConfig?.factorCount || defaultFactorCount;
+        
+        console.log(`[EFA_DEBUG] Scale "${scale.title}": factorMethod=${factorMethod}, factorCount=${factorCount}, eigenThreshold=${eigenvalueThreshold}, rotation=${rotation}`);
         const options = scale.options || [];
         const optionValues = options.map((o: any) => Number(o.value)).filter((v: number) => !isNaN(v));
         const maxOptionValue = optionValues.length > 0 ? Math.max(...optionValues) : 5;
@@ -884,6 +918,10 @@ function computeFactorAnalysis(responses: any[], scales: any[], config?: any) {
 }
 
 function computeMediationAnalysis(responses: any[], scales: any[], config?: any) {
+    console.log('[MEDIATION_DEBUG] Config received:', JSON.stringify(config));
+    console.log('[MEDIATION_DEBUG] Scale count:', scales.length);
+    console.log('[MEDIATION_DEBUG] Scale IDs:', scales.map(s => `${s.id} (${s.title})`));
+    
     if (scales.length < 3) return [];
 
     // Map scales by ID for easy lookup
@@ -893,6 +931,9 @@ function computeMediationAnalysis(responses: any[], scales: any[], config?: any)
     let ivScale = config?.independentScaleId ? scalesMap.get(config.independentScaleId) : scales[0];
     let medScale = config?.mediatorScaleId ? scalesMap.get(config.mediatorScaleId) : scales[1];
     let dvScale = config?.dependentScaleId ? scalesMap.get(config.dependentScaleId) : scales[2];
+    
+    console.log('[MEDIATION_DEBUG] Config IDs: IV=', config?.independentScaleId, 'M=', config?.mediatorScaleId, 'DV=', config?.dependentScaleId);
+    console.log('[MEDIATION_DEBUG] Resolved: IV=', ivScale?.title, 'M=', medScale?.title, 'DV=', dvScale?.title);
 
     // Fallback if selections are invalid
     if (!ivScale || !medScale || !dvScale) {

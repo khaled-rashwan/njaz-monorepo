@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { SharedHeader, SharedFooter, FuturisticPanel } from '@njaz/ui-components';
@@ -18,11 +18,15 @@ export default function ReportDetailPage() {
     const [survey, setSurvey] = useState<Survey | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
+    const refreshTimer = useRef<NodeJS.Timeout | null>(null);
 
     useEffect(() => {
         if (reportId) {
             loadData();
         }
+        return () => {
+            if (refreshTimer.current) clearTimeout(refreshTimer.current);
+        };
     }, [reportId]);
 
     async function loadData() {
@@ -36,6 +40,12 @@ export default function ReportDetailPage() {
 
             const surveyData = await getSurveyById(reportData.surveyId);
             setSurvey(surveyData);
+
+            // Auto-refresh: if the report is not yet completed, poll again in 3s
+            if (reportData.status !== 'completed') {
+                if (refreshTimer.current) clearTimeout(refreshTimer.current);
+                refreshTimer.current = setTimeout(() => loadData(), 3000);
+            }
         } catch (error) {
             console.error('Error loading report:', error);
         } finally {
@@ -82,6 +92,20 @@ export default function ReportDetailPage() {
     }
 
     if (!report) return null;
+
+    const isReportPending = report.status !== 'completed';
+
+    const getStatusLabel = (status: string) => {
+        switch (status) {
+            case 'pending_payment': return t('Awaiting Payment…', 'في انتظار الدفع…');
+            case 'payment_processing': return t('Verifying Payment…', 'جاري التحقق من الدفع…');
+            case 'payment_verified': return t('Payment Confirmed ✓', 'تم تأكيد الدفع ✓');
+            case 'computing': return t('Analyzing Data…', 'جاري تحليل البيانات…');
+            case 'generating_pdf': return t('Preparing Document…', 'جاري تجهيز المستند…');
+            case 'completed': return t('Completed', 'مكتمل');
+            default: return t('Processing…', 'جاري المعالجة…');
+        }
+    };
 
     const reportTitles = {
         demographic: t('Demographic Report', 'تقرير ديموغرافي'),
@@ -143,6 +167,160 @@ export default function ReportDetailPage() {
                             </button>
                         </div>
                     </div>
+
+                    {/* Pending Status Banner */}
+                    {isReportPending && (
+                        <FuturisticPanel glowColor="cyan" title={t('Report Status', 'حالة التقرير')}>
+                            <div className="flex items-center gap-4 p-4">
+                                <div className="w-8 h-8 border-3 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin shrink-0" />
+                                <div>
+                                    <p className="text-white font-bold text-sm">{getStatusLabel(report.status)}</p>
+                                    <p className="text-slate-500 text-xs mt-0.5">
+                                        {t('Auto-refreshing every 3 seconds…', 'يتم التحديث تلقائياً كل 3 ثوان…')}
+                                    </p>
+                                </div>
+                            </div>
+                        </FuturisticPanel>
+                    )}
+
+                    {/* Data Quality & Preprocessing */}
+                    {report.data && (
+                        <div className="mb-10">
+                            <div className="border-b border-slate-800 pb-3 mb-6">
+                                <h2 className="text-xl font-bold text-white">
+                                    {t('Data Quality & Preprocessing', 'جودة البيانات والمعالجة المسبقة')}
+                                </h2>
+                                <p className="text-sm text-slate-500">
+                                    {t('Sample screening, exclusions, and analysis configuration summary.',
+                                       'ملخص فحص العينة والاستبعادات وإعدادات التحليل.')}
+                                </p>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                {/* Sample Size Card */}
+                                <FuturisticPanel glowColor="cyan" title={t('Sample Size', 'حجم العينة')}>
+                                    <div className="space-y-2 text-sm p-1">
+                                        <div className="flex justify-between py-1 border-b border-slate-800/50">
+                                            <span className="text-slate-400">{t('Raw Responses', 'الاستجابات الأولية')}</span>
+                                            <span className="text-white font-mono font-bold">{(report.data as any).rawSampleSize ?? report.data.sampleSize}</span>
+                                        </div>
+                                        <div className="flex justify-between py-1 border-b border-slate-800/50">
+                                            <span className="text-slate-400">{t('After Cleaning', 'بعد التنقية')}</span>
+                                            <span className="text-cyan-400 font-mono font-bold">{report.data.sampleSize}</span>
+                                        </div>
+                                        {(report.data as any).rawSampleSize != null && (report.data as any).rawSampleSize !== report.data.sampleSize && (
+                                            <div className="flex justify-between py-1">
+                                                <span className="text-slate-400">{t('Excluded', 'مستبعدة')}</span>
+                                                <span className="text-amber-400 font-mono font-bold">
+                                                    {(report.data as any).rawSampleSize - report.data.sampleSize}
+                                                </span>
+                                            </div>
+                                        )}
+                                    </div>
+                                </FuturisticPanel>
+
+                                {/* Exclusions Card */}
+                                <FuturisticPanel glowColor="gold" title={t('Exclusions', 'الاستبعادات')}>
+                                    <div className="space-y-2 text-sm p-1">
+                                        <div className="flex justify-between py-1 border-b border-slate-800/50">
+                                            <span className="text-slate-400">{t('Excluded Responses', 'استجابات مستبعدة')}</span>
+                                            <span className="text-white font-mono font-bold">
+                                                {((report.data as any).excludedResponseIds || []).length}
+                                            </span>
+                                        </div>
+                                        <div className="flex justify-between py-1 border-b border-slate-800/50">
+                                            <span className="text-slate-400">{t('Excluded Statements', 'عبارات مستبعدة')}</span>
+                                            <span className="text-white font-mono font-bold">
+                                                {((report.data as any).excludedStatementIds || []).length}
+                                            </span>
+                                        </div>
+                                        <p className="text-[10px] text-slate-500 pt-1">
+                                            {t('Responses excluded via speed/pattern screening.',
+                                               'تم استبعاد الاستجابات عبر فحص السرعة والأنماط.')}
+                                        </p>
+                                    </div>
+                                </FuturisticPanel>
+
+                                {/* EFA Configuration Card */}
+                                {(report.data as any).efaConfig && (
+                                    <FuturisticPanel glowColor="purple" title={t('EFA Configuration', 'إعدادات التحليل العاملي')}>
+                                        <div className="space-y-2 text-sm p-1">
+                                            <div className="flex justify-between py-1 border-b border-slate-800/50">
+                                                <span className="text-slate-400">{t('Rotation', 'التدوير')}</span>
+                                                <span className="text-white font-mono font-bold capitalize">
+                                                    {(report.data as any).efaConfig.rotation || 'varimax'}
+                                                </span>
+                                            </div>
+                                            <div className="flex justify-between py-1 border-b border-slate-800/50">
+                                                <span className="text-slate-400">{t('Extraction', 'الاستخلاص')}</span>
+                                                <span className="text-white font-mono font-bold">
+                                                    {(report.data as any).efaConfig.factorMethod === 'eigenvalue'
+                                                        ? t('Eigenvalue ≥ ', 'القيمة الذاتية ≥ ') + ((report.data as any).efaConfig.eigenvalueThreshold ?? 1.0)
+                                                        : t('Fixed: ', 'ثابت: ') + ((report.data as any).efaConfig.factorCount ?? '—') + ' ' + t('factors', 'عوامل')}
+                                                </span>
+                                            </div>
+                                            {(report.data as any).efaConfig.selectedScaleId && (
+                                                <div className="flex justify-between py-1">
+                                                    <span className="text-slate-400">{t('Target Scale', 'المقياس المستهدف')}</span>
+                                                    <span className="text-cyan-400 font-bold text-xs truncate max-w-[140px]">
+                                                        {report.data.scaleAnalysis?.find(
+                                                            (s: any) => s.scaleId === (report.data as any).efaConfig.selectedScaleId
+                                                        )?.scaleName || (report.data as any).efaConfig.selectedScaleId}
+                                                    </span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </FuturisticPanel>
+                                )}
+                            </div>
+
+                            {/* Mediation Config (full width, only if present) */}
+                            {(report.data as any).mediationConfig &&
+                             (report.data as any).mediationConfig.independentScaleId && (
+                                <div className="mt-4">
+                                    <FuturisticPanel glowColor="pink" title={t('Mediation Variable Assignments', 'تعيين متغيرات الوساطة')}>
+                                        <div className="flex flex-wrap items-center justify-center gap-3 p-3 text-sm">
+                                            {/* Independent */}
+                                            <div className="flex flex-col items-center px-4 py-2 rounded-lg bg-slate-800/40 border border-slate-700/50">
+                                                <span className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">
+                                                    {t('Independent (IV)', 'المستقل')}
+                                                </span>
+                                                <span className="text-slate-300 font-bold text-xs">
+                                                    {report.data.scaleAnalysis?.find(
+                                                        (s: any) => s.scaleId === (report.data as any).mediationConfig.independentScaleId
+                                                    )?.scaleName || '—'}
+                                                </span>
+                                            </div>
+                                            <span className="text-slate-600 text-lg">→</span>
+                                            {/* Mediator */}
+                                            <div className="flex flex-col items-center px-4 py-2 rounded-lg bg-cyan-500/5 border border-cyan-500/20">
+                                                <span className="text-[10px] text-cyan-400/70 uppercase tracking-wider mb-1">
+                                                    {t('Mediator (M)', 'الوسيط')}
+                                                </span>
+                                                <span className="text-cyan-400 font-bold text-xs">
+                                                    {report.data.scaleAnalysis?.find(
+                                                        (s: any) => s.scaleId === (report.data as any).mediationConfig.mediatorScaleId
+                                                    )?.scaleName || '—'}
+                                                </span>
+                                            </div>
+                                            <span className="text-slate-600 text-lg">→</span>
+                                            {/* Dependent */}
+                                            <div className="flex flex-col items-center px-4 py-2 rounded-lg bg-emerald-500/5 border border-emerald-500/20">
+                                                <span className="text-[10px] text-emerald-400/70 uppercase tracking-wider mb-1">
+                                                    {t('Dependent (DV)', 'التابع')}
+                                                </span>
+                                                <span className="text-emerald-400 font-bold text-xs">
+                                                    {report.data.scaleAnalysis?.find(
+                                                        (s: any) => s.scaleId === (report.data as any).mediationConfig.dependentScaleId
+                                                    )?.scaleName || '—'}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </FuturisticPanel>
+                                </div>
+                            )}
+                        </div>
+                    )}
 
                     {/* Per-Scale Analysis */}
                     {report.data?.scaleAnalysis?.map((scale, scaleIdx) => {

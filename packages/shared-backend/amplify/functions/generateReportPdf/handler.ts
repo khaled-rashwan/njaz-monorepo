@@ -166,6 +166,53 @@ async function buildWordDocument(report: any, reportId: string): Promise<Documen
         new Paragraph({ children: [new PageBreak()], bidirectional: isArabic }),
     );
 
+    // ── DATA QUALITY & EXCLUSIONS SUMMARY ──
+    const excludedResponsesCount = data.excludedResponseIds?.length || 0;
+    const excludedStatementsCount = data.excludedStatementIds?.length || 0;
+    
+    sections.push(
+        createHeading(isArabic ? 'مراقبة جودة البيانات وتصفية العينة' : 'Data Quality & Preprocessing Screening', HeadingLevel.HEADING_1, isArabic),
+        createParagraph(
+            isArabic 
+                ? 'يوضح هذا القسم مؤشرات تنقية البيانات والتحقق من جودة الاستجابات المطبقة لتحسين سلامة التحليلات الإحصائية.' 
+                : 'This section details the preprocessing screening and data exclusions applied to ensure high-integrity statistical results.', 
+            isArabic, 10
+        ),
+        new Paragraph({ spacing: { after: 150 }, bidirectional: isArabic }),
+        buildSimpleTable(
+            [
+                isArabic ? 'المؤشر الإحصائي للجودة' : 'Data Integrity Metric',
+                isArabic ? 'القيمة' : 'Value',
+                isArabic ? 'التفسير والأثر الإحصائي' : 'Methodology & Impact'
+            ],
+            [
+                [
+                    isArabic ? 'إجمالي المشاركات الخام (Raw)' : 'Total Raw Submissions', 
+                    String(data.rawSampleSize || data.sampleSize || 'N/A'),
+                    isArabic ? 'كافة الاستجابات المكتملة المسجلة عبر الاستبيان.' : 'All respondents who fully submitted the questionnaire.'
+                ],
+                [
+                    isArabic ? 'المشاركات المستبعدة (Exclusions)' : 'Excluded Submissions', 
+                    String(excludedResponsesCount),
+                    isArabic ? 'المشاركات المستبعدة بسبب التسرع المفرط، الإجابات النمطية (Straight-lining)، أو استبعاد يدوي.' : 'Flagged and excluded due to speedrunning, straight-lining patterns, or manual owner override.'
+                ],
+                [
+                    isArabic ? 'عينة التحليل النهائية (Cleaned)' : 'Final Cleaned Sample Size', 
+                    String(data.sampleSize || 'N/A'),
+                    isArabic ? 'العينة عالية الدقة والمعتمدة لحساب المتوسطات الحسابية والتحاليل المتقدمة.' : 'The final high-integrity sample size utilized for scale reliability and advanced model computations.'
+                ],
+                [
+                    isArabic ? 'العبارات المستبعدة (Excluded Items)' : 'Excluded Statements', 
+                    String(excludedStatementsCount),
+                    isArabic ? 'عدد عبارات المقاييس المستبعدة لتحسين معامل الاتساق الداخلي وثبات ألفا كرونباخ.' : 'Statements excluded from analysis to maximize scale consistency and Cronbach\'s Alpha values.'
+                ]
+            ],
+            isArabic, 9
+        ),
+        new Paragraph({ spacing: { after: 200 }, bidirectional: isArabic }),
+        new Paragraph({ children: [new PageBreak()], bidirectional: isArabic })
+    );
+
     // ── DEMOGRAPHICS SECTION ──
     if (data.demographics) {
         sections.push(

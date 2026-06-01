@@ -124,7 +124,8 @@ export type ReportStatus =
     | 'generating_pdf'
     | 'completed'
     | 'payment_failed'
-    | 'computation_failed';
+    | 'computation_failed'
+    | 'generation_failed';
 
 export interface ReportData {
     generatedAt: string;

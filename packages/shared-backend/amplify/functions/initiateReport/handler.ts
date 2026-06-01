@@ -95,6 +95,8 @@ export const handler = async (event: any, context: any) => {
             owner: userId,
             excludedResponseIds: excludedResponseIds || [],
             excludedStatementIds: excludedStatementIds || [],
+            efaConfig: efaConfig || null,
+            mediationConfig: mediationConfig || null,
             __typename: 'EstebianReport'
         };
 
