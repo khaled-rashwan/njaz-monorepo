@@ -1,0 +1,8 @@
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "org.njaz.test.estebian.www.twa",
+    "sha256_cert_fingerprints": ["26:F8:88:C9:96:10:82:A5:FA:50:3D:7F:AA:44:51:F9:05:78:EE:E1:A7:C0:D3:B1:4A:A0:3F:F1:BD:EF:8E:55"]
+  }
+}]
