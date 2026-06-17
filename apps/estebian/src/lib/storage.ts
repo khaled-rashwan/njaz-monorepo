@@ -288,14 +288,15 @@ export async function requestReport(
 ): Promise<{ reportId: string; paymentUrl: string | null; status: string }> {
     console.log('Available Mutations:', Object.keys(getClient().mutations));
     
-    const args: any = { surveyId, reportType };
-    if (reportId) args.reportId = reportId;
-    if (options?.efaConfig) args.efaConfig = JSON.stringify(options.efaConfig);
-    if (options?.mediationConfig) args.mediationConfig = JSON.stringify(options.mediationConfig);
-    if (options?.excludedResponseIds) args.excludedResponseIds = options.excludedResponseIds;
-    if (options?.excludedStatementIds) args.excludedStatementIds = options.excludedStatementIds;
-    
-    const { data: result, errors } = await getClient().mutations.requestReport(args);
+    const { data: result, errors } = await getClient().mutations.requestReport({
+        surveyId,
+        reportType,
+        reportId: reportId || undefined,
+        efaConfig: options?.efaConfig ? JSON.stringify(options.efaConfig) : undefined,
+        mediationConfig: options?.mediationConfig ? JSON.stringify(options.mediationConfig) : undefined,
+        excludedResponseIds: options?.excludedResponseIds || undefined,
+        excludedStatementIds: options?.excludedStatementIds || undefined,
+    });
 
     if (errors) {
         throw new Error(errors[0].message);

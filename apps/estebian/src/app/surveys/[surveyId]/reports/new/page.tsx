@@ -141,6 +141,79 @@ export default function NewReportStudioPage() {
         };
     }, []);
 
+    // Ensure scale EFA configs and mediation config are always initialized when survey scaleSnapshots load
+    useEffect(() => {
+        if (!survey) return;
+
+        if (survey.scaleSnapshots && survey.scaleSnapshots.length > 0) {
+            // Populate EFA configs for all scales
+            setScaleEfaConfigs(prev => {
+                const updated = { ...prev };
+                let changed = false;
+                survey.scaleSnapshots!.forEach(s => {
+                    if (!updated[s.id]) {
+                        updated[s.id] = {
+                            factorMethod: 'fixed',
+                            factorCount: s.dimensions?.length || 1,
+                            eigenvalueThreshold: 1.0
+                        };
+                        changed = true;
+                    }
+                });
+                return changed ? updated : prev;
+            });
+
+            // Populate exclusions and sorting defaults if not already set
+            setExcludedStatementIdsMap(prev => {
+                const updated = { ...prev };
+                let changed = false;
+                survey.scaleSnapshots!.forEach(s => {
+                    if (!updated[s.id]) {
+                        updated[s.id] = [];
+                        changed = true;
+                    }
+                });
+                return changed ? updated : prev;
+            });
+
+            setStatementSortConfigs(prev => {
+                const updated = { ...prev };
+                let changed = false;
+                survey.scaleSnapshots!.forEach(s => {
+                    if (!updated[s.id]) {
+                        updated[s.id] = { sortBy: 'schema', sortOrder: 'desc' };
+                        changed = true;
+                    }
+                });
+                return changed ? updated : prev;
+            });
+
+            // Initialize mediation config from snapshots (preferred) or scaleIds if not already populated
+            setMediationConfig(prev => {
+                if (!prev.independentScaleId && !prev.mediatorScaleId && !prev.dependentScaleId) {
+                    if (survey.scaleSnapshots!.length >= 3) {
+                        return {
+                            independentScaleId: survey.scaleSnapshots![0].id,
+                            mediatorScaleId: survey.scaleSnapshots![1].id,
+                            dependentScaleId: survey.scaleSnapshots![2].id,
+                        };
+                    } else if (survey.scaleIds && survey.scaleIds.length >= 3) {
+                        return {
+                            independentScaleId: survey.scaleIds[0],
+                            mediatorScaleId: survey.scaleIds[1],
+                            dependentScaleId: survey.scaleIds[2],
+                        };
+                    }
+                }
+                return prev;
+            });
+
+            if (!expandedScaleId) {
+                setExpandedScaleId(survey.scaleSnapshots[0].id);
+            }
+        }
+    }, [survey]);
+
     // 🚀 DURATION GENERATOR (Deterministic based on respondent ID to keep mock-duration stable)
     const getResponseDuration = (respId: string) => {
         let hash = 0;

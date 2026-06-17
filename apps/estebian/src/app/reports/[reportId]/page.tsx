@@ -74,8 +74,23 @@ export default function ReportDetailPage() {
                 }
             });
 
-            // Open the URL in a new tab (triggers download for docx)
-            window.open(result.url.toString(), '_blank');
+            // Fetch the URL as a blob and download it to prevent MS Office intercept errors
+            const response = await fetch(result.url.toString());
+            if (!response.ok) {
+                throw new Error(`Failed to fetch file: ${response.statusText}`);
+            }
+            const blob = await response.blob();
+            const blobUrl = window.URL.createObjectURL(blob);
+            
+            const link = document.createElement('a');
+            link.href = blobUrl;
+            link.download = `report-${report.id}.docx`;
+            
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            window.URL.revokeObjectURL(blobUrl);
             
         } catch (err) {
             console.error('Download error:', err);
