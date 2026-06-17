@@ -187,12 +187,12 @@ export function ImportWizard() {
 
     const getCategoryColor = (cat: ColumnCategory): string => {
         switch (cat) {
-            case 'scale_statement': return 'text-cyan-400 bg-cyan-500/10 border-cyan-500/30';
-            case 'demographic_cat': return 'text-purple-400 bg-purple-500/10 border-purple-500/30';
-            case 'demographic_cont': return 'text-violet-400 bg-violet-500/10 border-violet-500/30';
-            case 'metadata_id': return 'text-slate-400 bg-slate-500/10 border-slate-500/30';
-            case 'metadata_time': return 'text-slate-400 bg-slate-500/10 border-slate-500/30';
-            case 'ignore': return 'text-slate-600 bg-slate-800/50 border-slate-700/30';
+            case 'scale_statement': return 'text-cyan-400 bg-slate-900 border-cyan-500/40';
+            case 'demographic_cat': return 'text-purple-400 bg-slate-900 border-purple-500/40';
+            case 'demographic_cont': return 'text-violet-400 bg-slate-900 border-violet-500/40';
+            case 'metadata_id': return 'text-amber-400 bg-slate-900 border-amber-500/40';
+            case 'metadata_time': return 'text-emerald-400 bg-slate-900 border-emerald-500/40';
+            case 'ignore': return 'text-slate-500 bg-slate-900 border-slate-800';
         }
     };
 
@@ -673,14 +673,14 @@ export function ImportWizard() {
                                                     <select
                                                         value={col.category}
                                                         onChange={(e) => updateColumn(idx, { category: e.target.value as ColumnCategory })}
-                                                        className={`w-full rounded-lg py-1.5 px-2 text-xs font-semibold border focus:outline-none focus:ring-1 focus:ring-cyan-500 cursor-pointer ${getCategoryColor(col.category)} bg-opacity-50`}
+                                                        className={`w-full rounded-lg py-1.5 px-2 text-xs font-semibold border focus:outline-none focus:ring-1 focus:ring-cyan-500 cursor-pointer ${getCategoryColor(col.category)}`}
                                                     >
-                                                        <option value="scale_statement">{getCategoryLabel('scale_statement')}</option>
-                                                        <option value="demographic_cat">{getCategoryLabel('demographic_cat')}</option>
-                                                        <option value="demographic_cont">{getCategoryLabel('demographic_cont')}</option>
-                                                        <option value="metadata_id">{getCategoryLabel('metadata_id')}</option>
-                                                        <option value="metadata_time">{getCategoryLabel('metadata_time')}</option>
-                                                        <option value="ignore">{getCategoryLabel('ignore')}</option>
+                                                        <option className="bg-slate-900 text-slate-100" value="scale_statement">{getCategoryLabel('scale_statement')}</option>
+                                                        <option className="bg-slate-900 text-slate-100" value="demographic_cat">{getCategoryLabel('demographic_cat')}</option>
+                                                        <option className="bg-slate-900 text-slate-100" value="demographic_cont">{getCategoryLabel('demographic_cont')}</option>
+                                                        <option className="bg-slate-900 text-slate-100" value="metadata_id">{getCategoryLabel('metadata_id')}</option>
+                                                        <option className="bg-slate-900 text-slate-100" value="metadata_time">{getCategoryLabel('metadata_time')}</option>
+                                                        <option className="bg-slate-900 text-slate-400" value="ignore">{getCategoryLabel('ignore')}</option>
                                                     </select>
                                                 </td>
 
