@@ -64,36 +64,45 @@ export default function ReportsPage() {
             <main className="flex-1 pt-24 pb-8 px-4 md:px-8">
                 <div className="max-w-7xl mx-auto">
                     {/* Header */}
-                    <div className="mb-8">
+                    <div className="mb-8 flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+                        <div>
+                            <Link
+                                href="/"
+                                className="futuristic-btn inline-flex items-center gap-2 text-sm mb-3"
+                            >
+                                {direction === 'rtl' ? (
+                                    <>
+                                        {t('Back to Home', 'العودة للرئيسية')}
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                        </svg>
+                                    </>
+                                ) : (
+                                    <>
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                                        </svg>
+                                        {t('Back to Home', 'العودة للرئيسية')}
+                                    </>
+                                )}
+                            </Link>
+                            <h1 className="text-3xl font-bold text-white mb-2">
+                                {t('Reports & Analytics', 'التقارير والتحليلات')}
+                            </h1>
+                            <p className="text-slate-400">
+                                {t(
+                                    'Select a survey to access its reports, version history, and generate new analyses.',
+                                    'اختر استبياناً للوصول إلى تقاريره وسجل الإصدارات وإنشاء تحليلات جديدة.'
+                                )}
+                            </p>
+                        </div>
                         <Link
-                            href="/"
-                            className="futuristic-btn inline-flex items-center gap-2 text-sm mb-3"
+                            href="/reports/import"
+                            className="futuristic-btn-primary self-start md:self-auto px-6 py-3 flex items-center gap-2 shadow-[0_0_15px_rgba(6,182,212,0.25)] hover:shadow-[0_0_25px_rgba(6,182,212,0.4)] transition-all duration-300"
                         >
-                            {direction === 'rtl' ? (
-                                <>
-                                    {t('Back to Home', 'العودة للرئيسية')}
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                                    </svg>
-                                </>
-                            ) : (
-                                <>
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                                    </svg>
-                                    {t('Back to Home', 'العودة للرئيسية')}
-                                </>
-                            )}
+                            <span className="material-symbols-outlined text-lg">upload_file</span>
+                            {t('Import Excel / CSV', 'استيراد ملف Excel / CSV')}
                         </Link>
-                        <h1 className="text-3xl font-bold text-white mb-2">
-                            {t('Reports & Analytics', 'التقارير والتحليلات')}
-                        </h1>
-                        <p className="text-slate-400">
-                            {t(
-                                'Select a survey to access its reports, version history, and generate new analyses.',
-                                'اختر استبياناً للوصول إلى تقاريره وسجل الإصدارات وإنشاء تحليلات جديدة.'
-                            )}
-                        </p>
                     </div>
 
                     {/* Survey Hub */}
