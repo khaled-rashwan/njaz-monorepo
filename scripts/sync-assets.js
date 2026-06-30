@@ -3,7 +3,7 @@ const path = require('path');
 
 const rootDir = path.join(__dirname, '..');
 const sharedAssetsDir = path.join(rootDir, 'packages', 'shared-assets', 'public', 'images');
-const apps = ['landing', 'app-selector', 'estebian', 'dev'];
+const apps = ['landing', 'app-selector', 'estebian', 'dev', 'scholar'];
 
 const targetAssets = [
     'favicon.png',
@@ -11,7 +11,7 @@ const targetAssets = [
     'estebian-logo.png',
     'dev-logo.png',
     'process-logo.png',
-    'favicon.png'
+    'scholar-logo.png'
 ];
 
 function syncAssets() {

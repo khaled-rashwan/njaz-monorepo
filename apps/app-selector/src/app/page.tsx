@@ -163,6 +163,15 @@ export default function AppSelectorDashboard() {
                                         />
                                     </a>
                                 ))}
+                                {user?.groups.includes('admins') && (
+                                    <a key="admin-panel" href="/admin" className="block">
+                                        <ActionButton
+                                            icon="🛡️"
+                                            label="Admin"
+                                            color="purple"
+                                        />
+                                    </a>
+                                )}
                             </div>
                         </FuturisticPanel>
 

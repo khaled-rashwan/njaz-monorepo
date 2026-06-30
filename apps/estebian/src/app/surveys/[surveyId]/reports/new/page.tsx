@@ -7,6 +7,7 @@ import { useLanguage, LanguageSwitcher } from '@/components/LanguageContext';
 import { SharedHeader, SharedFooter, FuturisticPanel } from '@njaz/ui-components';
 import { Survey, SurveyResponse, Scale, ReportStatus } from '@/lib/types';
 import { getSurveyById, getResponses, requestReport, getReportById } from '@/lib/storage';
+import { NavigationAction } from '@/components/navigation';
 import { 
     cronbachAlpha, 
     itemTotalCorrelation, 
@@ -575,7 +576,7 @@ export default function NewReportStudioPage() {
         <div className="min-h-screen flex flex-col futuristic-bg" dir={direction}>
             <SharedHeader currentApp="estebian" showLanguageSwitcher={true} LanguageSwitcher={LanguageSwitcher} />
 
-            <main className="flex-1 pt-24 pb-8 px-4 md:px-8">
+            <main className="flex-1 md:pt-36 pt-24 pb-8 px-4 md:px-8">
                 <div className="max-w-7xl mx-auto flex flex-col lg:flex-row gap-8">
                     
                     {/* LEFT WORKSPACE: STEPS AND CONTROLS */}
@@ -612,12 +613,11 @@ export default function NewReportStudioPage() {
                                 })}
                             </div>
                             
-                            <Link 
+                            <NavigationAction 
                                 href={`/surveys/${surveyId}/reports`}
-                                className="px-3 py-1.5 text-xs border border-slate-700 text-slate-400 hover:bg-slate-800/50 rounded-lg font-bold"
-                            >
-                                {t('Exit Studio', 'خروج من الاستوديو')}
-                            </Link>
+                                label={t('Exit Studio', 'خروج من الاستوديو')}
+                                className="px-3 py-1.5 text-xs border border-slate-700 text-slate-400 hover:bg-slate-800/50 rounded-lg font-bold bg-slate-900/60"
+                            />
                         </div>
 
                         {/* STEP 1: PREPROCESSING AND DATA CLEANING */}

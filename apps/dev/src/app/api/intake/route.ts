@@ -8,7 +8,7 @@
 import { NextResponse } from 'next/server';
 import { generateWorkflow } from '@/lib/workflow';
 import { sendSlackNotification, buildInquiryNotification } from '@/lib/notifications';
-import { executeGraphQL, MUTATIONS } from '@/lib/amplify-server';
+import { executeGraphQL, MUTATIONS, QUERIES } from '@/lib/amplify-server';
 
 interface IntakePayload {
     clientName: string;
@@ -177,7 +177,19 @@ export async function POST(request: Request) {
         }
 
         // ── Send Slack Notification ─────────────────────
-        const webhookUrl = process.env.SLACK_WEBHOOK_URL;
+        let webhookUrl = process.env.SLACK_WEBHOOK_URL;
+        try {
+            const settingsResult = await executeGraphQL<{ getAppSettings: any }>(
+                QUERIES.getAppSettings,
+                { id: 'GLOBAL_CONFIG' }
+            );
+            if (settingsResult?.getAppSettings?.slackWebhookUrl) {
+                webhookUrl = settingsResult.getAppSettings.slackWebhookUrl;
+            }
+        } catch (err: any) {
+            console.error('⚠️ Failed to load AppSettings for Slack Webhook:', err.message);
+        }
+
         if (webhookUrl) {
             const slackPayload = buildInquiryNotification({
                 clientName: body.clientName,

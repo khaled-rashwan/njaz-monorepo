@@ -83,6 +83,7 @@ export function getAppUrl(appId: string): string | null {
         'landing': 'https://njaz.org',
         'dev': 'https://dev.njaz.org',
         'process': 'https://process.njaz.org',
+        'scholar': 'https://scholar.njaz.org',
     };
 
     const LOCAL_URLS: Record<string, string> = {
@@ -91,6 +92,7 @@ export function getAppUrl(appId: string): string | null {
         'landing': 'http://localhost:3000',
         'dev': 'http://localhost:3003', // Assuming 3003
         'process': 'http://localhost:3004', // Assuming 3004
+        'scholar': 'http://localhost:3004',
     };
 
     if (isLocal) {
@@ -109,6 +111,7 @@ export function getAppUrl(appId: string): string | null {
                 'landing': 'https://test.njaz.org',
                 'dev': 'https://dev.test.njaz.org',
                 'process': 'https://process.test.njaz.org',
+                'scholar': 'https://scholar.test.njaz.org',
             };
             return TEST_URLS[appId] || null;
         }

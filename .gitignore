@@ -66,3 +66,6 @@ apps/*/public/images/favicon.png
 
 # Estebian docs — client sample data (not for public)
 apps/estebian/docs/Asmaa Sayed/
+
+# Scholar docs — private research files
+apps/scholar/docs/

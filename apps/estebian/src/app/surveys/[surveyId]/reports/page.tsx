@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { getCurrentUser } from 'aws-amplify/auth';
 import { useLanguage, LanguageSwitcher } from '@/components/LanguageContext';
+import { NavigationAction } from '@/components/navigation';
 import { SharedHeader, SharedFooter, FuturisticPanel } from '@njaz/ui-components';
 import { Survey, Report } from '@/lib/types';
 import { getSurveyById, getResponses, getReports } from '@/lib/storage';
@@ -72,7 +73,7 @@ export default function SurveyReportsPage() {
                 <main className="flex-1 flex items-center justify-center">
                     <div className="text-center">
                         <h1 className="text-2xl font-bold text-white mb-4">{t('Survey not found', 'الاستبيان غير موجود')}</h1>
-                        <Link href="/surveys" className="futuristic-btn-primary">{t('Back to Surveys', 'العودة للاستبيانات')}</Link>
+                        <NavigationAction href="/surveys" label={t('Back to Surveys', 'العودة للاستبيانات')} />
                     </div>
                 </main>
             </div>
@@ -114,7 +115,7 @@ export default function SurveyReportsPage() {
                                 </div>
                                 <div className="flex gap-2">
                                     <button 
-                                        onClick={() => router.push(`/reports/${report.id}`)}
+                                        onClick={() => router.push(`/reports/${report.id}?from=survey`)}
                                         className="flex-1 py-2 bg-emerald-500/10 border border-emerald-500/30 rounded-lg text-emerald-400 font-bold hover:bg-emerald-500/20 transition-colors"
                                     >
                                         {t('View Latest Report', 'عرض أحدث تقرير')}
@@ -134,7 +135,7 @@ export default function SurveyReportsPage() {
                                     <h4 className="text-xs text-slate-500 mb-2 font-bold uppercase">{t('Version History', 'سجل الإصدارات')}</h4>
                                     <div className="space-y-2 max-h-32 overflow-y-auto pr-1 futuristic-scrollbar">
                                         {typeReports.slice(1).map((oldReport) => (
-                                            <div key={oldReport.id} className="flex items-center justify-between p-2 rounded bg-slate-900/50 hover:bg-slate-800 transition-colors cursor-pointer border border-transparent hover:border-slate-700" onClick={() => router.push(`/reports/${oldReport.id}`)}>
+                                            <div key={oldReport.id} className="flex items-center justify-between p-2 rounded bg-slate-900/50 hover:bg-slate-800 transition-colors cursor-pointer border border-transparent hover:border-slate-700" onClick={() => router.push(`/reports/${oldReport.id}?from=survey`)}>
                                                 <div className="text-xs text-slate-400">
                                                     {new Date(oldReport.createdAt).toLocaleDateString()}
                                                 </div>
@@ -167,10 +168,15 @@ export default function SurveyReportsPage() {
         <div className="min-h-screen flex flex-col futuristic-bg" dir={direction}>
             <SharedHeader currentApp="estebian" showLanguageSwitcher={true} LanguageSwitcher={LanguageSwitcher} />
 
-            <main className="flex-1 pt-24 pb-8 px-4 md:px-8">
+            <main className="flex-1 md:pt-36 pt-24 pb-8 px-4 md:px-8">
                 <div className="max-w-7xl mx-auto">
                     {/* Header with Breadcrumbs */}
                     <div className="mb-8">
+                        <NavigationAction
+                            href="/surveys"
+                            label={t('Back to Surveys', 'العودة للاستبيانات')}
+                            className="mb-4"
+                        />
                         <nav className="flex items-center gap-2 text-sm text-slate-500 mb-4">
                             <Link href="/surveys" className="hover:text-cyan-400 transition-colors">{t('My Surveys', 'استبياناتي')}</Link>
                             <span className="material-symbols-outlined text-xs">chevron_right</span>

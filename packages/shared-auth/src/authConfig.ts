@@ -76,6 +76,21 @@ export function configureAmplifyAuth(config: any) {
             });
         }
 
+        // CLEANUP: Clear cookies from other client IDs to prevent SSR fetchAuthSession confusion
+        const expectedClientId = overridenConfig?.auth?.user_pool_client_id;
+        if (expectedClientId) {
+            cognitoCookies.forEach(key => {
+                const parts = key.split('.');
+                // Cognito cookie format: CognitoIdentityServiceProvider.<ClientId>.<Username>.idToken
+                // Or: CognitoIdentityServiceProvider.<ClientId>.LastAuthUser
+                if (parts.length >= 2 && parts[1] !== expectedClientId) {
+                    console.warn(`🧹 Clearing cookie from different client ID: ${key}`);
+                    Cookies.remove(key, { path: '/' });
+                    Cookies.remove(key, { path: '/', domain: cookieDomain });
+                }
+            });
+        }
+
         console.log('🍪 Available cookies on page load:', {
             total: Object.keys(allCookies).length,
             cognitoRelated: cognitoCookies.length,
@@ -87,7 +102,7 @@ export function configureAmplifyAuth(config: any) {
     // Create cookie storage instance with proper cross-subdomain settings
     const cookieStorage = new CookieStorage({
         domain: cookieDomain,
-        secure: true, // Always true - required for SameSite=None
+        secure: isProduction, // false on localhost HTTP to allow cookies to be written
         sameSite: isProduction ? 'none' : 'lax', // 'none' for production cross-subdomain
     });
 

@@ -9,6 +9,7 @@ import { SurveyCard } from '@/components/SurveyCard';
 import { Survey } from '@/lib/types';
 import { getSurveys, getResponses, deleteSurvey } from '@/lib/storage';
 import { getDashboardUrl, getCurrentUrl } from '@njaz/shared-auth';
+import { NavigationAction } from '@/components/navigation';
 
 export default function SurveysPage() {
     const { t, language, direction } = useLanguage();
@@ -69,31 +70,16 @@ export default function SurveysPage() {
                 LanguageSwitcher={LanguageSwitcher}
             />
 
-            <main className="flex-1 pt-24 pb-8 px-4 md:px-8">
+            <main className="flex-1 md:pt-36 pt-24 pb-8 px-4 md:px-8">
                 <div className="max-w-7xl mx-auto">
                     {/* Header */}
                     <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
                         <div>
-                            <Link
+                            <NavigationAction
                                 href="/"
-                                className="futuristic-btn inline-flex items-center gap-2 text-sm mb-3"
-                            >
-                                {direction === 'rtl' ? (
-                                    <>
-                                        {t('Back to Home', 'العودة للرئيسية')}
-                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                                        </svg>
-                                    </>
-                                ) : (
-                                    <>
-                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                                        </svg>
-                                        {t('Back to Home', 'العودة للرئيسية')}
-                                    </>
-                                )}
-                            </Link>
+                                label={t('Back to Home', 'العودة للرئيسية')}
+                                className="mb-3"
+                            />
                             <h1 className="text-3xl font-bold text-white mb-2">
                                 {t('My Surveys', 'استبياناتي')}
                             </h1>
@@ -104,22 +90,33 @@ export default function SurveysPage() {
                                 )}
                             </p>
                         </div>
-                        <Link
-                            href="/surveys/new"
-                            className="group relative px-6 py-3 rounded-xl font-semibold inline-flex items-center gap-3 justify-center
-                                       bg-gradient-to-r from-cyan-500 via-teal-500 to-emerald-500
-                                       text-white shadow-lg shadow-cyan-500/30
-                                       hover:shadow-xl hover:shadow-cyan-500/50 hover:scale-105
-                                       transition-all duration-300 overflow-hidden"
-                        >
-                            {/* Animated Shine Effect */}
-                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent 
-                                           translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
-                            <svg className="w-5 h-5 relative z-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                            </svg>
-                            <span className="relative z-10">{t('Create New Survey', 'إنشاء استبيان جديد')}</span>
-                        </Link>
+                        <div className="flex flex-wrap gap-3">
+                            <Link
+                                href="/reports/import?from=surveys"
+                                className="px-5 py-3 rounded-xl font-semibold inline-flex items-center gap-2 justify-center
+                                           bg-slate-900 border border-cyan-500/20 text-cyan-400 hover:border-cyan-500/50 hover:bg-cyan-500/5
+                                           transition-all duration-300 shadow-md"
+                            >
+                                <span className="material-symbols-outlined text-base">cloud_upload</span>
+                                <span>{t('Import Excel/CSV', 'استيراد Excel/CSV')}</span>
+                            </Link>
+                            <Link
+                                href="/surveys/new"
+                                className="group relative px-6 py-3 rounded-xl font-semibold inline-flex items-center gap-3 justify-center
+                                           bg-gradient-to-r from-cyan-500 via-teal-500 to-emerald-500
+                                           text-white shadow-lg shadow-cyan-500/30
+                                           hover:shadow-xl hover:shadow-cyan-500/50 hover:scale-105
+                                           transition-all duration-300 overflow-hidden"
+                            >
+                                {/* Animated Shine Effect */}
+                                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent 
+                                               translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
+                                <svg className="w-5 h-5 relative z-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                                </svg>
+                                <span className="relative z-10">{t('Create New Survey', 'إنشاء استبيان جديد')}</span>
+                            </Link>
+                        </div>
                     </div>
 
 

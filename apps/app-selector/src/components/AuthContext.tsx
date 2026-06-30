@@ -76,7 +76,23 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }, []);
 
     const handleSignIn = async (email: string, password: string) => {
-        await signIn({ username: email, password });
+        try {
+            await signIn({ username: email, password });
+        } catch (error: any) {
+            const msg = error?.message || '';
+            if (msg.includes('already a signed in user') || error?.name === 'SignInException') {
+                console.warn('⚠️ Already signed in according to Amplify. Force signing out and retrying...');
+                try {
+                    await signOut();
+                } catch (e) {
+                    console.error('Failed to sign out during recovery:', e);
+                }
+                // Retry sign in
+                await signIn({ username: email, password });
+            } else {
+                throw error;
+            }
+        }
         await refreshUser();
     };
 

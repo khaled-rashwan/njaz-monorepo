@@ -8,6 +8,7 @@ import { SharedHeader, SharedFooter, FuturisticPanel } from '@njaz/ui-components
 import { Survey, Report } from '@/lib/types';
 import { getSurveys, getResponses, getReports } from '@/lib/storage';
 import { getDashboardUrl, getCurrentUrl } from '@njaz/shared-auth';
+import { NavigationAction } from '@/components/navigation';
 
 export default function ReportsPage() {
     const { t, language, direction } = useLanguage();
@@ -61,31 +62,16 @@ export default function ReportsPage() {
                 LanguageSwitcher={LanguageSwitcher}
             />
 
-            <main className="flex-1 pt-24 pb-8 px-4 md:px-8">
+            <main className="flex-1 md:pt-36 pt-24 pb-8 px-4 md:px-8">
                 <div className="max-w-7xl mx-auto">
                     {/* Header */}
                     <div className="mb-8 flex flex-col md:flex-row md:items-end md:justify-between gap-4">
                         <div>
-                            <Link
+                            <NavigationAction
                                 href="/"
-                                className="futuristic-btn inline-flex items-center gap-2 text-sm mb-3"
-                            >
-                                {direction === 'rtl' ? (
-                                    <>
-                                        {t('Back to Home', 'العودة للرئيسية')}
-                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                                        </svg>
-                                    </>
-                                ) : (
-                                    <>
-                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                                        </svg>
-                                        {t('Back to Home', 'العودة للرئيسية')}
-                                    </>
-                                )}
-                            </Link>
+                                label={t('Back to Home', 'العودة للرئيسية')}
+                                className="mb-3"
+                            />
                             <h1 className="text-3xl font-bold text-white mb-2">
                                 {t('Reports & Analytics', 'التقارير والتحليلات')}
                             </h1>

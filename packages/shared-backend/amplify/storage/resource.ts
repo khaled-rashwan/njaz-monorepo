@@ -8,5 +8,13 @@ export const storage = defineStorage({
             allow.guest.to(['read']),
             allow.groups(['admins']).to(['read', 'write', 'delete']),
         ],
+        'scholar-figures/*': [
+            allow.authenticated.to(['read', 'write', 'delete']),
+            allow.groups(['admins']).to(['read', 'write', 'delete']),
+            allow.groups(['devplatform-access']).to(['read', 'write', 'delete']),
+            allow.groups(['pid-access']).to(['read', 'write', 'delete']),
+            allow.groups(['interior-access']).to(['read', 'write', 'delete']),
+            allow.groups(['scholar-access']).to(['read', 'write', 'delete']),
+        ],
     }),
 });

@@ -9,6 +9,7 @@ import { SharedHeader, SharedFooter, FuturisticPanel } from '@njaz/ui-components
 import { Scale, Dimension, Statement, ScaleOption, getDefaultOptions } from '@/lib/types';
 import { saveScale, generateId } from '@/lib/storage';
 import { getDashboardUrl, getCurrentUrl } from '@njaz/shared-auth';
+import { NavigationAction } from '@/components/navigation';
 import {
     DndContext,
     closestCenter,
@@ -358,29 +359,16 @@ export default function NewScalePage() {
                 showLanguageSwitcher={true}
                 LanguageSwitcher={LanguageSwitcher}
             />
-
-            <main className="flex-1 pt-24 pb-8 px-4 md:px-8">
+            <main className="flex-1 md:pt-36 pt-24 pb-8 px-4 md:px-8">
                 <div className="max-w-4xl mx-auto">
                     {/* Header */}
                     <div className="flex items-center justify-between mb-8">
                         <div>
-                            <Link href={returnTo === 'survey' ? '/surveys/new' : '/scales'} className="futuristic-btn inline-flex items-center gap-2 text-sm mb-2">
-                                {direction === 'rtl' ? (
-                                    <>
-                                        {returnTo === 'survey' ? t('Back to Survey', 'العودة للاستبيان') : t('Back to Library', 'العودة للمكتبة')}
-                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                                        </svg>
-                                    </>
-                                ) : (
-                                    <>
-                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                                        </svg>
-                                        {returnTo === 'survey' ? t('Back to Survey', 'العودة للاستبيان') : t('Back to Library', 'العودة للمكتبة')}
-                                    </>
-                                )}
-                            </Link>
+                            <NavigationAction
+                                href={returnTo === 'survey' ? '/surveys/new' : '/scales'}
+                                label={returnTo === 'survey' ? t('Back to Survey', 'العودة للاستبيان') : t('Back to Library', 'العودة للمكتبة')}
+                                className="mb-2"
+                            />
                             <h1 className="text-3xl font-bold text-white">
                                 {t('Create New Scale', 'إنشاء مقياس جديد')}
                             </h1>

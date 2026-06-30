@@ -6,6 +6,8 @@ import { Providers } from './providers';
 import { useLanguage } from '@/components/LanguageContext';
 import { useEffect } from 'react';
 
+import { SubNavbar } from '@/components/navigation';
+
 function LayoutContent({ children }: { children: React.ReactNode }) {
     const { direction, language } = useLanguage();
 
@@ -28,7 +30,12 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
         }
     }, []);
 
-    return children;
+    return (
+        <>
+            <SubNavbar />
+            {children}
+        </>
+    );
 }
 
 export default function RootLayout({

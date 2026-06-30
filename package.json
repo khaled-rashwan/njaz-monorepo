@@ -6,13 +6,15 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "npm run sync-assets && turbo run dev",
-    "build": "npm run sync-assets && turbo run build",
+    "dev": "npm run sync-assets && npm run sync-amplify && turbo run dev",
+    "build": "npm run sync-assets && npm run sync-amplify && turbo run build",
     "lint": "turbo run lint",
-    "dev:landing": "npm run sync-assets && turbo run dev --filter=landing",
-    "dev:app-selector": "npm run sync-assets && turbo run dev --filter=app-selector",
-    "dev:dev": "npm run sync-assets && turbo run dev --filter=dev",
-    "build:landing": "npm run sync-assets && turbo run build --filter=landing",
+    "dev:landing": "npm run sync-assets && npm run sync-amplify && turbo run dev --filter=landing",
+    "dev:app-selector": "npm run sync-assets && npm run sync-amplify && turbo run dev --filter=app-selector",
+    "dev:dev": "npm run sync-assets && npm run sync-amplify && turbo run dev --filter=dev",
+    "dev:scholar": "npm run sync-assets && npm run sync-amplify && turbo run dev --filter=scholar",
+    "build:landing": "npm run sync-assets && npm run sync-amplify && turbo run build --filter=landing",
+    "build:scholar": "npm run sync-assets && npm run sync-amplify && turbo run build --filter=scholar",
     "sync-amplify": "node scripts/sync-amplify-config.js",
     "sync-assets": "node scripts/sync-assets.js",
     "amplify:sandbox": "cd packages/shared-backend && npx ampx sandbox"

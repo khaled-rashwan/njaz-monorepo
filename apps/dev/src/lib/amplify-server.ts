@@ -251,6 +251,17 @@ export const MUTATIONS = {
 };
 
 export const QUERIES = {
+    getAppSettings: /* GraphQL */ `
+        query GetAppSettings($id: String!) {
+            getAppSettings(id: $id) {
+                id
+                isScholarAiEnabled
+                geminiApiKey
+                slackWebhookUrl
+                githubToken
+            }
+        }
+    `,
     listDevInquiries: /* GraphQL */ `
         query ListDevInquiries($limit: Int, $nextToken: String) {
             listDevInquiries(limit: $limit, nextToken: $nextToken) {

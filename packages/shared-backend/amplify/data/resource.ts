@@ -3,9 +3,11 @@ import { estebianSchema } from '@njaz/estebian-data';
 import { devPlatformSchema } from './dev-platform.schema';
 import { industrialSchema } from './industrial.schema';
 import { interiorDesignSchema } from './interior-design.schema';
+import { scholarSchema } from './scholar.schema';
 import { submitResponse } from '../functions/submitResponse/resource';
 import { manageUsers } from '../functions/manageUsers/resource';
 import { initiateReport } from '../functions/initiateReport/resource';
+import { analyzeData } from '../functions/analyzeData/resource';
 
 /**
  * Njaz Platform Data Schema
@@ -21,6 +23,24 @@ const schema = a.schema({
     ...devPlatformSchema,
     ...industrialSchema,
     ...interiorDesignSchema,
+    ...scholarSchema,
+
+    // ============================================
+    // GLOBAL SETTINGS
+    // ============================================
+    AppSettings: a
+        .model({
+            id: a.string().required(),
+            isScholarAiEnabled: a.boolean().default(true),
+            geminiApiKey: a.string(),
+            slackWebhookUrl: a.string(),
+            githubToken: a.string(),
+        })
+        .identifier(['id'])
+        .authorization((allow) => [
+            allow.authenticated().to(['read']),
+            allow.groups(['admins']),
+        ]),
 
     // ============================================
     // CUSTOM MUTATIONS & QUERIES
@@ -35,6 +55,16 @@ const schema = a.schema({
         .returns(a.json())
         .handler(a.handler.function(submitResponse))
         .authorization((allow) => [allow.publicApiKey()]),
+
+    analyzeData: a.mutation()
+        .arguments({
+            dataset: a.json().required(),
+            analysisType: a.string().required(),
+            parameters: a.json(),
+        })
+        .returns(a.json())
+        .handler(a.handler.function(analyzeData))
+        .authorization((allow) => [allow.authenticated()]),
 
     requestReport: a.mutation()
         .arguments({

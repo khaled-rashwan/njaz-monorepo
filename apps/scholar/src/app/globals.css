@@ -1,0 +1,398 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&display=swap');
+
+:root {
+    --foreground-rgb: 255, 255, 255;
+    --background-start-rgb: 10, 14, 26;
+    --background-end-rgb: 15, 23, 42;
+    --accent-amber: 245, 158, 11;
+    --accent-cyan: 56, 205, 223;
+    --accent-purple: 167, 139, 250;
+}
+
+* {
+    box-sizing: border-box;
+    padding: 0;
+    margin: 0;
+}
+
+html,
+body {
+    max-width: 100vw;
+    overflow-x: hidden;
+    font-family: 'Inter', 'Cairo', system-ui, sans-serif;
+}
+
+body {
+    color: rgb(var(--foreground-rgb));
+    background: linear-gradient(to bottom,
+            rgb(var(--background-start-rgb)),
+            rgb(var(--background-end-rgb)));
+    min-height: 100vh;
+}
+
+/* =========================================
+   SCHOLAR DESIGN SYSTEM
+   Amber/Gold accent over dark background
+   ========================================= */
+
+/* Futuristic Background Grid */
+.futuristic-bg {
+    background-image:
+        linear-gradient(rgba(245, 158, 11, 0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(245, 158, 11, 0.02) 1px, transparent 1px);
+    background-size: 40px 40px;
+}
+
+/* Gradient Text - Amber Scholar accent */
+.gradient-text {
+    background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 50%, #d97706 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.gradient-text-cyan {
+    background: linear-gradient(135deg, #38cddf 0%, #06b6d4 50%, #0891b2 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+/* =========================================
+   GLASSMORPHISM CARDS
+   ========================================= */
+
+.futuristic-card {
+    background: linear-gradient(180deg, rgba(25, 30, 45, 0.9) 0%, rgba(15, 20, 35, 0.95) 100%);
+    border: 1px solid rgba(245, 158, 11, 0.15);
+    border-radius: 12px;
+    backdrop-filter: blur(12px);
+    transition: all 0.3s ease;
+}
+
+.futuristic-card:hover {
+    border-color: rgba(245, 158, 11, 0.35);
+    box-shadow: 0 0 30px rgba(245, 158, 11, 0.08);
+}
+
+.glass-card {
+    backdrop-filter: blur(16px);
+    background: rgba(20, 25, 40, 0.75);
+    border: 1px solid rgba(245, 158, 11, 0.2);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+}
+
+/* =========================================
+   BUTTONS
+   ========================================= */
+
+.futuristic-btn {
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.15) 0%, rgba(217, 119, 6, 0.25) 100%);
+    border: 1px solid rgba(245, 158, 11, 0.35);
+    color: #fbbf24;
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.futuristic-btn:hover {
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.25) 0%, rgba(217, 119, 6, 0.35) 100%);
+    box-shadow: 0 0 20px rgba(245, 158, 11, 0.2);
+    transform: translateY(-1px);
+}
+
+.futuristic-btn-primary {
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    box-shadow: 0 0 15px rgba(245, 158, 11, 0.15);
+    background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+    border: none;
+    color: #0a0e1a;
+}
+
+.futuristic-btn-primary:hover {
+    box-shadow: 0 0 25px rgba(245, 158, 11, 0.35);
+    transform: translateY(-1px);
+    background: linear-gradient(135deg, #fcd34d 0%, #fbbf24 100%);
+}
+
+.futuristic-btn-ghost {
+    background: transparent;
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    color: #94a3b8;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.futuristic-btn-ghost:hover {
+    border-color: rgba(245, 158, 11, 0.4);
+    color: #fbbf24;
+    background: rgba(245, 158, 11, 0.05);
+}
+
+/* =========================================
+   INPUTS
+   ========================================= */
+
+.futuristic-input {
+    background: rgba(15, 20, 35, 0.8);
+    border: 1px solid rgba(245, 158, 11, 0.15);
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    color: white;
+    width: 100%;
+    transition: all 0.3s ease;
+    font-family: 'Inter', 'Cairo', system-ui, sans-serif;
+}
+
+.futuristic-input:focus {
+    outline: none;
+    border-color: rgba(245, 158, 11, 0.5);
+    box-shadow: 0 0 15px rgba(245, 158, 11, 0.1);
+}
+
+.futuristic-input::placeholder {
+    color: rgba(148, 163, 184, 0.5);
+}
+
+/* =========================================
+   EDITOR-SPECIFIC STYLES
+   ========================================= */
+
+.editor-block {
+    border: 1px solid transparent;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+    position: relative;
+}
+
+.editor-block:hover {
+    border-color: rgba(245, 158, 11, 0.1);
+    background: rgba(245, 158, 11, 0.02);
+}
+
+.editor-block.focused {
+    border-color: rgba(245, 158, 11, 0.3);
+    background: rgba(245, 158, 11, 0.04);
+    box-shadow: 0 0 20px rgba(245, 158, 11, 0.06);
+}
+
+.editor-block .drag-handle {
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.editor-block:hover .drag-handle {
+    opacity: 1;
+}
+
+/* Block type indicator */
+.block-type-badge {
+    font-size: 0.625rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: 600;
+}
+
+/* Code block styling */
+.code-editor-area {
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 0.875rem;
+    line-height: 1.6;
+    tab-size: 4;
+}
+
+/* KaTeX equation display and automatic line wrapping */
+.katex-display {
+    overflow-x: visible !important;
+    padding: 1rem 0;
+}
+
+.katex-display > .katex {
+    white-space: normal !important;
+    display: inline-block;
+    width: 100%;
+    text-align: center;
+}
+
+.katex-display > .katex > .katex-html {
+    display: inline;
+    white-space: normal !important;
+}
+
+.katex-display > .katex .base {
+    display: inline;
+    white-space: normal !important;
+}
+
+.katex-display > .katex .mbin,
+.katex-display > .katex .mrel {
+    display: inline-block;
+}
+
+.katex {
+    font-size: 1.1em;
+}
+
+/* =========================================
+   SIDEBAR & PANELS
+   ========================================= */
+
+.sidebar-panel {
+    background: linear-gradient(180deg, rgba(15, 20, 35, 0.95) 0%, rgba(10, 14, 26, 0.98) 100%);
+    border-right: 1px solid rgba(245, 158, 11, 0.1);
+}
+
+.inspector-panel {
+    background: linear-gradient(180deg, rgba(15, 20, 35, 0.95) 0%, rgba(10, 14, 26, 0.98) 100%);
+    border-left: 1px solid rgba(245, 158, 11, 0.1);
+}
+
+/* =========================================
+   RTL SUPPORT
+   ========================================= */
+
+[dir="rtl"] .futuristic-input,
+[dir="rtl"] .futuristic-btn {
+    text-align: right;
+}
+
+[dir="rtl"] .sidebar-panel {
+    border-right: none;
+    border-left: 1px solid rgba(245, 158, 11, 0.1);
+}
+
+[dir="rtl"] .inspector-panel {
+    border-left: none;
+    border-right: 1px solid rgba(245, 158, 11, 0.1);
+}
+
+/* =========================================
+   SCROLLBAR
+   ========================================= */
+
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: rgba(15, 20, 35, 0.5);
+}
+
+::-webkit-scrollbar-thumb {
+    background: rgba(245, 158, 11, 0.2);
+    border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(245, 158, 11, 0.4);
+}
+
+/* =========================================
+   ANIMATIONS
+   ========================================= */
+
+@keyframes pulse-glow {
+    0%, 100% {
+        box-shadow: 0 0 20px rgba(245, 158, 11, 0.15);
+    }
+    50% {
+        box-shadow: 0 0 40px rgba(245, 158, 11, 0.3);
+    }
+}
+
+@keyframes fade-in {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+}
+
+.animate-fade-in {
+    animation: fade-in 0.5s ease-out;
+}
+
+.animate-shimmer {
+    background: linear-gradient(90deg, transparent, rgba(245, 158, 11, 0.05), transparent);
+    background-size: 200% 100%;
+    animation: shimmer 2s infinite;
+}
+
+/* Neon glows */
+.neon-glow {
+    box-shadow: 0 0 15px rgba(245, 158, 11, 0.4);
+}
+
+.neon-glow-cyan {
+    box-shadow: 0 0 15px rgba(56, 205, 223, 0.4);
+}
+
+.neon-glow-purple {
+    box-shadow: 0 0 15px rgba(167, 139, 250, 0.4);
+}
+
+.neon-glow-green {
+    box-shadow: 0 0 15px rgba(52, 211, 153, 0.4);
+}
+
+/* =========================================
+   TOOLTIP
+   ========================================= */
+
+.tooltip {
+    position: relative;
+}
+
+.tooltip::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 4px 8px;
+    background: rgba(15, 20, 35, 0.95);
+    border: 1px solid rgba(245, 158, 11, 0.2);
+    border-radius: 6px;
+    font-size: 0.75rem;
+    color: #94a3b8;
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    z-index: 50;
+}
+
+.tooltip:hover::after {
+    opacity: 1;
+}
+
+/* Material Symbols */
+.material-symbols-outlined {
+    font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+}

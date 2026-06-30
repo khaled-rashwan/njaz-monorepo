@@ -11,7 +11,7 @@ export const auth = defineAuth({
     loginWith: {
         email: true,
     },
-    groups: ["admins", "devplatform-access", "pid-access", "interior-access"],
+    groups: ["admins", "devplatform-access", "pid-access", "interior-access", "scholar-access"],
     userAttributes: {
         // Optional: Display name in Arabic
         'custom:display_name_ar': {

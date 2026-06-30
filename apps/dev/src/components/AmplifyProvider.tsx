@@ -26,21 +26,16 @@ async function loadAmplifyConfig() {
  */
 async function verifyAuthSession(): Promise<void> {
     try {
-        // Try to get current user - this will use the stored tokens
         await getCurrentUser();
-        console.log('✅ Auth session is valid');
+        const session = await fetchAuthSession();
+        if (!session.tokens?.accessToken) {
+            throw new Error('No active tokens in Cognito session');
+        }
+        console.log('✅ Auth session and tokens are valid');
     } catch (error: any) {
         const message = error?.message || '';
-        // Check if token was revoked
-        if (message.includes('revoked') || message.includes('NotAuthorizedException')) {
-            console.warn('⚠️ Auth token revoked - clearing stale tokens');
-            await clearAuthAndSignOut();
-        } else if (message.includes('UserUnAuthenticatedException') || message.includes('not authenticated')) {
-            // User is simply not logged in - this is fine
-            console.log('ℹ️ User not authenticated');
-        } else {
-            console.log('ℹ️ Auth check:', message);
-        }
+        console.warn('⚠️ Stale or invalid auth session found, clearing tokens:', message);
+        await clearAuthAndSignOut();
     }
 }
 

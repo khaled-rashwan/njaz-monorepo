@@ -137,7 +137,8 @@ backend.manageUsers.resources.lambda.addToRolePolicy(
             'cognito-idp:AdminAddUserToGroup',
             'cognito-idp:AdminRemoveUserFromGroup',
             'cognito-idp:AdminListGroupsForUser',
-            'cognito-idp:AdminUpdateUserAttributes'
+            'cognito-idp:AdminUpdateUserAttributes',
+            'cognito-idp:CreateGroup'
         ],
         resources: [userPool.userPoolArn],
     })

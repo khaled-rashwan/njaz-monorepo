@@ -10,6 +10,7 @@ import { Survey, Scale, DemographicField } from '@/lib/types';
 import { saveSurvey, getScales, generateId } from '@/lib/storage';
 import { getDashboardUrl, getCurrentUrl } from '@njaz/shared-auth';
 import { ProgressSteps, ScaleCard, ScaleSelectorModal } from '@/components/SurveyBuilder';
+import { NavigationAction } from '@/components/navigation';
 import {
     DndContext,
     closestCenter,
@@ -281,14 +282,16 @@ export default function NewSurveyPage() {
                 LanguageSwitcher={LanguageSwitcher}
             />
 
-            <main className="flex-1 pt-24 pb-8 px-4 md:px-8">
+            <main className="flex-1 md:pt-36 pt-24 pb-8 px-4 md:px-8">
                 <div className="max-w-5xl mx-auto">
                     {/* Header */}
                     <div className="flex items-center justify-between mb-6">
                         <div>
-                            <Link href="/surveys" className="text-sm text-cyan-400 hover:text-cyan-300 mb-2 inline-block">
-                                ← {t('Back to Surveys', 'العودة للاستبيانات')}
-                            </Link>
+                            <NavigationAction
+                                href="/surveys"
+                                label={t('Back to Surveys', 'العودة للاستبيانات')}
+                                className="mb-2"
+                            />
                             <h1 className="text-3xl font-bold text-white">
                                 {t('Create New Survey', 'إنشاء استبيان جديد')}
                             </h1>

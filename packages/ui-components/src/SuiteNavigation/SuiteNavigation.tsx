@@ -69,6 +69,19 @@ const NJAZ_APPS: NjazApp[] = [
         shortDescription: 'Process Automation',
         requiredGroup: 'process-access',
     },
+    {
+        id: 'scholar',
+        name: 'Scholar',
+        nameAr: 'باحث',
+        icon: '/images/scholar-logo.png',
+        href: 'https://scholar.njaz.org',
+        color: '#f59e0b',
+        accentClass: 'amber',
+        description: 'Block-based academic writing with AI co-authoring, literature survey, and code execution.',
+        descriptionAr: 'كتابة أكاديمية بنظام البلوكات مع مساعد ذكاء اصطناعي واستعراض أدبيات وتنفيذ أكواد.',
+        shortDescription: 'Academic Writing',
+        requiredGroup: 'scholar-access',
+    },
 ];
 
 interface SuiteNavigationProps {

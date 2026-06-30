@@ -117,15 +117,21 @@ export function SharedHeader({
                             <div
                                 className="w-10 h-10 sm:w-11 sm:h-11 rounded-full p-2 flex items-center justify-center flex-shrink-0 transition-all duration-300"
                                 style={{
-                                    background: 'linear-gradient(135deg, rgba(30, 40, 55, 0.9) 0%, rgba(15, 22, 35, 0.95) 100%)',
-                                    border: `2px solid ${currentAppInfo.color}60`,
-                                    boxShadow: `0 0 15px ${currentAppInfo.color}30, inset 0 0 10px ${currentAppInfo.color}20`,
+                                    background: currentAppInfo.id === 'scholar'
+                                        ? 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(240, 245, 255, 0.98) 100%)'
+                                        : 'linear-gradient(135deg, rgba(30, 40, 55, 0.9) 0%, rgba(15, 22, 35, 0.95) 100%)',
+                                    border: currentAppInfo.id === 'scholar'
+                                        ? `2px solid rgba(245, 158, 11, 0.4)`
+                                        : `2px solid ${currentAppInfo.color}60`,
+                                    boxShadow: currentAppInfo.id === 'scholar'
+                                        ? `0 2px 10px rgba(0, 0, 0, 0.08)`
+                                        : `0 0 15px ${currentAppInfo.color}30, inset 0 0 10px ${currentAppInfo.color}20`,
                                 }}
                             >
                                 <img
                                     src={currentAppInfo.icon}
                                     alt={currentAppInfo.name}
-                                    className="w-full h-full object-contain drop-shadow-[0_0_8px_rgba(56,205,223,0.5)]"
+                                    className={`w-full h-full object-contain ${currentAppInfo.id === 'scholar' ? '' : 'drop-shadow-[0_0_8px_rgba(56,205,223,0.5)]'}`}
                                 />
                             </div>
                         ) : (

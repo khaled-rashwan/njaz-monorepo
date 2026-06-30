@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { SharedHeader, SharedFooter, FuturisticPanel } from '@njaz/ui-components';
 import { useLanguage, LanguageSwitcher } from '@/components/LanguageContext';
@@ -9,10 +9,13 @@ import { Report, Survey, CorrelationEntry, InterScaleCorrelation } from '@/lib/t
 import { getReportById, getSurveyById } from '@/lib/storage';
 import { getUrl } from 'aws-amplify/storage';
 import ReportGenerationModal from '@/components/ReportGenerationModal';
+import { NavigationAction } from '@/components/navigation';
 
 export default function ReportDetailPage() {
     const { reportId } = useParams();
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const fromSurvey = searchParams.get('from') === 'survey';
     const { t, direction, language } = useLanguage();
     const [report, setReport] = useState<Report | null>(null);
     const [survey, setSurvey] = useState<Survey | null>(null);
@@ -136,20 +139,16 @@ export default function ReportDetailPage() {
                 LanguageSwitcher={LanguageSwitcher}
             />
 
-            <main className="flex-1 pt-24 pb-8 px-4 md:px-8" dir={direction}>
+            <main className="flex-1 md:pt-36 pt-24 pb-8 px-4 md:px-8" dir={direction}>
                 <div id="report-content" className="max-w-5xl mx-auto pb-8">
                     {/* Header */}
                     <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
                         <div>
-                            <Link
-                                href="/reports"
-                                className="futuristic-btn inline-flex items-center gap-2 text-sm mb-3"
-                            >
-                                <svg className={`w-4 h-4 ${direction === 'rtl' ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                                </svg>
-                                {t('Back to Reports', 'العودة للتقارير')}
-                            </Link>
+                            <NavigationAction
+                                href={fromSurvey && report ? `/surveys/${report.surveyId}/reports` : '/reports'}
+                                label={fromSurvey ? t('Back to Survey Reports', 'العودة لتقارير الاستبيان') : t('Back to Reports', 'العودة للتقارير')}
+                                className="mb-3"
+                            />
                             <h1 className="text-3xl font-bold text-white mb-1">
                                 {reportTitles[report.type]}
                             </h1>

@@ -7,6 +7,7 @@ import { useLanguage, LanguageSwitcher } from '@/components/LanguageContext';
 import { SharedHeader, SharedFooter, FuturisticPanel } from '@njaz/ui-components';
 import { Survey, Scale } from '@/lib/types';
 import { getSurveyById, getScaleById, saveSurvey } from '@/lib/storage';
+import { NavigationAction } from '@/components/navigation';
 
 export default function SurveyDetailPage() {
     const { surveyId } = useParams() as { surveyId: string };
@@ -91,9 +92,7 @@ export default function SurveyDetailPage() {
                         <div className="text-center py-12 px-6">
                             <h2 className="text-2xl font-bold text-white mb-3">{t('Survey Not Found', 'الاستبيان غير موجود')}</h2>
                             <p className="text-slate-400 mb-6">{t('The survey you are looking for does not exist or has been removed.', 'الاستبيان الذي تبحث عنه غير موجود أو تم حذفه.')}</p>
-                            <Link href="/surveys" className="futuristic-btn-primary">
-                                {t('Back to Surveys', 'العودة للاستبيانات')}
-                            </Link>
+                            <NavigationAction href="/surveys" label={t('Back to Surveys', 'العودة للاستبيانات')} />
                         </div>
                     </FuturisticPanel>
                 </main>
@@ -112,13 +111,15 @@ export default function SurveyDetailPage() {
                 LanguageSwitcher={LanguageSwitcher}
             />
 
-            <main className="flex-1 pt-24 pb-8 px-4 md:px-8">
+            <main className="flex-1 md:pt-36 pt-24 pb-8 px-4 md:px-8">
                 <div className="max-w-4xl mx-auto">
                     {/* Header */}
                     <div className="mb-8">
-                        <Link href="/surveys" className="text-sm text-cyan-400 hover:text-cyan-300 mb-4 inline-block">
-                            ← {t('Back to Surveys', 'العودة للاستبيانات')}
-                        </Link>
+                        <NavigationAction
+                            href="/surveys"
+                            label={t('Back to Surveys', 'العودة للاستبيانات')}
+                            className="mb-4"
+                        />
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                             <div>
                                 <h1 className="text-4xl font-bold text-white mb-2" dir={isRtl ? 'rtl' : 'ltr'}>

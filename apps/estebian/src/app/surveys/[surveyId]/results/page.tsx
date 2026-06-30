@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useLanguage, LanguageSwitcher } from '@/components/LanguageContext';
 import { SharedHeader, SharedFooter, FuturisticPanel } from '@njaz/ui-components';
+import { NavigationAction } from '@/components/navigation';
 import { Survey, Scale, SurveyResponse } from '@/lib/types';
 import { getSurveyById, getScaleById, getResponses } from '@/lib/storage';
 
@@ -66,7 +67,7 @@ export default function ResultsPage() {
             <div className="min-h-screen flex items-center justify-center futuristic-bg" dir={direction}>
                 <div className="text-center">
                     <h1 className="text-2xl font-bold text-white mb-4">{t('Survey not found', 'الاستبيان غير موجود')}</h1>
-                    <Link href="/surveys" className="futuristic-btn-primary">{t('Back to Surveys', 'العودة للاستبيانات')}</Link>
+                    <NavigationAction href="/surveys" label={t('Back to Surveys', 'العودة للاستبيانات')} />
                 </div>
             </div>
         );
@@ -79,13 +80,11 @@ export default function ResultsPage() {
         <div className="min-h-screen flex flex-col futuristic-bg" dir={direction}>
             <SharedHeader currentApp="estebian" showLanguageSwitcher={true} LanguageSwitcher={LanguageSwitcher} />
 
-            <main className="flex-1 pt-24 pb-8 px-4 md:px-8">
+            <main className="flex-1 md:pt-36 pt-24 pb-8 px-4 md:px-8">
                 <div className="max-w-7xl mx-auto">
                     {/* Header */}
                     <div className="mb-8">
-                        <Link href="/surveys" className="text-cyan-400 hover:text-cyan-300 mb-2 inline-block">
-                            ← {t('Back to Surveys', 'العودة للاستبيانات')}
-                        </Link>
+                        <NavigationAction href="/surveys" label={t('Back to Surveys', 'العودة للاستبيانات')} className="mb-2" />
                         <h1 className="text-3xl font-bold text-white mb-2">
                             {survey.title} - {t('Results', 'النتائج')}
                         </h1>

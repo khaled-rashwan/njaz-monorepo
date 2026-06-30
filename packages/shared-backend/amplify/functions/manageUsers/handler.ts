@@ -7,7 +7,8 @@ import {
     AdminAddUserToGroupCommand, 
     AdminRemoveUserFromGroupCommand,
     AdminListGroupsForUserCommand,
-    AdminUpdateUserAttributesCommand
+    AdminUpdateUserAttributesCommand,
+    CreateGroupCommand
 } from '@aws-sdk/client-cognito-identity-provider';
 
 const client = new CognitoIdentityProviderClient({});
@@ -81,17 +82,42 @@ export const handler: AppSyncResolverHandler<any, any> = async (event) => {
             case 'manageUserGroup': {
                 const { username, group, action: groupAction } = event.arguments;
                 if (groupAction === 'add') {
-                    await client.send(new AdminAddUserToGroupCommand({
-                        UserPoolId: userPoolId,
-                        Username: username,
-                        GroupName: group
-                    }));
+                    try {
+                        await client.send(new AdminAddUserToGroupCommand({
+                            UserPoolId: userPoolId,
+                            Username: username,
+                            GroupName: group
+                        }));
+                    } catch (err: any) {
+                        if (err.name === 'ResourceNotFoundException') {
+                            // Create the group dynamically if it doesn't exist
+                            await client.send(new CreateGroupCommand({
+                                UserPoolId: userPoolId,
+                                GroupName: group,
+                                Description: `Dynamically created group: ${group}`
+                            }));
+                            // Retry adding user to group
+                            await client.send(new AdminAddUserToGroupCommand({
+                                UserPoolId: userPoolId,
+                                Username: username,
+                                GroupName: group
+                            }));
+                        } else {
+                            throw err;
+                        }
+                    }
                 } else if (groupAction === 'remove') {
-                    await client.send(new AdminRemoveUserFromGroupCommand({
-                        UserPoolId: userPoolId,
-                        Username: username,
-                        GroupName: group
-                    }));
+                    try {
+                        await client.send(new AdminRemoveUserFromGroupCommand({
+                            UserPoolId: userPoolId,
+                            Username: username,
+                            GroupName: group
+                        }));
+                    } catch (err: any) {
+                        if (err.name !== 'ResourceNotFoundException') {
+                            throw err;
+                        }
+                    }
                 }
                 return JSON.stringify({ success: true });
             }
