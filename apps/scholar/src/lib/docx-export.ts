@@ -3,7 +3,7 @@
 import {
     Document, Paragraph, TextRun, Table, TableRow, TableCell,
     WidthType, AlignmentType, HeadingLevel, BorderStyle, ShadingType,
-    ImageRun, Math as DocxMath
+    ImageRun, Math as DocxMath, Header, Footer, PageNumber
 } from "docx";
 import { ScholarBlock, ScholarDocument, ScholarLiteratureItem, BlockType } from '@/types';
 import { resolveRef, toRoman } from './cross-reference';
@@ -16,7 +16,8 @@ import { latexToDocxMath } from './latex-to-omml';
 export function parseTextToRuns(
     text: string,
     counterMap: Map<string, { type: BlockType; counter: number }>,
-    language: 'en' | 'ar'
+    language: 'en' | 'ar',
+    options?: { color?: string, bold?: boolean }
 ): (TextRun | DocxMath)[] {
     if (!text) return [];
 
@@ -24,6 +25,11 @@ export function parseTextToRuns(
     const runs: (TextRun | DocxMath)[] = [];
     let lastIndex = 0;
     let match;
+
+    const defaultFont = language === 'ar' ? 'Arial' : 'Times New Roman';
+    const defaultSize = 24;
+    const defaultColor = options?.color || "000000";
+    const defaultBold = options?.bold || false;
 
     while ((match = regex.exec(text)) !== null) {
         const index = match.index;
@@ -33,9 +39,10 @@ export function parseTextToRuns(
             runs.push(new TextRun({
                 text: text.substring(lastIndex, index),
                 rightToLeft: language === 'ar',
-                font: language === 'ar' ? 'Arial' : 'Calibri',
-                size: 22,
-                color: "334155",
+                font: defaultFont,
+                size: defaultSize,
+                color: defaultColor,
+                bold: defaultBold,
             }));
         }
 
@@ -45,10 +52,10 @@ export function parseTextToRuns(
             runs.push(new TextRun({
                 text: resolvedText,
                 bold: true,
-                color: "b45309", // amber-700
+                color: "000000", // Black in document
                 rightToLeft: language === 'ar',
-                font: language === 'ar' ? 'Arial' : 'Calibri',
-                size: 22,
+                font: defaultFont,
+                size: defaultSize,
             }));
         } else if (matchedStr.startsWith('$')) {
             // Convert inline LaTeX to native OMML math
@@ -62,7 +69,7 @@ export function parseTextToRuns(
                     italics: true,
                     font: "Cambria Math",
                     rightToLeft: language === 'ar',
-                    size: 22,
+                    size: defaultSize,
                     color: "000000",
                 }));
             }
@@ -75,9 +82,10 @@ export function parseTextToRuns(
         runs.push(new TextRun({
             text: text.substring(lastIndex),
             rightToLeft: language === 'ar',
-            font: language === 'ar' ? 'Arial' : 'Calibri',
-            size: 22,
-            color: "334155",
+            font: defaultFont,
+            size: defaultSize,
+            color: defaultColor,
+            bold: defaultBold,
         }));
     }
 
@@ -130,8 +138,8 @@ export async function generateDocx({
                 new TextRun({
                     text: doc.title || (isArabic ? 'ورقة بحثية غير معنونة' : 'Untitled Research Paper'),
                     bold: true,
-                    size: 32,
-                    font: isArabic ? 'Arial' : 'Calibri',
+                    size: 40,
+                    font: isArabic ? 'Arial' : 'Times New Roman',
                     color: "000000",
                 })
             ]
@@ -149,16 +157,16 @@ export async function generateDocx({
                     new TextRun({
                         text: isArabic ? 'الملخص: ' : 'Abstract: ',
                         bold: true,
-                        size: 20,
-                        font: isArabic ? 'Arial' : 'Calibri',
+                        size: 24,
+                        font: isArabic ? 'Arial' : 'Times New Roman',
                         color: "000000",
                     }),
                     new TextRun({
                         text: doc.abstract,
                         italics: true,
-                        size: 20,
-                        font: isArabic ? 'Arial' : 'Calibri',
-                        color: "475569",
+                        size: 24,
+                        font: isArabic ? 'Arial' : 'Times New Roman',
+                        color: "000000",
                     })
                 ]
             })
@@ -175,15 +183,15 @@ export async function generateDocx({
                     new TextRun({
                         text: isArabic ? 'الكلمات المفتاحية: ' : 'Keywords: ',
                         bold: true,
-                        size: 18,
-                        font: isArabic ? 'Arial' : 'Calibri',
+                        size: 24,
+                        font: isArabic ? 'Arial' : 'Times New Roman',
                         color: "000000",
                     }),
                     new TextRun({
                         text: doc.metadata.keywords,
-                        size: 18,
-                        font: isArabic ? 'Arial' : 'Calibri',
-                        color: "475569",
+                        size: 24,
+                        font: isArabic ? 'Arial' : 'Times New Roman',
+                        color: "000000",
                     })
                 ]
             })
@@ -214,8 +222,9 @@ export async function generateDocx({
                             new TextRun({
                                 text: fullText,
                                 bold: true,
-                                font: isArabic ? 'Arial' : 'Calibri',
+                                font: isArabic ? 'Arial' : 'Times New Roman',
                                 rightToLeft: isArabic,
+                                color: "000000",
                             })
                         ]
                     })
@@ -259,12 +268,12 @@ export async function generateDocx({
                                 text: `[${idx + 1}] `,
                                 bold: true,
                                 font: "Consolas",
-                                size: 20,
+                                size: 24,
                             }),
                             new TextRun({
                                 text: refStr,
-                                font: isArabic ? 'Arial' : 'Calibri',
-                                size: 20,
+                                font: isArabic ? 'Arial' : 'Times New Roman',
+                                size: 24,
                                 rightToLeft: isArabic,
                             })
                         ];
@@ -272,9 +281,9 @@ export async function generateDocx({
                         if (linkedItem.url) {
                             runs.push(new TextRun({
                                 text: ` ${linkedItem.url}`,
-                                font: 'Calibri',
-                                size: 16,
-                                color: '0284c7',
+                                font: 'Times New Roman',
+                                size: 20,
+                                color: '0000EE',
                                 underline: {},
                             }));
                         }
@@ -284,6 +293,7 @@ export async function generateDocx({
                                 alignment: AlignmentType.LEFT,
                                 bidirectional: isArabic,
                                 spacing: { before: 80, after: 80 },
+                                indent: { left: 720, hanging: 720 },
                                 children: runs,
                             })
                         );
@@ -343,8 +353,8 @@ export async function generateDocx({
                         new TextRun({
                             text: `   (${eqNumber})`,
                             font: "Consolas",
-                            size: 20,
-                            color: "64748b",
+                            size: 24,
+                            color: "000000",
                         })
                     ];
                 } catch {
@@ -354,13 +364,14 @@ export async function generateDocx({
                             text: latexStr,
                             italics: true,
                             font: "Cambria Math",
-                            size: 22,
+                            size: 24,
+                            color: "000000",
                         }),
                         new TextRun({
                             text: `   (${eqNumber})`,
                             font: "Consolas",
-                            size: 20,
-                            color: "64748b",
+                            size: 24,
+                            color: "000000",
                         })
                     ];
                 }
@@ -402,24 +413,27 @@ export async function generateDocx({
                 }
 
                 const cellBorders = {
-                    top: { style: BorderStyle.SINGLE, size: 4, color: "cbd5e1" },
-                    bottom: { style: BorderStyle.SINGLE, size: 4, color: "cbd5e1" },
-                    left: { style: BorderStyle.SINGLE, size: 4, color: "cbd5e1" },
-                    right: { style: BorderStyle.SINGLE, size: 4, color: "cbd5e1" },
+                    top: { style: BorderStyle.SINGLE, size: 4, color: "94a3b8" },
+                    bottom: { style: BorderStyle.SINGLE, size: 4, color: "94a3b8" },
+                    left: { style: BorderStyle.SINGLE, size: 4, color: "94a3b8" },
+                    right: { style: BorderStyle.SINGLE, size: 4, color: "94a3b8" },
                 };
                 const cellMargins = { top: 60, bottom: 60, left: 100, right: 100 };
 
                 const headerRow = new TableRow({
                     tableHeader: true,
                     children: headers.map((h: string) => new TableCell({
-                        borders: cellBorders,
-                        shading: { fill: "f1f5f9", type: ShadingType.SOLID, color: "f1f5f9" },
+                        borders: {
+                            ...cellBorders,
+                            bottom: { style: BorderStyle.SINGLE, size: 8, color: "475569" }
+                        },
+                        shading: { fill: "1e293b", type: ShadingType.SOLID, color: "1e293b" },
                         width: { size: Math.floor(100 / (headers.length || 1)), type: WidthType.PERCENTAGE },
                         margins: cellMargins,
                         children: [new Paragraph({
                             alignment: AlignmentType.CENTER,
                             bidirectional: isArabic,
-                            children: parseTextToRuns(h, counterMap, language),
+                            children: parseTextToRuns(h, counterMap, language, { color: "ffffff", bold: true }),
                         })],
                     })),
                 });
@@ -516,9 +530,30 @@ export async function generateDocx({
 
                 if (imageRun) {
                     sections.push(
-                        new Paragraph({
+                        new Table({
+                            width: { size: 100, type: WidthType.PERCENTAGE },
                             alignment: AlignmentType.CENTER,
-                            children: [imageRun],
+                            borders: {
+                                top: { style: BorderStyle.SINGLE, size: 4, color: "cbd5e1" },
+                                bottom: { style: BorderStyle.SINGLE, size: 4, color: "cbd5e1" },
+                                left: { style: BorderStyle.SINGLE, size: 4, color: "cbd5e1" },
+                                right: { style: BorderStyle.SINGLE, size: 4, color: "cbd5e1" },
+                            },
+                            rows: [
+                                new TableRow({
+                                    children: [
+                                        new TableCell({
+                                            margins: { top: 120, bottom: 120, left: 120, right: 120 },
+                                            children: [
+                                                new Paragraph({
+                                                    alignment: AlignmentType.CENTER,
+                                                    children: [imageRun],
+                                                })
+                                            ],
+                                        })
+                                    ]
+                                })
+                            ]
                         })
                     );
                 } else {
@@ -550,8 +585,8 @@ export async function generateDocx({
                                     text: `${isArabic ? 'شكل' : 'Figure'} ${figureNumber}: ${content.caption}`,
                                     bold: true,
                                     italics: true,
-                                    size: 18,
-                                    font: isArabic ? 'Arial' : 'Calibri',
+                                    size: 20,
+                                    font: isArabic ? 'Arial' : 'Times New Roman',
                                 })
                             ]
                         })
@@ -631,8 +666,8 @@ export async function generateDocx({
             heading1: {
                 run: {
                     bold: true,
-                    font: isArabic ? 'Arial' : 'Calibri',
-                    size: 36,
+                    font: isArabic ? 'Arial' : 'Times New Roman',
+                    size: 32,
                     color: "000000",
                     rightToLeft: isArabic,
                 },
@@ -640,12 +675,15 @@ export async function generateDocx({
                     alignment: align,
                     bidirectional: isArabic,
                     spacing: { before: 240, after: 120 },
+                    border: {
+                        bottom: { style: BorderStyle.SINGLE, size: 6, color: "cbd5e1", space: 12 },
+                    }
                 }
             },
             heading2: {
                 run: {
                     bold: true,
-                    font: isArabic ? 'Arial' : 'Calibri',
+                    font: isArabic ? 'Arial' : 'Times New Roman',
                     size: 28,
                     color: "000000",
                     rightToLeft: isArabic,
@@ -653,21 +691,21 @@ export async function generateDocx({
                 paragraph: {
                     alignment: align,
                     bidirectional: isArabic,
-                    spacing: { before: 180, after: 80 },
+                    spacing: { before: 240, after: 80 },
                 }
             },
             heading3: {
                 run: {
                     bold: true,
-                    font: isArabic ? 'Arial' : 'Calibri',
-                    size: 24,
+                    font: isArabic ? 'Arial' : 'Times New Roman',
+                    size: 26,
                     color: "000000",
                     rightToLeft: isArabic,
                 },
                 paragraph: {
                     alignment: align,
                     bidirectional: isArabic,
-                    spacing: { before: 120, after: 60 },
+                    spacing: { before: 180, after: 60 },
                 }
             },
         },
@@ -678,12 +716,12 @@ export async function generateDocx({
                 paragraph: {
                     alignment: align,
                     bidirectional: isArabic,
-                    spacing: { after: 120, line: 276 },
+                    spacing: { after: 120, line: 360 },
                 },
                 run: {
-                    font: isArabic ? 'Arial' : 'Calibri',
-                    size: 22,
-                    color: "334155",
+                    font: isArabic ? 'Arial' : 'Times New Roman',
+                    size: 24,
+                    color: "000000",
                     rightToLeft: isArabic,
                 }
             }
@@ -698,6 +736,59 @@ export async function generateDocx({
                 page: {
                     margin: { top: 1440, right: 1440, bottom: 1440, left: 1440 },
                 },
+                titlePage: true,
+            },
+            headers: {
+                default: new Header({
+                    children: [
+                        new Paragraph({
+                            alignment: AlignmentType.RIGHT,
+                            children: [
+                                new TextRun({
+                                    text: doc.title || (isArabic ? 'ورقة بحثية غير معنونة' : 'Untitled Research Paper'),
+                                    italics: true,
+                                    size: 20,
+                                    color: "64748b",
+                                    font: isArabic ? 'Arial' : 'Times New Roman',
+                                    rightToLeft: isArabic,
+                                })
+                            ]
+                        })
+                    ]
+                })
+            },
+            footers: {
+                default: new Footer({
+                    children: [
+                        new Paragraph({
+                            alignment: AlignmentType.CENTER,
+                            children: [
+                                new TextRun({
+                                    text: isArabic ? "صفحة " : "Page ",
+                                    size: 20,
+                                    font: isArabic ? 'Arial' : 'Times New Roman',
+                                    rightToLeft: isArabic,
+                                }),
+                                new TextRun({
+                                    children: [PageNumber.CURRENT],
+                                    size: 20,
+                                    font: isArabic ? 'Arial' : 'Times New Roman',
+                                }),
+                                new TextRun({
+                                    text: isArabic ? " من " : " of ",
+                                    size: 20,
+                                    font: isArabic ? 'Arial' : 'Times New Roman',
+                                    rightToLeft: isArabic,
+                                }),
+                                new TextRun({
+                                    children: [PageNumber.TOTAL_PAGES],
+                                    size: 20,
+                                    font: isArabic ? 'Arial' : 'Times New Roman',
+                                })
+                            ]
+                        })
+                    ]
+                })
             },
             children: sections,
         }],

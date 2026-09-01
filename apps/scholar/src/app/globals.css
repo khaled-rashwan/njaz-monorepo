@@ -396,3 +396,85 @@ body {
 .material-symbols-outlined {
     font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
 }
+
+/* =========================================
+   PRINT STYLES
+   ========================================= */
+@media print {
+    @page {
+        margin: 20mm;
+        size: A4 portrait;
+    }
+
+    body {
+        background: #ffffff !important;
+        color: #000000 !important;
+        counter-reset: page;
+    }
+
+    .page-counter::after {
+        content: "Page " counter(page);
+    }
+
+    /* Typography */
+    h1, h2, h3, h4, h5, h6 {
+        page-break-after: avoid;
+        break-after: avoid;
+        color: #000000 !important;
+    }
+
+    p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+    }
+
+    /* Block level items */
+    table, figure, img, pre, blockquote, .katex-display {
+        page-break-inside: avoid;
+        break-inside: avoid;
+    }
+
+    /* Print-friendly tables */
+    table {
+        border-collapse: collapse;
+        width: 100% !important;
+    }
+    
+    thead {
+        display: table-header-group;
+    }
+
+    tr {
+        page-break-inside: avoid;
+        break-inside: avoid;
+    }
+
+    /* KaTeX print fixes */
+    .katex-display {
+        background: transparent !important;
+        border: none !important;
+        color: #000000 !important;
+        margin: 1em 0 !important;
+        padding: 0 !important;
+    }
+    
+    .katex {
+        font-size: 1.1em !important;
+    }
+
+    /* Hide background graphics/gradients for non-essential items */
+    .futuristic-bg,
+    .futuristic-card,
+    .sidebar {
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+    }
+    
+    .gradient-text,
+    .gradient-text-cyan {
+        background: none !important;
+        -webkit-text-fill-color: #000000 !important;
+        color: #000000 !important;
+    }
+}

@@ -77,7 +77,7 @@ function PreviewFigureImage({ src, s3Key, alt }: { src: string; s3Key?: string; 
         <img 
             src={resolvedSrc} 
             alt={alt} 
-            className="max-w-full max-h-[380px] object-contain border border-slate-200 p-1.5 bg-white rounded shadow-sm print:shadow-none"
+            className="max-w-full max-h-[380px] object-contain border border-slate-200 p-1.5 bg-white rounded shadow-sm print:shadow-none print:border-slate-300 print:p-2"
         />
     );
 }
@@ -321,8 +321,11 @@ export default function DocumentPreviewPage() {
             </div>
 
             {/* Print Container: Styles simulate A4 page */}
-            <div className="flex-1 flex justify-center py-8 print:py-0">
-                <article className="w-[210mm] min-h-[297mm] bg-white border border-slate-200 print:border-none p-12 sm:p-16 md:p-20 shadow-lg print:shadow-none flex flex-col gap-6 leading-relaxed text-justify text-base">
+            <div className="flex-1 flex justify-center py-8 print:py-0 print:bg-white relative">
+                <article className="w-[210mm] min-h-[297mm] bg-white border border-slate-200 print:border-none p-12 sm:p-16 md:p-20 shadow-lg print:shadow-none flex flex-col gap-6 leading-relaxed text-justify text-base print:text-[12pt] print:font-serif relative">
+                    <div className="hidden print:block fixed bottom-4 w-full text-center text-sm font-serif print:pb-4">
+                        <span className="page-counter"></span>
+                    </div>
                     
                     {/* Title */}
                     <header className="mb-8 text-center">
@@ -453,7 +456,7 @@ export default function DocumentPreviewPage() {
                                                     •
                                                 </span>
                                             )}
-                                            <p className="flex-1 text-[15px]">
+                                            <p className="flex-1 text-base">
                                                 {formatParagraphText(text)}
                                             </p>
                                         </div>
@@ -486,11 +489,11 @@ export default function DocumentPreviewPage() {
                                                     {t('Table', 'جدول')} {toRoman(tableNumber)}: {content.caption}
                                                 </p>
                                             )}
-                                            <table className="min-w-full border-collapse border border-slate-300 text-sm font-sans mx-auto">
+                                            <table className="min-w-full border-collapse border border-slate-300 text-sm font-sans mx-auto print:border-slate-800">
                                                 <thead>
-                                                    <tr className="bg-slate-100/80 border-b border-slate-300">
+                                                    <tr className="bg-slate-100/80 border-b border-slate-300 print:bg-slate-800 print:text-white print:border-slate-800">
                                                         {headers.map((h: string, idx: number) => (
-                                                            <th key={idx} className="border border-slate-350 px-4 py-2.5 text-left font-bold text-slate-950 print:text-black">
+                                                            <th key={idx} className="border border-slate-350 px-4 py-2.5 text-left font-bold text-slate-950 print:text-white print:border-slate-800">
                                                                 {formatParagraphText(h)}
                                                             </th>
                                                         ))}
@@ -500,7 +503,7 @@ export default function DocumentPreviewPage() {
                                                     {rows.map((row: string[], rIdx: number) => (
                                                         <tr key={rIdx} className="hover:bg-slate-50/50">
                                                             {row.map((cell: string, cIdx: number) => (
-                                                                <td key={cIdx} className="border border-slate-300 px-4 py-2 text-slate-850 print:text-black">
+                                                                <td key={cIdx} className="border border-slate-300 px-4 py-2 text-slate-850 print:text-black print:border-slate-400">
                                                                     {formatParagraphText(cell)}
                                                                 </td>
                                                             ))}
