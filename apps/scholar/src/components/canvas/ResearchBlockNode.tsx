@@ -25,12 +25,20 @@ const BLOCK_CONFIG: Record<ResearchBlockType, {
   description: string;
 }> = {
   'reference-collection': {
-    icon: '📚',
+    icon: '📁',
     color: 'text-indigo-300',
     borderColor: 'border-indigo-500/40',
     bgColor: 'bg-indigo-950/60',
     glowColor: 'shadow-indigo-500/20',
-    description: 'Collected references for the bibliography',
+    description: 'Curated subset of library papers for analytical pipelines',
+  },
+  'literature-search': {
+    icon: '🔍',
+    color: 'text-sky-300',
+    borderColor: 'border-sky-500/40',
+    bgColor: 'bg-sky-950/60',
+    glowColor: 'shadow-sky-500/20',
+    description: 'Search databases and collect references for the library',
   },
   'literature-survey': {
     icon: '📝',
@@ -38,7 +46,7 @@ const BLOCK_CONFIG: Record<ResearchBlockType, {
     borderColor: 'border-emerald-500/40',
     bgColor: 'bg-emerald-950/60',
     glowColor: 'shadow-emerald-500/20',
-    description: 'AI-generated survey from collected papers',
+    description: '(Legacy) Literature Survey Desk',
   },
   'dataset': {
     icon: '📊',
@@ -64,6 +72,54 @@ const BLOCK_CONFIG: Record<ResearchBlockType, {
     glowColor: 'shadow-purple-500/20',
     description: 'Free-form research notes',
   },
+  'workflow-pipeline': {
+    icon: '⚙️',
+    color: 'text-indigo-400',
+    borderColor: 'border-indigo-500/40',
+    bgColor: 'bg-indigo-950/60',
+    glowColor: 'shadow-indigo-500/20',
+    description: 'Literature Survey Pipeline Agent',
+  },
+  'statistical-analysis': {
+    icon: '🧮',
+    color: 'text-cyan-400',
+    borderColor: 'border-cyan-500/40',
+    bgColor: 'bg-cyan-950/60',
+    glowColor: 'shadow-cyan-500/20',
+    description: 'Statistical Data Aggregator Engine',
+  },
+  'simulation-engine': {
+    icon: '⚡',
+    color: 'text-amber-400',
+    borderColor: 'border-amber-500/40',
+    bgColor: 'bg-amber-950/60',
+    glowColor: 'shadow-amber-500/20',
+    description: 'Trajectory Ramp Violation Simulation',
+  },
+  'processing-pipeline': {
+    icon: '🔄',
+    color: 'text-cyan-300',
+    borderColor: 'border-cyan-500/40',
+    bgColor: 'bg-cyan-950/60',
+    glowColor: 'shadow-cyan-500/20',
+    description: 'Deduplicate and extract text from papers',
+  },
+  'llm-analysis': {
+    icon: '🤖',
+    color: 'text-violet-300',
+    borderColor: 'border-violet-500/40',
+    bgColor: 'bg-violet-950/60',
+    glowColor: 'shadow-violet-500/20',
+    description: 'LLM-powered classification and analysis',
+  },
+  'results-table': {
+    icon: '📋',
+    color: 'text-teal-300',
+    borderColor: 'border-teal-500/40',
+    bgColor: 'bg-teal-950/60',
+    glowColor: 'shadow-teal-500/20',
+    description: 'Structured results table with export',
+  },
 };
 
 function ResearchBlockNodeComponent({ data }: { data: ResearchBlockNodeData }) {
@@ -77,6 +133,7 @@ function ResearchBlockNodeComponent({ data }: { data: ResearchBlockNodeData }) {
         backdrop-blur-md shadow-lg ${config.glowColor}
         w-[240px] transition-all duration-300 hover:scale-[1.02]
         hover:shadow-xl group
+        ${data.isHidden ? 'opacity-40 blur-[1px]' : ''}
       `}
     >
       {/* Input Handle (left) */}

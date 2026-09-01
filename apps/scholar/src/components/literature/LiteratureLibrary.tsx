@@ -6,18 +6,22 @@ import { useEditorStore } from '@/store/editor-store';
 import { LiteratureSurvey } from './LiteratureSurvey';
 import { StatisticsPanel } from './StatisticsPanel';
 import { FiguresLibrary } from './FiguresLibrary';
+import { LiteratureVisualizer } from './LiteratureVisualizer';
+import { SurveyAnalysisMatrix } from './SurveyAnalysisMatrix';
 
-type LibraryTab = 'search' | 'library' | 'figures' | 'stats';
+type LibraryTab = 'search' | 'survey' | 'library' | 'visualizer' | 'figures' | 'stats';
 
 export function LiteratureLibrary({ projectId }: { projectId?: string }) {
     const { t } = useLanguage();
-    const [activeTab, setActiveTab] = useState<LibraryTab>('search');
+    const [activeTab, setActiveTab] = useState<LibraryTab>('survey');
     const { document, literatureItems, removeLiteratureItem } = useEditorStore();
     const activeProjectId = projectId || document?.projectId || '';
 
     const tabs: { key: LibraryTab; label: string; labelAr: string }[] = [
+        { key: 'survey', label: 'Survey Matrix', labelAr: 'مصفوفة المسح' },
         { key: 'search', label: 'Search', labelAr: 'بحث' },
         { key: 'library', label: `Library (${literatureItems.length})`, labelAr: `المكتبة (${literatureItems.length})` },
+        { key: 'visualizer', label: 'Visualizer', labelAr: 'المستكشف المرئي' },
         { key: 'figures', label: 'Figures', labelAr: 'الأشكال' },
         { key: 'stats', label: 'Stats', labelAr: 'إحصائيات' },
     ];
@@ -43,7 +47,11 @@ export function LiteratureLibrary({ projectId }: { projectId?: string }) {
 
             {/* Tab Content */}
             <div className="flex-1 overflow-y-auto">
+                {activeTab === 'survey' && <SurveyAnalysisMatrix />}
+
                 {activeTab === 'search' && <LiteratureSurvey projectId={activeProjectId} />}
+
+                {activeTab === 'visualizer' && <LiteratureVisualizer />}
 
                 {activeTab === 'library' && (
                     <div className="p-4 space-y-2">

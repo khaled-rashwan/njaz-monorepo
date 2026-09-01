@@ -244,6 +244,11 @@ export function BlockRenderer({
                     <button
                         onClick={(e) => {
                             e.stopPropagation();
+                            const isReferencesHeading = block.type === 'HEADING' && block.content?.level === 1 && (block.content?.text || '').trim().toLowerCase() === 'references';
+                            if (isReferencesHeading) {
+                                alert(t('The References section is mandatory and cannot be deleted.', 'قسم المراجع إجباري ولا يمكن حذفه.'));
+                                return;
+                            }
                             onDelete();
                         }}
                         className="p-1 rounded text-slate-600 hover:text-red-400 hover:bg-red-500/10 transition-colors"

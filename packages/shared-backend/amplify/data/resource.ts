@@ -8,6 +8,9 @@ import { submitResponse } from '../functions/submitResponse/resource';
 import { manageUsers } from '../functions/manageUsers/resource';
 import { initiateReport } from '../functions/initiateReport/resource';
 import { analyzeData } from '../functions/analyzeData/resource';
+import { researchPipeline } from '../functions/researchPipeline/resource';
+import { simulationEngine } from '../functions/simulationEngine/resource';
+
 
 /**
  * Njaz Platform Data Schema
@@ -64,6 +67,26 @@ const schema = a.schema({
         })
         .returns(a.json())
         .handler(a.handler.function(analyzeData))
+        .authorization((allow) => [allow.authenticated()]),
+
+    runResearchPipeline: a.mutation()
+        .arguments({
+            projectId: a.id().required(),
+            pipelineVersion: a.string().required(),
+            inputs: a.json(),
+        })
+        .returns(a.json())
+        .handler(a.handler.function(researchPipeline))
+        .authorization((allow) => [allow.authenticated()]),
+
+    runSimulationEngine: a.mutation()
+        .arguments({
+            projectId: a.id().required(),
+            name: a.string().required(),
+            parameters: a.json(),
+        })
+        .returns(a.json())
+        .handler(a.handler.function(simulationEngine))
         .authorization((allow) => [allow.authenticated()]),
 
     requestReport: a.mutation()

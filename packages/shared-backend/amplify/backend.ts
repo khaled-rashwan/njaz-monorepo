@@ -12,6 +12,8 @@ import { verifyPayment } from './functions/verifyPayment/resource';
 import { computeReport } from './functions/computeReport/resource';
 import { generateReportPdf } from './functions/generateReportPdf/resource';
 import { storage } from './storage/resource';
+import { researchPipeline } from './functions/researchPipeline/resource';
+import { simulationEngine } from './functions/simulationEngine/resource';
 
 /**
  * Njaz Platform Backend
@@ -30,6 +32,8 @@ const backend = defineBackend({
     verifyPayment,
     computeReport,
     generateReportPdf,
+    researchPipeline,
+    simulationEngine,
 });
 
 // Grant permissions to the submitResponse function
@@ -149,6 +153,10 @@ backend.generateReportPdf.addEnvironment('ESTEBIAN_REPORT_TABLE', reportTable.ta
 backend.generateReportPdf.addEnvironment('REPORT_BUCKET_NAME', backend.storage.resources.bucket.bucketName);
 reportTable.grantReadWriteData(backend.generateReportPdf.resources.lambda);
 backend.storage.resources.bucket.grantReadWrite(backend.generateReportPdf.resources.lambda);
+
+// Grant storage access to new Scholar workflow functions
+backend.storage.resources.bucket.grantReadWrite(backend.researchPipeline.resources.lambda);
+backend.storage.resources.bucket.grantReadWrite(backend.simulationEngine.resources.lambda);
 
 // Export types for frontend usage
 export type { Schema } from './data/resource';

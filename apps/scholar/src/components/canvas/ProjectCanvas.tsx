@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   ReactFlow,
@@ -18,18 +18,46 @@ import '@xyflow/react/dist/style.css';
 import { PhaseNode } from './PhaseNode';
 import { DocumentNode } from './DocumentNode';
 import { ResearchBlockNode } from './ResearchBlockNode';
+import { WorkflowPipelineNode } from './nodes/WorkflowPipelineNode';
+import { StatisticalAnalysisNode } from './nodes/StatisticalAnalysisNode';
+import { SimulationNode } from './nodes/SimulationNode';
+import { ProcessingNode } from './nodes/ProcessingNode';
+import { AnalysisNode } from './nodes/AnalysisNode';
+import { ResultsTableNode } from './nodes/ResultsTableNode';
 import { LiteratureSurvey } from '@/components/literature/LiteratureSurvey';
 import { DataAnalysisPanel } from './DataAnalysisPanel';
 import { SectionEditor } from '../editor/SectionEditor';
 import { useEditorStore } from '@/store/editor-store';
 import { useLanguage } from '@/components/LanguageContext';
-import type { ResearchBlockType } from '@/types';
+import type { ResearchBlockType, ScholarBlock } from '@/types';
 import Link from 'next/link';
+import { client } from '@/lib/amplify-client';
+import { v4 as uuidv4 } from 'uuid';
+import { searchAllSources } from '@/lib/literature-api';
+
+const formatAuthors = (authors?: any[] | null) => {
+  if (!authors || !Array.isArray(authors)) return 'Unknown Authors';
+  const names = authors
+    .map(a => {
+      if (typeof a === 'string') return a.trim();
+      if (a && typeof a === 'object') return (a.name || '').trim();
+      return '';
+    })
+    .filter(name => name && name.toLowerCase() !== 'unknown' && name.toLowerCase() !== 'unknown author');
+  if (names.length === 0) return 'Unknown Authors';
+  return names.join(', ');
+};
 
 const nodeTypes = {
   phaseNode: PhaseNode,
   documentNode: DocumentNode,
   researchBlockNode: ResearchBlockNode,
+  workflowPipelineNode: WorkflowPipelineNode,
+  statisticalAnalysisNode: StatisticalAnalysisNode,
+  simulationNode: SimulationNode,
+  processingNode: ProcessingNode,
+  analysisNode: AnalysisNode,
+  resultsTableNode: ResultsTableNode,
 };
 
 export function ProjectCanvas({ projectId }: { projectId: string }) {
@@ -40,6 +68,7 @@ export function ProjectCanvas({ projectId }: { projectId: string }) {
   const activeDocument = useEditorStore(state => state.document);
   const researchBlocks = useEditorStore(state => state.researchBlocks);
   const literatureItems = useEditorStore(state => state.literatureItems);
+  const canvasLayout = useEditorStore(state => state.canvasLayout);
   
   const createProjectDocument = useEditorStore(state => state.createProjectDocument);
   const deleteProjectDocument = useEditorStore(state => state.deleteProjectDocument);
@@ -49,6 +78,26 @@ export function ProjectCanvas({ projectId }: { projectId: string }) {
   const pushToSection = useEditorStore(state => state.pushToSection);
   const loadCanvasLayout = useEditorStore(state => state.loadCanvasLayout);
   const saveCanvasLayout = useEditorStore(state => state.saveCanvasLayout);
+  const updateResearchBlockContent = useEditorStore(state => state.updateResearchBlockContent);
+  const addLiteratureItem = useEditorStore(state => state.addLiteratureItem);
+  const updateLiteratureItem = useEditorStore(state => state.updateLiteratureItem);
+
+  const [sciHubCookie, setSciHubCookie] = useState(() => 
+    typeof window !== 'undefined' ? localStorage.getItem('sci_hub_cookie') || '' : ''
+  );
+
+  // Citation surgical editing states
+  const [editingPaperId, setEditingPaperId] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editAuthors, setEditAuthors] = useState('');
+  const [editYear, setEditYear] = useState('');
+  const [editJournal, setEditJournal] = useState('');
+  const [editDoi, setEditDoi] = useState('');
+  const [editUrl, setEditUrl] = useState('');
+
+  const [editSearchQuery, setEditSearchQuery] = useState('');
+  const [editSearchResults, setEditSearchResults] = useState<any[]>([]);
+  const [isSearchingEdit, setIsSearchingEdit] = useState(false);
 
   const isDirty = useEditorStore(state => state.isDirty);
   const isSaving = useEditorStore(state => state.isSaving);
@@ -80,6 +129,10 @@ export function ProjectCanvas({ projectId }: { projectId: string }) {
 
   const [nodes, setNodes] = useState<Node[]>([]);
   const [edges, setEdges] = useState<Edge[]>([]);
+  const edgesRef = useRef(edges);
+  useEffect(() => {
+    edgesRef.current = edges;
+  }, [edges]);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [contextMenu, setContextMenu] = useState<{
     x: number;
@@ -100,6 +153,14 @@ export function ProjectCanvas({ projectId }: { projectId: string }) {
 
   // Push-to-section modal
   const [pushModal, setPushModal] = useState<{ blockId: string } | null>(null);
+
+  // Manual paper form state
+  const [showManualForm, setShowManualForm] = useState(false);
+  const [manualTitle, setManualTitle] = useState('');
+  const [manualAuthors, setManualAuthors] = useState('');
+  const [manualYear, setManualYear] = useState('');
+  const [manualDoi, setManualDoi] = useState('');
+  const [manualUrl, setManualUrl] = useState('');
 
   // Load canvas layout on mount
   useEffect(() => {
@@ -129,6 +190,11 @@ export function ProjectCanvas({ projectId }: { projectId: string }) {
 
   // Dynamically compute nodes and edges based on documents, headings, and tools
   const dynamicNodesAndEdges = useMemo(() => {
+    const getPosition = (nodeId: string, defaultPos: { x: number; y: number }) => {
+      const saved = canvasLayout?.nodePositions?.find(p => p.id === nodeId);
+      return saved ? saved.position : defaultPos;
+    };
+
     const sortedBlocks = [...blocks].sort((a, b) => a.orderIndex - b.orderIndex);
     const headingBlocks = sortedBlocks.filter(b => b.type === 'HEADING' && b.content?.level === 1);
     
@@ -144,7 +210,7 @@ export function ProjectCanvas({ projectId }: { projectId: string }) {
       calculatedNodes.push({
         id: `document-${masterDoc.id}`,
         type: 'documentNode',
-        position: { x: 250, y: -200 },
+        position: getPosition(`document-${masterDoc.id}`, { x: 250, y: -200 }),
         data: { 
           label: masterDoc.title, 
           documentId: masterDoc.id,
@@ -163,7 +229,7 @@ export function ProjectCanvas({ projectId }: { projectId: string }) {
       calculatedNodes.push({
         id: `document-${doc.id}`,
         type: 'documentNode',
-        position: { x: -150, y: index * 280 },
+        position: getPosition(`document-${doc.id}`, { x: -150, y: index * 280 }),
         data: { 
           label: doc.title, 
           documentId: doc.id,
@@ -188,29 +254,29 @@ export function ProjectCanvas({ projectId }: { projectId: string }) {
       });
     });
 
-    // 2. Literature Survey Tool Node
+    // 2. Reference Library Tool Node
     calculatedNodes.push({
       id: 'literature',
       type: 'phaseNode',
-      position: { x: 250, y: 150 },
+      position: getPosition('literature', { x: 650, y: -200 }),
       data: { 
-        label: 'Literature Survey', 
-        phase: 'Database Tool',
+        label: t('Reference Library', 'المكتبة المرجعية'), 
+        phase: t('Master Bibliography', 'المراجع الرئيسية'),
         icon: '📚',
-        description: 'Search OpenAlex and collect references for the bibliography.',
+        description: t('Central repository of all referenced papers in the project.', 'المستودع المركزي لجميع الأوراق المرجعية في المشروع.'),
         hasInput: true,
         hasOutput: true,
       },
     });
 
-    // Connect Master Document to Literature Tool
+    // Connect Master Document to Reference Library
     if (masterDoc) {
       calculatedEdges.push({ 
         id: 'e-master-lit', 
         source: `document-${masterDoc.id}`, 
         target: 'literature', 
         animated: true, 
-        style: { stroke: '#f59e0b', strokeWidth: 2 } 
+        style: { stroke: '#818cf8', strokeWidth: 2, strokeDasharray: '4,4' } 
       });
     }
 
@@ -223,17 +289,20 @@ export function ProjectCanvas({ projectId }: { projectId: string }) {
     const disconnectedHeadingBlocks = headingBlocks.filter(hb => !connectedSectionIds.includes(hb.id));
 
     // Render Connected sections in the middle column
-    let currentY = 350;
-    let lastNodeId = 'literature';
+    let currentY = 150;
+    let lastNodeId = masterDoc ? `document-${masterDoc.id}` : 'literature';
 
     connectedHeadingBlocks.forEach((block: any, index: number) => {
       const nodeId = `section-${block.id}`;
       const titleText = block.content?.text || `Section ${index + 1}`;
       
+      const isReferencesSec = titleText.trim().toLowerCase() === 'references';
+      const isHidden = isReferencesSec && !!activeDocument?.metadata?.referencesHidden;
+
       calculatedNodes.push({
         id: nodeId,
         type: 'phaseNode',
-        position: { x: 250, y: currentY },
+        position: getPosition(nodeId, { x: 250, y: currentY }),
         data: { 
           label: titleText, 
           phase: `Section ${index + 1}`,
@@ -242,6 +311,7 @@ export function ProjectCanvas({ projectId }: { projectId: string }) {
           hasInput: true,
           hasOutput: true,
           hasRightOutput: true,
+          isHidden,
         },
       });
 
@@ -255,35 +325,6 @@ export function ProjectCanvas({ projectId }: { projectId: string }) {
 
       lastNodeId = nodeId;
       currentY += 200;
-
-      // Connect the Analytics node adjacent to Data Analysis or Methodology headings
-      const normalizedTitle = titleText.toLowerCase();
-      const hasAnalytics = normalizedTitle.includes('analysis') || normalizedTitle.includes('methodology') || normalizedTitle.includes('نتائج');
-      if (hasAnalytics) {
-        const analyticsNodeId = `analytics-${block.id}`;
-        calculatedNodes.push({
-          id: analyticsNodeId,
-          type: 'phaseNode',
-          position: { x: 650, y: currentY - 200 },
-          data: { 
-            label: 'Statistical Engine', 
-            phase: 'Estebian Core',
-            icon: '📊',
-            description: 'Run Python statistical models on datasets.',
-            hasInput: true,
-            hasOutput: true,
-          },
-        });
-
-        // Edge feeding from Analytics Tool into this section
-        calculatedEdges.push({ 
-          id: `e-analytics-${block.id}`, 
-          source: analyticsNodeId, 
-          target: nodeId, 
-          animated: true, 
-          style: { stroke: '#10b981', strokeWidth: 2 } 
-        });
-      }
 
       // Section-level Citation Nodes
       const nextHeading = connectedHeadingBlocks[index + 1];
@@ -324,7 +365,7 @@ export function ProjectCanvas({ projectId }: { projectId: string }) {
         calculatedNodes.push({
           id: citationNodeId,
           type: 'researchBlockNode',
-          position: { x: hasAnalytics ? 930 : 650, y: currentY - 200 },
+          position: getPosition(citationNodeId, { x: 650, y: currentY - 200 }),
           data: {
             label: `Citations (${sectionLiteratureItems.length} papers)`,
             blockType: 'reference-collection',
@@ -334,6 +375,7 @@ export function ProjectCanvas({ projectId }: { projectId: string }) {
             contentPreview: sectionLiteratureItems.slice(0, 3).map(li => li?.title).join(', '),
             onPush: () => setSelectedNodeId(citationNodeId),
             onDelete: () => {},
+            isHidden,
           }
         });
 
@@ -358,7 +400,7 @@ export function ProjectCanvas({ projectId }: { projectId: string }) {
       calculatedNodes.push({
         id: nodeId,
         type: 'phaseNode',
-        position: { x: 20, y: disconnectedY },
+        position: getPosition(nodeId, { x: 20, y: disconnectedY }),
         data: { 
           label: titleText, 
           phase: 'Unconnected Section',
@@ -374,28 +416,411 @@ export function ProjectCanvas({ projectId }: { projectId: string }) {
 
     // 4. Research Block Nodes (Right column)
     researchBlocks.forEach((rb, index) => {
+      let nodeType = 'researchBlockNode';
+      if (rb.type === 'workflow-pipeline') nodeType = 'workflowPipelineNode';
+      else if (rb.type === 'statistical-analysis') nodeType = 'statisticalAnalysisNode';
+      else if (rb.type === 'simulation-engine') nodeType = 'simulationNode';
+      else if (rb.type === 'processing-pipeline') nodeType = 'processingNode';
+      else if (rb.type === 'llm-analysis') nodeType = 'analysisNode';
+      else if (rb.type === 'results-table') nodeType = 'resultsTableNode';
+
+      // Dynamically compute edges for block-to-block hierarchy
+      if (rb.content?.sourceBlockId) {
+        const sourceNodeId = rb.content.sourceBlockId === 'literature'
+          ? 'literature'
+          : rb.content.sourceBlockId.startsWith('section-')
+          ? rb.content.sourceBlockId
+          : `research-${rb.content.sourceBlockId}`;
+
+        calculatedEdges.push({
+          id: `e-rb-link-${rb.content.sourceBlockId}-${rb.id}`,
+          source: sourceNodeId,
+          target: `research-${rb.id}`,
+          animated: true,
+          style: { stroke: '#0ea5e9', strokeWidth: 2 } // sky blue stroke for provenance links
+        });
+      }
+
       calculatedNodes.push({
         id: `research-${rb.id}`,
-        type: 'researchBlockNode',
-        position: { x: 650, y: index * 200 },
+        type: nodeType,
+        position: getPosition(`research-${rb.id}`, { x: 650, y: index * 200 }),
         data: {
           label: rb.title,
           blockType: rb.type,
           blockId: rb.id,
           projectId,
+          isHidden: rb.type === 'reference-collection' && !!activeDocument?.metadata?.referencesHidden,
           contentPreview: rb.content?.text || rb.content?.surveyText || undefined,
           itemCount: rb.content?.itemCount,
+          pipelineVersion: rb.content?.pipelineVersion || 'V3',
+          status: rb.content?.status || 'idle',
+          confidenceAverage: rb.content?.outputs?.confidenceAverage,
+          datasetPath: rb.content?.datasetPath,
+          snapshotDelta: rb.content?.snapshotDelta,
+          averageDelta: rb.content?.averageDelta,
+          parameters: rb.content?.parameters,
+          
+          // Processing pipeline specific
+          totalPapers: rb.content?.totalPapers,
+          processedPapers: rb.content?.processedPapers,
+          duplicatesRemoved: rb.content?.duplicatesRemoved,
+          textsExtracted: rb.content?.textsExtracted,
+          errorMessage: rb.content?.errorMessage,
+          onProcess: async () => {
+            updateResearchBlockContent(rb.id, {
+              ...rb.content,
+              status: 'processing',
+              totalPapers: 0,
+              processedPapers: 0,
+              duplicatesRemoved: 0,
+              textsExtracted: 0,
+              errorMessage: undefined
+            });
+
+            // Find source papers
+            const edge = edgesRef.current.find(e => e.target === `research-${rb.id}`);
+            let papersToProcess: any[] = [];
+            
+            if (edge) {
+              const sourceId = edge.source;
+              if (sourceId === 'literature') {
+                papersToProcess = literatureItems;
+              } else if (sourceId.startsWith('research-')) {
+                const sourceRbId = sourceId.replace('research-', '');
+                const sourceRb = researchBlocks.find(b => b.id === sourceRbId);
+                if (sourceRb?.type === 'literature-search') {
+                  papersToProcess = sourceRb.content?.papers || [];
+                } else if (sourceRb?.type === 'reference-collection') {
+                  papersToProcess = sourceRb.content?.papers || [];
+                }
+              }
+            } else {
+              papersToProcess = literatureItems;
+            }
+
+            if (papersToProcess.length === 0) {
+              updateResearchBlockContent(rb.id, {
+                ...rb.content,
+                status: 'failed',
+                errorMessage: 'No papers found in source. Connect a search or reference collection node first.'
+              });
+              return;
+            }
+
+            // Deduplicate
+            const seen = new Set<string>();
+            const deduped: any[] = [];
+            for (const paper of papersToProcess) {
+              const titleKey = paper.title?.toLowerCase().trim().replace(/[^a-z0-9]/g, '');
+              const doiKey = paper.doi?.toLowerCase().trim();
+              
+              let isDuplicate = false;
+              if (doiKey && seen.has(doiKey)) {
+                isDuplicate = true;
+              } else if (titleKey && seen.has(titleKey)) {
+                isDuplicate = true;
+              }
+              
+              if (!isDuplicate) {
+                if (doiKey) seen.add(doiKey);
+                if (titleKey) seen.add(titleKey);
+                deduped.push(paper);
+              }
+            }
+
+            const duplicatesRemovedCount = papersToProcess.length - deduped.length;
+
+            updateResearchBlockContent(rb.id, {
+              ...rb.content,
+              status: 'processing',
+              totalPapers: deduped.length,
+              processedPapers: 0,
+              duplicatesRemoved: duplicatesRemovedCount,
+              textsExtracted: 0
+            });
+
+            // Extract texts
+            let extractedCount = 0;
+            const updatedFileStatus: Record<string, string> = {};
+
+            for (let i = 0; i < deduped.length; i++) {
+              const paper = deduped[i];
+              const paperKey = paper.doi || paper.externalId || paper.id;
+              
+              try {
+                const res = await fetch('/api/literature/download', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    projectId,
+                    paperId: paperKey,
+                    doi: paper.doi,
+                    title: paper.title,
+                    url: paper.url,
+                    sciHubCookie: localStorage.getItem('sci_hub_cookie') || ''
+                  })
+                });
+
+                if (res.ok) {
+                  extractedCount++;
+                  updatedFileStatus[paperKey] = 'full-text';
+                } else {
+                  updatedFileStatus[paperKey] = 'metadata-only';
+                }
+              } catch (err) {
+                console.error("Failed to download paper:", paper.title, err);
+                updatedFileStatus[paperKey] = 'metadata-only';
+              }
+
+              updateResearchBlockContent(rb.id, {
+                ...rb.content,
+                status: 'processing',
+                totalPapers: deduped.length,
+                processedPapers: i + 1,
+                duplicatesRemoved: duplicatesRemovedCount,
+                textsExtracted: extractedCount,
+                fileStatus: updatedFileStatus
+              });
+            }
+
+            // Save final result
+            updateResearchBlockContent(rb.id, {
+              ...rb.content,
+              status: 'success',
+              totalPapers: deduped.length,
+              processedPapers: deduped.length,
+              duplicatesRemoved: duplicatesRemovedCount,
+              textsExtracted: extractedCount,
+              papers: deduped,
+              fileStatus: updatedFileStatus
+            });
+
+            setTimeout(() => {
+              saveCanvasLayout(projectId);
+            }, 500);
+          },
+
+          // LLM Analysis specific
+          prompt: rb.content?.prompt,
+          papersCount: rb.content?.papersCount,
+          resultSummary: rb.content?.resultSummary,
+          onAnalyze: async () => {
+            const edge = edgesRef.current.find(e => e.target === `research-${rb.id}`);
+            if (!edge) {
+              updateResearchBlockContent(rb.id, {
+                ...rb.content,
+                status: 'failed',
+                errorMessage: 'Please connect a Processing Pipeline node to the input of this Analysis node.'
+              });
+              return;
+            }
+
+            const sourceId = edge.source;
+            const sourceRbId = sourceId.replace('research-', '');
+            const sourceRb = researchBlocks.find(b => b.id === sourceRbId);
+
+            if (!sourceRb || sourceRb.type !== 'processing-pipeline') {
+              updateResearchBlockContent(rb.id, {
+                ...rb.content,
+                status: 'failed',
+                errorMessage: 'The connected input must be a Processing Pipeline node.'
+              });
+              return;
+            }
+
+            const processedPapers = sourceRb.content?.papers || [];
+            if (processedPapers.length === 0) {
+              updateResearchBlockContent(rb.id, {
+                ...rb.content,
+                status: 'failed',
+                errorMessage: 'The connected Processing Pipeline has no processed papers. Run it first.'
+              });
+              return;
+            }
+
+            updateResearchBlockContent(rb.id, {
+              ...rb.content,
+              status: 'analyzing',
+              papersCount: processedPapers.length,
+              errorMessage: undefined
+            });
+
+            try {
+              const paperIds = processedPapers.map((p: any) => p.doi || p.externalId || p.id);
+              const res = await fetch('/api/literature/analyze', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  projectId,
+                  paperIds,
+                  prompt: rb.content?.prompt || 'Classify these papers by methodology and security impact.',
+                })
+              });
+
+              if (!res.ok) {
+                const errData = await res.json();
+                throw new Error(errData.error || 'Failed to analyze papers.');
+              }
+
+              const data = await res.json();
+
+              // Update this node
+              updateResearchBlockContent(rb.id, {
+                ...rb.content,
+                status: 'success',
+                resultSummary: data.summary,
+                columns: data.columns,
+                rows: data.rows,
+                summary: data.summary
+              });
+
+              // Push directly to connected results-table node if one exists
+              const targetEdge = edgesRef.current.find(e => e.source === `research-${rb.id}`);
+              if (targetEdge && targetEdge.target.startsWith('research-')) {
+                const targetRbId = targetEdge.target.replace('research-', '');
+                const targetRb = researchBlocks.find(b => b.id === targetRbId);
+                if (targetRb && targetRb.type === 'results-table') {
+                  updateResearchBlockContent(targetRb.id, {
+                    ...targetRb.content,
+                    status: 'ready',
+                    columns: data.columns,
+                    rows: data.rows,
+                    summary: data.summary
+                  });
+                }
+              }
+            } catch (err: any) {
+              updateResearchBlockContent(rb.id, {
+                ...rb.content,
+                status: 'failed',
+                errorMessage: err.message || String(err)
+              });
+            }
+
+            setTimeout(() => {
+              saveCanvasLayout(projectId);
+            }, 500);
+          },
+
+          // Results Table specific
+          columns: rb.content?.columns,
+          rows: rb.content?.rows,
+          summary: rb.content?.summary,
+          onExportCsv: () => {
+            const columns = rb.content?.columns || [];
+            const rows = rb.content?.rows || [];
+            if (columns.length === 0 || rows.length === 0) return;
+            
+            const csvContent = [
+              columns.join(','),
+              ...rows.map((row: any) => columns.map((col: string) => `"${String(row[col] || '').replace(/"/g, '""')}"`).join(','))
+            ].join('\n');
+            
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.setAttribute("href", url);
+            link.setAttribute("download", `${rb.title.toLowerCase().replace(/\s+/g, '_')}_results.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+          },
+          onExportMarkdown: () => {
+            const columns = rb.content?.columns || [];
+            const rows = rb.content?.rows || [];
+            if (columns.length === 0 || rows.length === 0) return;
+
+            const headerRow = `| ${columns.join(' | ')} |`;
+            const separatorRow = `| ${columns.map(() => '---').join(' | ')} |`;
+            const dataRows = rows.map((row: any) => `| ${columns.map((col: string) => String(row[col] || '').replace(/\|/g, '\\|')).join(' | ')} |`);
+            
+            const markdownContent = [headerRow, separatorRow, ...dataRows].join('\n');
+            const blob = new Blob([markdownContent], { type: 'text/markdown;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.setAttribute("href", url);
+            link.setAttribute("download", `${rb.title.toLowerCase().replace(/\s+/g, '_')}_results.md`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+          },
+          onPushToDoc: () => {
+            setPushModal({ blockId: rb.id });
+          },
+
           onDelete: (id: string) => {
             deleteResearchBlock(id);
             saveCanvasLayout(projectId);
           },
           onPush: (blockId: string) => setPushModal({ blockId }),
+          onExecute: async () => {
+            if (rb.type === 'workflow-pipeline') {
+              updateResearchBlockContent(rb.id, { ...rb.content, status: 'extracting' });
+              try {
+                const response = await client.mutations.runResearchPipeline({
+                  projectId,
+                  pipelineVersion: rb.content?.pipelineVersion || 'V3',
+                  inputs: JSON.stringify(rb.content?.inputs || {})
+                });
+                const resData = typeof response.data === 'string' ? JSON.parse(response.data) : response.data;
+                updateResearchBlockContent(rb.id, {
+                  ...rb.content,
+                  status: 'success',
+                  outputs: resData.outputs
+                });
+              } catch (err) {
+                console.error("Pipeline run failed:", err);
+                updateResearchBlockContent(rb.id, { ...rb.content, status: 'failed' });
+              }
+            } else if (rb.type === 'statistical-analysis') {
+              updateResearchBlockContent(rb.id, { ...rb.content, status: 'running' });
+              // Simulate python-like sandbox pandas aggregation
+              setTimeout(() => {
+                updateResearchBlockContent(rb.id, {
+                  ...rb.content,
+                  status: 'success',
+                  datasetPath: `scholar-datasets/${projectId}/extracted_results.csv`,
+                  resultCsvPath: `scholar-datasets/${projectId}/statistical_aggregates.csv`,
+                  result: {
+                    mean_confidence: 0.92,
+                    total_papers: 2,
+                    ita_violations_detected: true
+                  }
+                });
+              }, 1500);
+            } else if (rb.type === 'simulation-engine') {
+              updateResearchBlockContent(rb.id, { ...rb.content, status: 'running' });
+              try {
+                const response = await client.mutations.runSimulationEngine({
+                  projectId,
+                  name: rb.title,
+                  parameters: JSON.stringify(rb.content?.parameters || {})
+                });
+                const resData = typeof response.data === 'string' ? JSON.parse(response.data) : response.data;
+                updateResearchBlockContent(rb.id, {
+                  ...rb.content,
+                  status: 'success',
+                  snapshotDelta: resData.outputs.snapshotDelta,
+                  averageDelta: resData.outputs.averageDelta,
+                  trajectoryPoints: resData.outputs.trajectoryPoints,
+                  trajectoryDataS3Key: resData.outputs.trajectoryDataS3Key
+                });
+              } catch (err) {
+                console.error("Simulation run failed:", err);
+                updateResearchBlockContent(rb.id, { ...rb.content, status: 'failed' });
+              }
+            }
+            setTimeout(() => {
+              saveCanvasLayout(projectId);
+            }, 100);
+          }
         },
       });
     });
 
     return { nodes: calculatedNodes, edges: calculatedEdges };
-  }, [blocks, documents, researchBlocks, projectId, deleteProjectDocument, deleteResearchBlock, saveCanvasLayout]);
+  }, [blocks, documents, researchBlocks, projectId, deleteProjectDocument, deleteResearchBlock, saveCanvasLayout, literatureItems, updateResearchBlockContent, canvasLayout]);
 
   // Sync state whenever dynamic layout updates
   useEffect(() => {
@@ -404,6 +829,30 @@ export function ProjectCanvas({ projectId }: { projectId: string }) {
       setEdges(dynamicNodesAndEdges.edges);
     }
   }, [dynamicNodesAndEdges]);
+
+  const onNodeDragStop = useCallback(
+    (_: any, node: Node) => {
+      const positions = [...(canvasLayout?.nodePositions || [])];
+      const index = positions.findIndex(p => p.id === node.id);
+      
+      const newPos = { id: node.id, position: node.position || { x: 0, y: 0 } };
+      if (index !== -1) {
+        positions[index] = newPos;
+      } else {
+        positions.push(newPos);
+      }
+
+      useEditorStore.setState({
+        canvasLayout: {
+          ...canvasLayout,
+          nodePositions: positions
+        }
+      });
+
+      saveCanvasLayout(projectId);
+    },
+    [canvasLayout, projectId, saveCanvasLayout]
+  );
 
   const onNodesChange = useCallback(
     (changes: NodeChange[]) => setNodes((nds) => applyNodeChanges(changes, nds)),
@@ -436,6 +885,25 @@ export function ProjectCanvas({ projectId }: { projectId: string }) {
       const source = connection.source;
       const target = connection.target;
       if (!source || !target) return;
+
+      // Handle connections targeting a research block node
+      if (target.startsWith('research-')) {
+        const targetRbId = target.replace('research-', '');
+        const targetRb = researchBlocks.find(b => b.id === targetRbId);
+        if (targetRb) {
+          const sourceId = source.startsWith('research-') ? source.replace('research-', '') : source;
+          updateResearchBlockContent(targetRbId, {
+            ...(targetRb.content || {}),
+            sourceBlockId: sourceId
+          });
+          
+          // Save canvas layout
+          setTimeout(() => {
+            saveCanvasLayout(projectId);
+          }, 200);
+          return;
+        }
+      }
 
       const currentSections = [...(masterDoc.metadata?.sections || [])];
       const sourceId = source.replace('section-', '');
@@ -471,7 +939,7 @@ export function ProjectCanvas({ projectId }: { projectId: string }) {
 
       updateDocumentSections(masterDoc.id, newSections);
     },
-    [masterDoc, updateDocumentSections]
+    [masterDoc, updateDocumentSections, researchBlocks, updateResearchBlockContent, projectId, saveCanvasLayout]
   );
 
   const onPaneContextMenu = useCallback(
@@ -554,7 +1022,6 @@ export function ProjectCanvas({ projectId }: { projectId: string }) {
     if (!selectedNodeId) return null;
 
     const isSectionNode = selectedNodeId.startsWith('section-');
-    const isAnalyticsNode = selectedNodeId.startsWith('analytics-');
     const isResearchNode = selectedNodeId.startsWith('research-');
     const isCitationsSectionNode = selectedNodeId.startsWith('citations-section-');
     const sectionBlockId = isSectionNode 
@@ -571,8 +1038,6 @@ export function ProjectCanvas({ projectId }: { projectId: string }) {
       panelTitle = isCitationsSectionNode 
         ? `Citations: ${headingBlock?.content?.text || 'Section'}`
         : headingBlock?.content?.text || panelTitle;
-    } else if (isAnalyticsNode) {
-      panelTitle = 'Statistical Engine';
     } else if (isResearchNode && researchBlockId) {
       const rb = researchBlocks.find(b => b.id === researchBlockId);
       panelTitle = rb?.title || 'Research Block';
@@ -599,10 +1064,6 @@ export function ProjectCanvas({ projectId }: { projectId: string }) {
         <div className="flex-1 overflow-y-auto custom-scrollbar">
           {selectedNodeId === 'literature' && (
             <div className="p-4"><LiteratureSurvey projectId={projectId} /></div>
-          )}
-
-          {isAnalyticsNode && (
-            <div className="p-4"><DataAnalysisPanel projectId={projectId} /></div>
           )}
 
           {isSectionNode && sectionBlockId && (
@@ -659,29 +1120,254 @@ export function ProjectCanvas({ projectId }: { projectId: string }) {
                   <p className="text-xs text-slate-500 italic">No citations found in this section yet.</p>
                 ) : (
                   <div className="space-y-3">
-                    {sectionLiteratureItems.map((item, idx) => (
-                      <div key={item!.id} className="p-3 bg-slate-800/40 border border-slate-700/30 rounded-lg hover:border-slate-700/60 transition-colors">
-                        <h4 className="text-xs font-bold text-slate-200 line-clamp-2">{item!.title}</h4>
-                        <div className="text-[10px] text-slate-400 mt-1 flex justify-between">
-                          <span>
-                            {item!.authors && (typeof item!.authors === 'string' ? JSON.parse(item!.authors) : item!.authors).slice(0, 2).map((a: any) => a.name || a).join(', ')} 
-                            {item!.authors && (typeof item!.authors === 'string' ? JSON.parse(item!.authors) : item!.authors).length > 2 && ' et al.'}
-                          </span>
-                          <span>{item!.year || 'N/A'}</span>
-                        </div>
-                        {item!.doi && (
-                          <div className="text-[9px] text-indigo-400 font-mono mt-1 truncate">
-                            {item!.doi.startsWith('10.') ? 'DOI' : 'ISBN'}: {item!.doi}
+                    {sectionLiteratureItems.map((item, idx) => {
+                      const paper = item!;
+                      const paperIdKey = paper.id;
+                      const isEditing = editingPaperId === paperIdKey;
+
+                      if (isEditing) {
+                        return (
+                          <div key={paperIdKey} className="p-3 bg-slate-900 border border-indigo-500/50 rounded-xl space-y-3">
+                            <div className="flex justify-between items-center border-b border-slate-800 pb-1.5 mb-1">
+                              <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider">Edit Reference Metadata</span>
+                              <button 
+                                onClick={() => {
+                                  setEditingPaperId(null);
+                                  setEditSearchResults([]);
+                                }}
+                                className="text-[10px] text-slate-500 hover:text-slate-350"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+
+                            {/* Online Auto-fill search box */}
+                            <div className="p-2 bg-slate-950 rounded-lg space-y-1.5 border border-slate-850">
+                              <label className="block text-[8px] text-amber-500 font-bold uppercase tracking-wider">Online Match & Fill</label>
+                              <div className="flex gap-1.5">
+                                <input
+                                  type="text"
+                                  placeholder="Search online to match paper..."
+                                  value={editSearchQuery}
+                                  onChange={(e) => setEditSearchQuery(e.target.value)}
+                                  className="flex-1 bg-slate-900 border border-slate-800 rounded px-2 py-0.5 text-xs text-white placeholder:text-slate-650 outline-none focus:border-amber-500/40"
+                                />
+                                <button
+                                  type="button"
+                                  disabled={isSearchingEdit}
+                                  onClick={async () => {
+                                    if (!editSearchQuery.trim()) return;
+                                    setIsSearchingEdit(true);
+                                    try {
+                                      const results = await searchAllSources(editSearchQuery, ['openalex', 'semantic_scholar', 'crossref'], 3);
+                                      setEditSearchResults(results);
+                                    } catch (err) {
+                                      console.error('Online match search failed:', err);
+                                    } finally {
+                                      setIsSearchingEdit(false);
+                                    }
+                                  }}
+                                  className="px-2 py-0.5 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded text-[9px] font-bold"
+                                >
+                                  {isSearchingEdit ? '...' : 'Search'}
+                                </button>
+                              </div>
+
+                              {editSearchResults.length > 0 && (
+                                <div className="space-y-1.5 max-h-28 overflow-y-auto pt-1.5 border-t border-slate-900">
+                                  {editSearchResults.map((match: any, mIdx: number) => (
+                                    <div key={mIdx} className="flex justify-between items-start gap-1.5 p-1 bg-slate-900/40 rounded text-[9px]">
+                                      <div className="min-w-0 flex-1">
+                                        <p className="text-slate-200 font-medium truncate" title={match.title}>{match.title}</p>
+                                        <p className="text-slate-500 text-[8px]">
+                                          {formatAuthors(match.authors)} ({match.year || 'N/A'})
+                                        </p>
+                                      </div>
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setEditTitle(match.title);
+                                          setEditAuthors(formatAuthors(match.authors));
+                                          setEditYear(match.year?.toString() || '');
+                                          setEditJournal(match.journal || '');
+                                          setEditDoi(match.doi || '');
+                                          setEditUrl(match.url || '');
+                                          setEditSearchResults([]);
+                                        }}
+                                        className="px-1.5 py-0.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded font-bold text-[7px]"
+                                      >
+                                        Match
+                                      </button>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Manual Fields */}
+                            <div className="space-y-2">
+                              <div>
+                                <label className="block text-[8px] text-slate-550 uppercase font-semibold">Title</label>
+                                <input
+                                  type="text"
+                                  value={editTitle}
+                                  onChange={(e) => setEditTitle(e.target.value)}
+                                  className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1 text-xs text-white outline-none focus:border-indigo-500"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-[8px] text-slate-550 uppercase font-semibold">Authors (comma-separated)</label>
+                                <input
+                                  type="text"
+                                  value={editAuthors}
+                                  onChange={(e) => setEditAuthors(e.target.value)}
+                                  className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1 text-xs text-white outline-none focus:border-indigo-500"
+                                />
+                              </div>
+                              <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                  <label className="block text-[8px] text-slate-550 uppercase font-semibold">Year</label>
+                                  <input
+                                    type="number"
+                                    value={editYear}
+                                    onChange={(e) => setEditYear(e.target.value)}
+                                    className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1 text-xs text-white outline-none focus:border-indigo-500"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-[8px] text-slate-550 uppercase font-semibold">Journal</label>
+                                  <input
+                                    type="text"
+                                    value={editJournal}
+                                    onChange={(e) => setEditJournal(e.target.value)}
+                                    className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1 text-xs text-white outline-none focus:border-indigo-500"
+                                  />
+                                </div>
+                              </div>
+                              <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                  <label className="block text-[8px] text-slate-550 uppercase font-semibold">DOI</label>
+                                  <input
+                                    type="text"
+                                    value={editDoi}
+                                    onChange={(e) => setEditDoi(e.target.value)}
+                                    className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1 text-xs text-white outline-none focus:border-indigo-500"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-[8px] text-slate-550 uppercase font-semibold">URL</label>
+                                  <input
+                                    type="text"
+                                    value={editUrl}
+                                    onChange={(e) => setEditUrl(e.target.value)}
+                                    className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1 text-xs text-white outline-none focus:border-indigo-500"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="flex gap-2 pt-1.5 border-t border-slate-800">
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  const parsedAuthors = editAuthors.split(',').map(name => ({ name: name.trim() })).filter(a => a.name);
+                                  const yearInt = parseInt(editYear) || new Date().getFullYear();
+                                  
+                                  // Update store literatureItems library
+                                  await updateLiteratureItem(paper.id, {
+                                    title: editTitle.trim(),
+                                    authors: parsedAuthors,
+                                    year: yearInt,
+                                    journal: editJournal.trim() || undefined,
+                                    doi: editDoi.trim() || undefined,
+                                    url: editUrl.trim() || undefined
+                                  });
+
+                                  // Sync block in active document if exists
+                                  const activeDoc = useEditorStore.getState().document;
+                                  if (activeDoc) {
+                                    const paperIdVal = paper.id || paper.externalId || paper.doi;
+                                    const blockToUpdate = useEditorStore.getState().blocks.find(b => b.type === 'REFERENCE' && (b.content?.literatureItemId === paperIdVal || b.content?.literatureItemId === paper.id));
+                                    if (blockToUpdate) {
+                                      const firstAuthorName = parsedAuthors.length > 0 ? (parsedAuthors[0].name.split(' ').pop() || 'Unknown') : 'Unknown';
+                                      const citationKey = `${firstAuthorName}, ${yearInt || 'n.d.'}`;
+                                      const formattedCitation = `${formatAuthors(parsedAuthors)}, "${editTitle.trim()}", ${yearInt || 'n.d.'}.`;
+                                      
+                                      const { updateBlockContent } = useEditorStore.getState();
+                                      updateBlockContent(blockToUpdate.id, {
+                                        ...blockToUpdate.content,
+                                        citationKey,
+                                        formattedCitation
+                                      });
+                                    }
+                                  }
+
+                                  setEditingPaperId(null);
+                                  setEditSearchResults([]);
+                                }}
+                                className="flex-1 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded text-[10px] font-bold"
+                              >
+                                Save Changes
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditingPaperId(null);
+                                  setEditSearchResults([]);
+                                }}
+                                className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-400 rounded text-[10px]"
+                              >
+                                Cancel
+                              </button>
+                            </div>
                           </div>
-                        )}
-                        {item!.abstract && (
-                          <details className="mt-2">
-                            <summary className="text-[9px] text-amber-500/70 hover:text-amber-500 cursor-pointer outline-none">View Abstract</summary>
-                            <p className="text-[10px] text-slate-400 leading-relaxed mt-1 italic pl-2 border-l border-slate-700">{item!.abstract}</p>
-                          </details>
-                        )}
-                      </div>
-                    ))}
+                        );
+                      }
+
+                      return (
+                        <div key={paper.id} className="p-3 bg-slate-800/40 border border-slate-700/30 rounded-lg hover:border-slate-700/60 transition-colors flex flex-col justify-between gap-2">
+                          <div>
+                            <h4 className="text-xs font-bold text-slate-200 line-clamp-2">{paper.title}</h4>
+                            <div className="text-[10px] text-slate-400 mt-1 flex justify-between">
+                              <span>
+                                {formatAuthors(paper.authors)}
+                              </span>
+                              <span>{paper.year || 'N/A'}</span>
+                            </div>
+                            {paper.doi && (
+                              <div className="text-[9px] text-indigo-400 font-mono mt-1 truncate">
+                                {paper.doi.startsWith('10.') ? 'DOI' : 'ISBN'}: {paper.doi}
+                              </div>
+                            )}
+                            {paper.abstract && (
+                              <details className="mt-2">
+                                <summary className="text-[9px] text-amber-500/70 hover:text-amber-500 cursor-pointer outline-none">View Abstract</summary>
+                                <p className="text-[10px] text-slate-400 leading-relaxed mt-1 italic pl-2 border-l border-slate-700">{paper.abstract}</p>
+                              </details>
+                            )}
+                          </div>
+
+                          <div className="flex justify-end gap-1.5 border-t border-slate-800/40 pt-1.5 mt-0.5">
+                            <button
+                              onClick={() => {
+                                setEditingPaperId(paperIdKey);
+                                setEditTitle(paper.title || '');
+                                setEditAuthors(formatAuthors(paper.authors));
+                                setEditYear(paper.year?.toString() || '');
+                                setEditJournal(paper.journal || '');
+                                setEditDoi(paper.doi || '');
+                                setEditUrl(paper.url || '');
+                                setEditSearchQuery(paper.title || '');
+                                setEditSearchResults([]);
+                              }}
+                              className="text-[9px] px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/30 text-amber-400 hover:bg-amber-500/20 transition-colors font-semibold"
+                            >
+                              ✏️ Edit Citation
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -786,7 +1472,7 @@ export function ProjectCanvas({ projectId }: { projectId: string }) {
             return (
               <div className="p-4 space-y-4">
                 <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-slate-500 font-semibold">
-                  <span>{rb.type === 'notes' ? '💡' : rb.type === 'reference-collection' ? '📚' : rb.type === 'literature-survey' ? '📝' : rb.type === 'dataset' ? '📊' : '🧮'}</span>
+                  <span>{rb.type === 'notes' ? '💡' : rb.type === 'reference-collection' ? '📚' : rb.type === 'literature-search' ? '🔍' : rb.type === 'literature-survey' ? '📝' : rb.type === 'dataset' ? '📊' : rb.type === 'analysis-result' ? '🧮' : rb.type === 'workflow-pipeline' ? '⚙️' : rb.type === 'statistical-analysis' ? '🧮' : '⚡'}</span>
                   <span>{rb.type.replace('-', ' ')}</span>
                 </div>
 
@@ -856,17 +1542,859 @@ export function ProjectCanvas({ projectId }: { projectId: string }) {
                   </div>
                 )}
 
+                {/* Literature Search Block */}
+                {rb.type === 'literature-search' && (
+                  <div className="space-y-2">
+                    <LiteratureSurvey projectId={projectId} blockId={rb.id} />
+                  </div>
+                )}
+
                 {/* Reference collection info */}
-                {rb.type === 'reference-collection' && (
-                  <div className="space-y-3">
-                    <p className="text-xs text-slate-400">
-                      This block references your project&apos;s literature library. Use the Literature Survey tool to search and collect papers, then push them here.
-                    </p>
-                    <div className="p-3 bg-slate-800/50 border border-slate-700/50 rounded-lg">
-                      <p className="text-sm text-indigo-300 font-medium">
-                        {rb.content?.itemCount || 0} references collected
+                {rb.type === 'reference-collection' && (() => {
+                  const papersList = rb.content?.papers || [];
+                  const paperKeys = new Set(papersList.map((p: any) => p.doi || p.externalId || p.id));
+                  const availableProjectPapers = literatureItems.filter((item: any) => !paperKeys.has(item.doi || item.externalId || item.id));
+
+                  const handleAddManualPaper = async (e: React.FormEvent) => {
+                    e.preventDefault();
+                    if (!manualTitle.trim()) return;
+
+                    const authorsArr = manualAuthors.split(',').map(name => ({ name: name.trim() })).filter(a => a.name);
+                    const newPaper = {
+                      id: uuidv4(),
+                      title: manualTitle.trim(),
+                      authors: authorsArr,
+                      year: parseInt(manualYear) || new Date().getFullYear(),
+                      doi: manualDoi.trim() || undefined,
+                      url: manualUrl.trim() || undefined,
+                      source: 'manual'
+                    };
+
+                    await addLiteratureItem({
+                      id: newPaper.id,
+                      projectId,
+                      title: newPaper.title,
+                      authors: newPaper.authors,
+                      year: newPaper.year,
+                      doi: newPaper.doi,
+                      url: newPaper.url,
+                      source: 'manual'
+                    });
+
+                    // Sync to document: Add REFERENCE block
+                    const activeDoc = useEditorStore.getState().document;
+                    if (activeDoc) {
+                      const firstAuthorName = newPaper.authors.length > 0 ? (newPaper.authors[0].name.split(' ').pop() || 'Unknown') : 'Unknown';
+                      const citationKey = `${firstAuthorName}, ${newPaper.year || 'n.d.'}`;
+                      const formattedCitation = `${formatAuthors(newPaper.authors)}, "${newPaper.title}", ${newPaper.year || 'n.d.'}.`;
+                      const orderIndex = Date.now();
+                      const refBlock: ScholarBlock = {
+                        id: uuidv4(),
+                        documentId: activeDoc.id,
+                        type: 'REFERENCE',
+                        content: {
+                          literatureItemId: newPaper.id,
+                          citationKey,
+                          formattedCitation,
+                        },
+                        metadata: {},
+                        parentId: null,
+                        orderIndex,
+                      };
+                      useEditorStore.setState(state => ({
+                        blocks: [...state.blocks, refBlock]
+                      }));
+                      await client.models.ScholarBlock.create({
+                        id: refBlock.id,
+                        documentId: refBlock.documentId,
+                        type: refBlock.type,
+                        content: JSON.stringify(refBlock.content),
+                        metadata: JSON.stringify(refBlock.metadata),
+                        orderIndex: refBlock.orderIndex,
+                      });
+                    }
+
+                    const updatedPapers = [...papersList, newPaper];
+                    updateResearchBlockContent(rb.id, {
+                      ...rb.content,
+                      papers: updatedPapers
+                    });
+
+                    setManualTitle('');
+                    setManualAuthors('');
+                    setManualYear('');
+                    setManualDoi('');
+                    setManualUrl('');
+                    setShowManualForm(false);
+                  };
+
+                  return (
+                    <div className="space-y-4">
+                      <p className="text-xs text-slate-400">
+                        This block references your collected literature set. You can retrieve full texts, add/remove references, or configure inputs for LLM pipeline models below.
                       </p>
+                      
+                      <div className="p-3 bg-slate-800/40 border border-slate-700/50 rounded-lg flex items-center justify-between">
+                        <span className="text-xs font-semibold text-slate-300">Total Papers</span>
+                        <span className="text-sm font-bold text-indigo-400">{papersList.length}</span>
+                      </div>
+
+                      <div className="p-3 bg-slate-900/40 border border-slate-800/80 rounded-xl space-y-2">
+                        <label className="block text-[10px] font-semibold text-slate-400">
+                          {t('Sci-Hub Session Cookie (Optional)', 'ملفات تعريف ارتباط جلسة Sci-Hub (اختياري)')}
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="e.g. __ddg1_=...; session=..."
+                          value={sciHubCookie}
+                          onChange={(e) => {
+                            setSciHubCookie(e.target.value);
+                            localStorage.setItem('sci_hub_cookie', e.target.value);
+                          }}
+                          className="futuristic-input w-full text-xs py-1"
+                        />
+                      </div>
+
+                      {/* Add References Picker - Pick from bibliography library */}
+                      {availableProjectPapers.length > 0 ? (
+                        <div className="p-3 bg-slate-900/60 border border-slate-800/80 rounded-xl space-y-2.5">
+                          <label className="block text-[10px] font-semibold text-slate-400">
+                            {t('Add from Reference Library', 'إضافة من المكتبة المرجعية')}
+                          </label>
+                          <div className="flex gap-2">
+                            <select
+                              id="library-paper-picker"
+                              className="flex-1 bg-slate-800/50 border border-slate-700/50 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 outline-none focus:border-indigo-500/50"
+                            >
+                              {availableProjectPapers.map((paper: any) => (
+                                <option key={paper.id} value={paper.id}>
+                                  {paper.title} ({paper.year || 'n.d.'})
+                                </option>
+                              ))}
+                            </select>
+                            <button
+                              onClick={() => {
+                                const selectEl = document.getElementById('library-paper-picker') as HTMLSelectElement;
+                                if (!selectEl) return;
+                                const selectedId = selectEl.value;
+                                const paperToAdd = availableProjectPapers.find(p => p.id === selectedId);
+                                if (paperToAdd) {
+                                  const updatedPapers = [...papersList, paperToAdd];
+                                  updateResearchBlockContent(rb.id, {
+                                    ...rb.content,
+                                    papers: updatedPapers
+                                  });
+                                }
+                              }}
+                              className="px-3.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold transition-colors"
+                            >
+                              + Add
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="p-3 bg-slate-900/30 border border-slate-800/50 border-dashed rounded-xl text-center">
+                          <p className="text-[10px] text-slate-500 italic">
+                            {t('All Reference Library papers are already in this collection.', 'جميع أوراق المكتبة المرجعية موجودة بالفعل في هذه المجموعة.')}
+                          </p>
+                        </div>
+                      )}
+
+                      <div className="space-y-3">
+                        <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider">Papers List</label>
+                        {papersList.length === 0 ? (
+                          <p className="text-xs text-slate-500 italic">No papers collected in this set yet.</p>
+                        ) : (
+                          <div className="space-y-2.5 max-h-[420px] overflow-y-auto pr-1">
+                            {papersList.map((paper: any, idx: number) => {
+                              const docStatus = rb.content?.fileStatus?.[paper.doi || paper.externalId || paper.id] || 'metadata-only';
+                              const paperIdKey = paper.id || paper.doi || paper.externalId;
+                              const isEditing = editingPaperId === paperIdKey;
+
+                              if (isEditing) {
+                                return (
+                                  <div key={idx} className="p-3 bg-slate-900 border border-indigo-500/50 rounded-xl space-y-3">
+                                    <div className="flex justify-between items-center border-b border-slate-800 pb-1.5 mb-1">
+                                      <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider">Edit Reference Metadata</span>
+                                      <button 
+                                        onClick={() => {
+                                          setEditingPaperId(null);
+                                          setEditSearchResults([]);
+                                        }}
+                                        className="text-[10px] text-slate-500 hover:text-slate-350"
+                                      >
+                                        Cancel
+                                      </button>
+                                    </div>
+
+                                    {/* Online Auto-fill search box */}
+                                    <div className="p-2 bg-slate-950 rounded-lg space-y-1.5 border border-slate-850">
+                                      <label className="block text-[8px] text-amber-500 font-bold uppercase tracking-wider">Online Match & Fill</label>
+                                      <div className="flex gap-1.5">
+                                        <input
+                                          type="text"
+                                          placeholder="Search online to match paper..."
+                                          value={editSearchQuery}
+                                          onChange={(e) => setEditSearchQuery(e.target.value)}
+                                          className="flex-1 bg-slate-900 border border-slate-800 rounded px-2 py-0.5 text-xs text-white placeholder:text-slate-650 outline-none focus:border-amber-500/40"
+                                        />
+                                        <button
+                                          type="button"
+                                          disabled={isSearchingEdit}
+                                          onClick={async () => {
+                                            if (!editSearchQuery.trim()) return;
+                                            setIsSearchingEdit(true);
+                                            try {
+                                              const results = await searchAllSources(editSearchQuery, ['openalex', 'semantic_scholar', 'crossref'], 3);
+                                              setEditSearchResults(results);
+                                            } catch (err) {
+                                              console.error('Online match search failed:', err);
+                                            } finally {
+                                              setIsSearchingEdit(false);
+                                            }
+                                          }}
+                                          className="px-2 py-0.5 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded text-[9px] font-bold"
+                                        >
+                                          {isSearchingEdit ? '...' : 'Search'}
+                                        </button>
+                                      </div>
+
+                                      {editSearchResults.length > 0 && (
+                                        <div className="space-y-1.5 max-h-28 overflow-y-auto pt-1.5 border-t border-slate-900">
+                                          {editSearchResults.map((match: any, mIdx: number) => (
+                                            <div key={mIdx} className="flex justify-between items-start gap-1.5 p-1 bg-slate-900/40 rounded text-[9px]">
+                                              <div className="min-w-0 flex-1">
+                                                <p className="text-slate-200 font-medium truncate" title={match.title}>{match.title}</p>
+                                                <p className="text-slate-500 text-[8px]">
+                                                  {formatAuthors(match.authors)} ({match.year || 'N/A'})
+                                                </p>
+                                              </div>
+                                              <button
+                                                type="button"
+                                                onClick={() => {
+                                                  setEditTitle(match.title);
+                                                  setEditAuthors(formatAuthors(match.authors));
+                                                  setEditYear(match.year?.toString() || '');
+                                                  setEditJournal(match.journal || '');
+                                                  setEditDoi(match.doi || '');
+                                                  setEditUrl(match.url || '');
+                                                  setEditSearchResults([]);
+                                                }}
+                                                className="px-1.5 py-0.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded font-bold text-[7px]"
+                                              >
+                                                Match
+                                              </button>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      )}
+                                    </div>
+
+                                    {/* Manual Fields */}
+                                    <div className="space-y-2">
+                                      <div>
+                                        <label className="block text-[8px] text-slate-550 uppercase font-semibold">Title</label>
+                                        <input
+                                          type="text"
+                                          value={editTitle}
+                                          onChange={(e) => setEditTitle(e.target.value)}
+                                          className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1 text-xs text-white outline-none focus:border-indigo-500"
+                                        />
+                                      </div>
+                                      <div>
+                                        <label className="block text-[8px] text-slate-550 uppercase font-semibold">Authors (comma-separated)</label>
+                                        <input
+                                          type="text"
+                                          value={editAuthors}
+                                          onChange={(e) => setEditAuthors(e.target.value)}
+                                          className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1 text-xs text-white outline-none focus:border-indigo-500"
+                                        />
+                                      </div>
+                                      <div className="grid grid-cols-2 gap-2">
+                                        <div>
+                                          <label className="block text-[8px] text-slate-550 uppercase font-semibold">Year</label>
+                                          <input
+                                            type="number"
+                                            value={editYear}
+                                            onChange={(e) => setEditYear(e.target.value)}
+                                            className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1 text-xs text-white outline-none focus:border-indigo-500"
+                                          />
+                                        </div>
+                                        <div>
+                                          <label className="block text-[8px] text-slate-550 uppercase font-semibold">Journal</label>
+                                          <input
+                                            type="text"
+                                            value={editJournal}
+                                            onChange={(e) => setEditJournal(e.target.value)}
+                                            className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1 text-xs text-white outline-none focus:border-indigo-500"
+                                          />
+                                        </div>
+                                      </div>
+                                      <div className="grid grid-cols-2 gap-2">
+                                        <div>
+                                          <label className="block text-[8px] text-slate-550 uppercase font-semibold">DOI</label>
+                                          <input
+                                            type="text"
+                                            value={editDoi}
+                                            onChange={(e) => setEditDoi(e.target.value)}
+                                            className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1 text-xs text-white outline-none focus:border-indigo-500"
+                                          />
+                                        </div>
+                                        <div>
+                                          <label className="block text-[8px] text-slate-550 uppercase font-semibold">URL</label>
+                                          <input
+                                            type="text"
+                                            value={editUrl}
+                                            onChange={(e) => setEditUrl(e.target.value)}
+                                            className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1 text-xs text-white outline-none focus:border-indigo-500"
+                                          />
+                                        </div>
+                                      </div>
+                                    </div>
+
+                                    <div className="flex gap-2 pt-1.5 border-t border-slate-800">
+                                      <button
+                                        type="button"
+                                        onClick={async () => {
+                                          const parsedAuthors = editAuthors.split(',').map(name => ({ name: name.trim() })).filter(a => a.name);
+                                          const yearInt = parseInt(editYear) || new Date().getFullYear();
+                                          
+                                          // Update store literatureItems library
+                                          await updateLiteratureItem(paper.id, {
+                                            title: editTitle.trim(),
+                                            authors: parsedAuthors,
+                                            year: yearInt,
+                                            journal: editJournal.trim() || undefined,
+                                            doi: editDoi.trim() || undefined,
+                                            url: editUrl.trim() || undefined
+                                          });
+
+                                          // Sync block in active document if exists
+                                          const activeDoc = useEditorStore.getState().document;
+                                          if (activeDoc) {
+                                            const paperIdVal = paper.id || paper.externalId || paper.doi;
+                                            const blockToUpdate = useEditorStore.getState().blocks.find(b => b.type === 'REFERENCE' && (b.content?.literatureItemId === paperIdVal || b.content?.literatureItemId === paper.id));
+                                            if (blockToUpdate) {
+                                              const firstAuthorName = parsedAuthors.length > 0 ? (parsedAuthors[0].name.split(' ').pop() || 'Unknown') : 'Unknown';
+                                              const citationKey = `${firstAuthorName}, ${yearInt || 'n.d.'}`;
+                                              const formattedCitation = `${formatAuthors(parsedAuthors)}, "${editTitle.trim()}", ${yearInt || 'n.d.'}.`;
+                                              
+                                              const { updateBlockContent } = useEditorStore.getState();
+                                              updateBlockContent(blockToUpdate.id, {
+                                                ...blockToUpdate.content,
+                                                citationKey,
+                                                formattedCitation
+                                              });
+                                            }
+                                          }
+
+                                          // Update local papers list inside Reference Collection block
+                                          const updatedPaperObj = {
+                                            ...paper,
+                                            title: editTitle.trim(),
+                                            authors: parsedAuthors,
+                                            year: yearInt,
+                                            journal: editJournal.trim() || undefined,
+                                            doi: editDoi.trim() || undefined,
+                                            url: editUrl.trim() || undefined
+                                          };
+                                          const updatedPapers = papersList.map((p: any) => (p.id === paper.id) ? updatedPaperObj : p);
+                                          updateResearchBlockContent(rb.id, {
+                                            ...rb.content,
+                                            papers: updatedPapers
+                                          });
+
+                                          setEditingPaperId(null);
+                                          setEditSearchResults([]);
+                                        }}
+                                        className="flex-1 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded text-[10px] font-bold"
+                                      >
+                                        Save Changes
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setEditingPaperId(null);
+                                          setEditSearchResults([]);
+                                        }}
+                                        className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-400 rounded text-[10px]"
+                                      >
+                                        Cancel
+                                      </button>
+                                    </div>
+                                  </div>
+                                );
+                              }
+
+                              return (
+                                <div key={idx} className="p-3 bg-slate-900/50 border border-slate-800/80 rounded-xl space-y-2 flex flex-col justify-between">
+                                  <div>
+                                    <h4 className="text-xs font-bold text-indigo-200 line-clamp-2">{paper.title}</h4>
+                                    <p className="text-[10px] text-slate-400 mt-1">
+                                      {formatAuthors(paper.authors)} ({paper.year || 'N/A'})
+                                    </p>
+                                    {(paper.doi || paper.id) && (
+                                      <p className="text-[9px] text-slate-500 font-mono mt-0.5">ID/DOI: {paper.doi || paper.id}</p>
+                                    )}
+                                  </div>
+
+                                  <div className="flex items-center justify-between gap-2 pt-1 border-t border-slate-850 mt-1">
+                                    <span className={`text-[9px] font-semibold px-2 py-0.5 rounded-full ${
+                                      docStatus === 'full-text' 
+                                        ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' 
+                                        : docStatus === 'downloading'
+                                        ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20 animate-pulse'
+                                        : 'bg-slate-800 text-slate-400 border border-slate-700/50'
+                                    }`}>
+                                      {docStatus === 'full-text' ? '✓ Full Text' : docStatus === 'downloading' ? 'Downloading...' : 'Metadata Only'}
+                                    </span>
+
+                                    <div className="flex gap-1.5 items-center">
+                                      <button
+                                        onClick={async () => {
+                                          const paperKey = paper.doi || paper.externalId || paper.id;
+                                          if (!paperKey && !paper.url) return;
+                                          const currentStatus = rb.content?.fileStatus || {};
+                                          updateResearchBlockContent(rb.id, {
+                                            ...rb.content,
+                                            fileStatus: { ...currentStatus, [paperKey]: 'downloading' }
+                                          });
+
+                                          try {
+                                            const res = await fetch(`/api/literature/download`, {
+                                              method: 'POST',
+                                              headers: { 'Content-Type': 'application/json' },
+                                              body: JSON.stringify({
+                                                projectId,
+                                                paperId: paperKey,
+                                                doi: paper.doi,
+                                                title: paper.title,
+                                                url: paper.url,
+                                                sciHubCookie,
+                                              })
+                                            });
+                                            if (res.ok) {
+                                              const updatedStatus = rb.content?.fileStatus || {};
+                                              updateResearchBlockContent(rb.id, {
+                                                ...rb.content,
+                                                fileStatus: { ...updatedStatus, [paperKey]: 'full-text' }
+                                              });
+                                            } else {
+                                              throw new Error();
+                                            }
+                                          } catch {
+                                            const updatedStatus = rb.content?.fileStatus || {};
+                                            updateResearchBlockContent(rb.id, {
+                                              ...rb.content,
+                                              fileStatus: { ...updatedStatus, [paperKey]: 'metadata-only' }
+                                            });
+                                          }
+                                        }}
+                                        disabled={docStatus === 'downloading'}
+                                        className="text-[9px] px-2 py-1 rounded bg-indigo-500/10 border border-indigo-500/30 text-indigo-300 hover:bg-indigo-500/20 transition-colors font-semibold"
+                                      >
+                                        ⚡ Get Full Text
+                                      </button>
+                                      
+                                      <button
+                                        onClick={() => {
+                                          setEditingPaperId(paperIdKey);
+                                          setEditTitle(paper.title || '');
+                                          setEditAuthors(formatAuthors(paper.authors));
+                                          setEditYear(paper.year?.toString() || '');
+                                          setEditJournal(paper.journal || '');
+                                          setEditDoi(paper.doi || '');
+                                          setEditUrl(paper.url || '');
+                                          setEditSearchQuery(paper.title || '');
+                                          setEditSearchResults([]);
+                                        }}
+                                        className="text-[9px] px-2 py-1 rounded bg-amber-500/10 border border-amber-500/30 text-amber-400 hover:bg-amber-500/20 transition-colors font-semibold"
+                                      >
+                                        ✏️ Edit
+                                      </button>
+
+                                      <button
+                                        onClick={async () => {
+                                          // Sync to document: Delete REFERENCE block if exists
+                                          const paperIdVal = paper.id || paper.externalId || paper.doi;
+                                          const blockToDelete = useEditorStore.getState().blocks.find(b => b.type === 'REFERENCE' && (b.content?.literatureItemId === paperIdVal || b.content?.literatureItemId === paper.id));
+                                          if (blockToDelete) {
+                                            useEditorStore.setState(state => ({
+                                              blocks: state.blocks.filter(b => b.id !== blockToDelete.id)
+                                            }));
+                                            try {
+                                              await client.models.ScholarBlock.delete({ id: blockToDelete.id });
+                                            } catch (err) {
+                                              console.error('Failed to delete block from database:', err);
+                                            }
+                                          }
+
+                                          const updatedPapers = papersList.filter((p: any) => (p.doi || p.externalId || p.id) !== (paper.doi || paper.externalId || paper.id));
+                                          updateResearchBlockContent(rb.id, {
+                                            ...rb.content,
+                                            papers: updatedPapers
+                                          });
+                                        }}
+                                        className="text-[9px] px-2 py-1 rounded bg-rose-500/10 border border-rose-500/30 text-rose-400 hover:bg-rose-500/20 transition-colors font-semibold"
+                                      >
+                                        ❌ Remove
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
                     </div>
+                  );
+                })()}
+
+                {rb.type === 'workflow-pipeline' && (
+                  <div className="space-y-4">
+                    <div className="p-3 bg-slate-800/40 border border-slate-700/30 rounded-lg">
+                      <label className="block text-xs font-semibold text-slate-400 mb-1">Pipeline Version</label>
+                      <select
+                        value={rb.content?.pipelineVersion || 'V3'}
+                        onChange={(e) => updateResearchBlockContent(rb.id, { ...rb.content, pipelineVersion: e.target.value })}
+                        className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1.5 text-xs text-slate-200 outline-none"
+                      >
+                        <option value="V1">V1: Standard Linear Truncation</option>
+                        <option value="V3">V3: Smart Section-Aware Extraction</option>
+                      </select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="block text-xs font-semibold text-slate-400">Search Query</label>
+                      <input
+                        type="text"
+                        value={rb.content?.inputs?.query || ''}
+                        onChange={(e) => updateResearchBlockContent(rb.id, {
+                          ...rb.content,
+                          inputs: { ...(rb.content?.inputs || {}), query: e.target.value }
+                        })}
+                        placeholder="e.g. Sub-hourly battery ramping anomalies"
+                        className="w-full bg-slate-800/50 border border-slate-700/50 rounded px-3 py-1.5 text-xs text-slate-205 outline-none"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="block text-xs font-semibold text-slate-400">Extraction Criteria (JSON)</label>
+                      <textarea
+                        value={rb.content?.inputs?.criteriaJson || '{}'}
+                        onChange={(e) => updateResearchBlockContent(rb.id, {
+                          ...rb.content,
+                          inputs: { ...(rb.content?.inputs || {}), criteriaJson: e.target.value }
+                        })}
+                        className="w-full h-24 bg-slate-800/50 border border-slate-700/50 rounded px-3 py-2 text-xs text-slate-200 outline-none font-mono"
+                      />
+                    </div>
+
+                    {rb.content?.outputs?.extractedPapers && (
+                      <div className="space-y-3 pt-3 border-t border-slate-800">
+                        <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider">Audit Trail (Extracted Papers)</h4>
+                        {rb.content.outputs.extractedPapers.map((paper: any, idx: number) => (
+                          <div key={idx} className="p-3 bg-slate-850/50 border border-slate-750/30 rounded-lg space-y-2">
+                            <div className="flex justify-between text-xs font-bold text-indigo-300">
+                              <span className="truncate max-w-[350px]">{paper.title}</span>
+                              <span className="text-emerald-400">{Math.round(paper.confidence_score * 100)}%</span>
+                            </div>
+                            <p className="text-[10px] text-slate-400">Authors: {paper.authors} ({paper.year})</p>
+                            <div className="p-2 bg-slate-900/60 rounded border-l-2 border-indigo-500 italic text-[10px] text-slate-350">
+                              "{paper.verbatim_quote}"
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {rb.type === 'statistical-analysis' && (
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <label className="block text-xs font-semibold text-slate-400">Python Analysis Script</label>
+                      <textarea
+                        value={rb.content?.codeSource || ''}
+                        onChange={(e) => updateResearchBlockContent(rb.id, { ...rb.content, codeSource: e.target.value })}
+                        className="w-full h-64 bg-slate-800/50 border border-slate-700/50 rounded px-3 py-2 text-xs text-slate-200 outline-none font-mono"
+                      />
+                    </div>
+
+                    {rb.content?.status === 'success' && (
+                      <div className="space-y-2 pt-3 border-t border-slate-800">
+                        <label className="block text-xs font-semibold text-slate-400 uppercase">Analysis Output Summary</label>
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                          <div className="p-3 bg-slate-800/60 rounded border border-slate-700/55">
+                            <div className="text-slate-500">Mean Confidence</div>
+                            <div className="text-base font-bold text-cyan-400">92%</div>
+                          </div>
+                          <div className="p-3 bg-slate-800/60 rounded border border-slate-700/55">
+                            <div className="text-slate-500">Violations Detected</div>
+                            <div className="text-base font-bold text-amber-400">YES</div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {rb.type === 'simulation-engine' && (
+                  <div className="space-y-4">
+                    <div className="p-3 bg-slate-800/40 border border-slate-700/30 rounded-lg space-y-3">
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-400 mb-1">Asset Configuration Profile</label>
+                        <select
+                          value={rb.content?.parameters?.assetConfig || 'BESS'}
+                          onChange={(e) => updateResearchBlockContent(rb.id, {
+                            ...rb.content,
+                            parameters: { ...(rb.content?.parameters || {}), assetConfig: e.target.value }
+                          })}
+                          className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1.5 text-xs text-slate-200 outline-none"
+                        >
+                          <option value="BESS">BESS (Battery Energy Storage System)</option>
+                          <option value="Solar PV">Solar Photovoltaic</option>
+                          <option value="Wind Turbine">Wind Turbine Power Curve</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-400 mb-1">
+                          Timescale Step Resolution: {rb.content?.parameters?.timescale || 1} min
+                        </label>
+                        <input
+                          type="range"
+                          min="1"
+                          max="60"
+                          value={rb.content?.parameters?.timescale || 1}
+                          onChange={(e) => updateResearchBlockContent(rb.id, {
+                            ...rb.content,
+                            parameters: { ...(rb.content?.parameters || {}), timescale: parseInt(e.target.value) }
+                          })}
+                          className="w-full accent-amber-500"
+                        />
+                      </div>
+                    </div>
+
+                    {rb.content?.status === 'success' && rb.content?.trajectoryPoints && (
+                      <div className="space-y-3 pt-3 border-t border-slate-800">
+                        <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider">
+                          Snapshot vs Trajectory Verification (State of Charge %)
+                        </h4>
+                        
+                        <div className="p-2 bg-slate-950 rounded-lg border border-slate-800">
+                          <svg viewBox="0 0 100 40" className="w-full h-32 overflow-visible">
+                            <line x1="0" y1="20" x2="100" y2="20" stroke="#334155" strokeWidth="0.5" strokeDasharray="2,2" />
+                            <line x1="0" y1="10" x2="100" y2="10" stroke="#334155" strokeWidth="0.5" strokeDasharray="2,2" />
+                            <line x1="0" y1="30" x2="100" y2="30" stroke="#334155" strokeWidth="0.5" strokeDasharray="2,2" />
+                            
+                            <line x1="0" y1="20" x2="100" y2="20" stroke="#94a3b8" strokeWidth="1" strokeDasharray="3,3" />
+                            
+                            <polyline
+                              fill="none"
+                              stroke="#f59e0b"
+                              strokeWidth="1.2"
+                              points={rb.content.trajectoryPoints.map((p: any, i: number) => {
+                                const x = (i / rb.content.trajectoryPoints.length) * 100;
+                                const y = 38 - ((p.trajectorySoC) / 100) * 36;
+                                return `${x},${y}`;
+                              }).join(' ')}
+                            />
+                          </svg>
+                          <div className="flex justify-between text-[9px] text-slate-500 mt-1 font-mono">
+                            <span>0 min</span>
+                            <span>30 min</span>
+                            <span>60 min</span>
+                          </div>
+                        </div>
+
+                        <div className="p-3 bg-slate-900/60 rounded border border-slate-800 space-y-1 text-xs">
+                          <div className="flex justify-between">
+                            <span className="text-slate-400">Coarse Snapshot SoC:</span>
+                            <span className="font-mono text-slate-350">50% constant</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-slate-400">Implicit Temporal Assumption Deviation:</span>
+                            <span className="font-mono text-amber-500 font-bold">+{rb.content.snapshotDelta}% Anomaly</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {rb.type === 'processing-pipeline' && (
+                  <div className="space-y-4">
+                    <p className="text-xs text-slate-400">
+                      Deduplicate papers and extract full text from PDFs. Make sure you connect a Search or reference collection node to the input of this node.
+                    </p>
+
+                    <div className="p-3 bg-slate-800/40 border border-slate-700/30 rounded-lg space-y-2">
+                      <div className="flex justify-between text-xs text-slate-300">
+                        <span>Status:</span>
+                        <span className="font-bold uppercase text-cyan-400">{rb.content?.status || 'idle'}</span>
+                      </div>
+                      <div className="flex justify-between text-xs text-slate-300">
+                        <span>Total Papers found:</span>
+                        <span className="font-mono text-slate-200">{rb.content?.totalPapers || 0}</span>
+                      </div>
+                      <div className="flex justify-between text-xs text-slate-300">
+                        <span>Duplicates Removed:</span>
+                        <span className="font-mono text-amber-400">{rb.content?.duplicatesRemoved || 0}</span>
+                      </div>
+                      <div className="flex justify-between text-xs text-slate-300">
+                        <span>Texts Extracted:</span>
+                        <span className="font-mono text-emerald-400">{rb.content?.textsExtracted || 0}</span>
+                      </div>
+                    </div>
+
+                    {rb.content?.errorMessage && (
+                      <div className="p-3 bg-red-950/40 border border-red-800/30 rounded-lg text-xs text-red-300">
+                        {rb.content.errorMessage}
+                      </div>
+                    )}
+
+                    <button
+                      onClick={async () => {
+                        const node = nodes.find(n => n.id === `research-${rb.id}`);
+                        if (node && node.data?.onProcess) {
+                          (node.data.onProcess as any)();
+                        }
+                      }}
+                      disabled={rb.content?.status === 'processing'}
+                      className="w-full py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white font-semibold text-xs transition-colors"
+                    >
+                      {rb.content?.status === 'processing' ? 'Processing...' : 'Run Pipeline'}
+                    </button>
+                  </div>
+                )}
+
+                {rb.type === 'llm-analysis' && (
+                  <div className="space-y-4">
+                    <p className="text-xs text-slate-400">
+                      Define your research classification or synthesis task. This node will run Gemini on the extracted text of all connected papers.
+                    </p>
+
+                    <div className="space-y-2">
+                      <label className="block text-xs font-semibold text-slate-400">Analysis Prompt</label>
+                      <textarea
+                        value={rb.content?.prompt || ''}
+                        onChange={(e) => updateResearchBlockContent(rb.id, { ...rb.content, prompt: e.target.value })}
+                        placeholder="e.g. Classify each paper by its primary cyber security methodology, extract a quote supporting this, and give a confidence rating."
+                        className="w-full h-36 bg-slate-800/50 border border-slate-700/50 rounded-lg px-3 py-2 text-xs text-slate-200 outline-none focus:border-violet-500/50 resize-none font-mono"
+                      />
+                    </div>
+
+                    <div className="p-3 bg-slate-800/40 border border-slate-700/30 rounded-lg space-y-2">
+                      <div className="flex justify-between text-xs text-slate-300">
+                        <span>Status:</span>
+                        <span className="font-bold uppercase text-violet-400">{rb.content?.status || 'idle'}</span>
+                      </div>
+                      <div className="flex justify-between text-xs text-slate-300">
+                        <span>Papers Count:</span>
+                        <span className="font-mono text-slate-200">{rb.content?.papersCount || 0}</span>
+                      </div>
+                    </div>
+
+                    {rb.content?.resultSummary && (
+                      <div className="p-3 bg-slate-850/50 border border-slate-800/50 rounded-lg space-y-1">
+                        <label className="block text-[10px] uppercase font-bold text-violet-400">Synthesis Summary</label>
+                        <p className="text-xs text-slate-300 leading-relaxed italic">"{rb.content.resultSummary}"</p>
+                      </div>
+                    )}
+
+                    {rb.content?.errorMessage && (
+                      <div className="p-3 bg-red-950/40 border border-red-800/30 rounded-lg text-xs text-red-300">
+                        {rb.content.errorMessage}
+                      </div>
+                    )}
+
+                    <button
+                      onClick={async () => {
+                        const node = nodes.find(n => n.id === `research-${rb.id}`);
+                        if (node && node.data?.onAnalyze) {
+                          (node.data.onAnalyze as any)();
+                        }
+                      }}
+                      disabled={rb.content?.status === 'analyzing'}
+                      className="w-full py-2 rounded-lg bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-white font-semibold text-xs transition-colors"
+                    >
+                      {rb.content?.status === 'analyzing' ? 'Analyzing...' : 'Run Analysis'}
+                    </button>
+                  </div>
+                )}
+
+                {rb.type === 'results-table' && (
+                  <div className="space-y-4">
+                    <p className="text-xs text-slate-400">
+                      Renders the final structured methodology and quote comparison table generated by LLM analysis.
+                    </p>
+
+                    {rb.content?.columns && rb.content?.rows && rb.content.rows.length > 0 ? (
+                      <div className="space-y-4">
+                        <div className="overflow-x-auto rounded-lg border border-slate-800/80 max-h-96">
+                          <table className="w-full text-xs text-left">
+                            <thead>
+                              <tr className="bg-slate-850 text-teal-400 border-b border-slate-800">
+                                {rb.content.columns.map((col: string, i: number) => (
+                                  <th key={i} className="px-3 py-2 font-bold whitespace-nowrap">{col}</th>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {rb.content.rows.map((row: any, i: number) => (
+                                <tr key={i} className="border-b border-slate-850 bg-slate-900/40 hover:bg-slate-850/30">
+                                  {rb.content.columns.map((col: string, j: number) => {
+                                    const val = row[col];
+                                    const displayVal = typeof val === 'object' && val !== null 
+                                      ? JSON.stringify(val) 
+                                      : String(val || '');
+                                    return (
+                                      <td key={j} className="px-3 py-2 max-w-[200px] truncate" title={displayVal}>
+                                        {displayVal || '—'}
+                                      </td>
+                                    );
+                                  })}
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+
+                        {rb.content?.summary && (
+                          <div className="p-3 bg-slate-800/20 border border-slate-800 rounded-lg">
+                            <h4 className="text-[10px] font-bold text-teal-400 uppercase tracking-wide mb-1">Executive Summary</h4>
+                            <p className="text-xs text-slate-300 leading-relaxed">{rb.content.summary}</p>
+                          </div>
+                        )}
+
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => {
+                              const node = nodes.find(n => n.id === `research-${rb.id}`);
+                              if (node && node.data?.onExportCsv) (node.data.onExportCsv as any)();
+                            }}
+                            className="flex-1 py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-teal-300 border border-slate-700/50 text-xs font-semibold"
+                          >
+                            📥 Export CSV
+                          </button>
+                          <button
+                            onClick={() => {
+                              const node = nodes.find(n => n.id === `research-${rb.id}`);
+                              if (node && node.data?.onExportMarkdown) (node.data.onExportMarkdown as any)();
+                            }}
+                            className="flex-1 py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-teal-300 border border-slate-700/50 text-xs font-semibold"
+                          >
+                            📄 Export Markdown
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="p-8 text-center text-xs text-slate-500 italic bg-slate-950/20 border border-dashed border-slate-800 rounded-xl">
+                        Awaiting data. Connect and run an LLM Analysis node.
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -986,6 +2514,7 @@ export function ProjectCanvas({ projectId }: { projectId: string }) {
         onPaneContextMenu={onPaneContextMenu}
         onNodeContextMenu={onNodeContextMenu}
         onMoveStart={() => setContextMenu(null)}
+        onNodeDragStop={onNodeDragStop}
         nodeTypes={nodeTypes}
         fitView
         className="bg-slate-950"
@@ -1054,47 +2583,71 @@ export function ProjectCanvas({ projectId }: { projectId: string }) {
             const isSec = nodeId.startsWith('section-');
             const isRes = nodeId.startsWith('research-');
 
+            let isReferences = false;
+            let referencesHidden = !!activeDocument?.metadata?.referencesHidden;
+            if (isSec) {
+              const sectionId = nodeId.replace('section-', '');
+              const headingBlock = blocks.find(b => b.id === sectionId);
+              isReferences = headingBlock?.content?.text?.trim().toLowerCase() === 'references';
+            }
+
             return (
               <div className="space-y-1">
-                {/* Delete option */}
-                <button
-                  onClick={() => {
-                    setContextMenu(null);
-                    if (isDoc) {
-                      const docId = nodeId.replace('document-', '');
-                      if (confirm(t('Are you sure you want to delete this document?', 'هل أنت متأكد من حذف هذا المستند؟'))) {
-                        deleteProjectDocument(docId);
+                {isReferences ? (
+                  <button
+                    onClick={() => {
+                      setContextMenu(null);
+                      useEditorStore.getState().toggleReferencesVisibility();
+                    }}
+                    className="w-full text-left px-3 py-1.5 text-xs text-amber-400 hover:bg-slate-800 rounded font-medium flex items-center gap-1.5 transition-colors cursor-pointer"
+                  >
+                    <span>{referencesHidden ? '👁️' : '👁️‍🗨️'}</span>
+                    <span>
+                      {referencesHidden
+                        ? t('Show References Section', 'إظهار قسم المراجع')
+                        : t('Hide References Section', 'إخفاء قسم المراجع')}
+                    </span>
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => {
+                      setContextMenu(null);
+                      if (isDoc) {
+                        const docId = nodeId.replace('document-', '');
+                        if (confirm(t('Are you sure you want to delete this document?', 'هل أنت متأكد من حذف هذا المستند؟'))) {
+                          deleteProjectDocument(docId);
+                        }
+                      } else if (isSec) {
+                        const sectionId = nodeId.replace('section-', '');
+                        const headingBlock = blocks.find(b => b.id === sectionId);
+                        if (confirm(t(`Are you sure you want to delete the section "${headingBlock?.content?.text || 'Section'}"?`, `هل أنت متأكد من حذف القسم "${headingBlock?.content?.text || 'قسم'}"؟`))) {
+                          (async () => {
+                            await useEditorStore.getState().deleteBlock(sectionId);
+                            setEdges(eds => {
+                              const nextEds = eds.filter(e => e.source !== nodeId && e.target !== nodeId);
+                              if (masterDoc) {
+                                const newChain = traceSectionChain(nextEds);
+                                updateDocumentSections(masterDoc.id, newChain);
+                              }
+                              return nextEds;
+                            });
+                          })();
+                        }
+                      } else if (isRes) {
+                        const rbId = nodeId.replace('research-', '');
+                        const rb = researchBlocks.find(b => b.id === rbId);
+                        if (confirm(t(`Are you sure you want to delete the research block "${rb?.title || 'Block'}"?`, `هل أنت متأكد من حذف الكتلة البحثية "${rb?.title || 'كتلة'}"؟`))) {
+                          deleteResearchBlock(rbId);
+                          setSelectedNodeId(null);
+                        }
                       }
-                    } else if (isSec) {
-                      const sectionId = nodeId.replace('section-', '');
-                      const headingBlock = blocks.find(b => b.id === sectionId);
-                      if (confirm(t(`Are you sure you want to delete the section "${headingBlock?.content?.text || 'Section'}"?`, `هل أنت متأكد من حذف القسم "${headingBlock?.content?.text || 'قسم'}"؟`))) {
-                        (async () => {
-                          await useEditorStore.getState().deleteBlock(sectionId);
-                          setEdges(eds => {
-                            const nextEds = eds.filter(e => e.source !== nodeId && e.target !== nodeId);
-                            if (masterDoc) {
-                              const newChain = traceSectionChain(nextEds);
-                              updateDocumentSections(masterDoc.id, newChain);
-                            }
-                            return nextEds;
-                          });
-                        })();
-                      }
-                    } else if (isRes) {
-                      const rbId = nodeId.replace('research-', '');
-                      const rb = researchBlocks.find(b => b.id === rbId);
-                      if (confirm(t(`Are you sure you want to delete the research block "${rb?.title || 'Block'}"?`, `هل أنت متأكد من حذف الكتلة البحثية "${rb?.title || 'كتلة'}"؟`))) {
-                        deleteResearchBlock(rbId);
-                        setSelectedNodeId(null);
-                      }
-                    }
-                  }}
-                  className="w-full text-left px-3.5 py-2 rounded-lg hover:bg-red-650 hover:text-white transition-colors flex items-center gap-2.5 font-medium"
-                >
-                  <span>🗑️</span>
-                  <span>{t('Delete Node', 'حذف العقدة')}</span>
-                </button>
+                    }}
+                    className="w-full text-left px-3 py-1.5 text-xs text-rose-400 hover:bg-rose-950/30 rounded font-medium flex items-center gap-1.5 transition-colors cursor-pointer"
+                  >
+                    <span>🗑️</span>
+                    <span>{t('Delete', 'حذف')}</span>
+                  </button>
+                )}
 
                 {/* Disconnect option (only for sections) */}
                 {isSec && (
@@ -1228,10 +2781,17 @@ export function ProjectCanvas({ projectId }: { projectId: string }) {
                   className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3.5 py-2 text-sm text-white outline-none focus:border-indigo-500"
                 >
                   <option value="notes">💡 Free-form Notes</option>
-                  <option value="reference-collection">📚 Reference Collection</option>
-                  <option value="literature-survey">📝 Literature Survey</option>
+                  <option value="reference-collection">📁 Reference Collection (Curated subset)</option>
+                  <option value="literature-search">🔍 Literature Search Desk (Database Search)</option>
+                  <option value="literature-survey">📝 (Legacy) Literature Survey Desk</option>
                   <option value="dataset">📊 Dataset</option>
                   <option value="analysis-result">🧮 Analysis Result</option>
+                  <option value="workflow-pipeline">⚙️ Workflow Pipeline</option>
+                  <option value="statistical-analysis">🧮 Statistical Analysis</option>
+                  <option value="simulation-engine">⚡ Simulation Engine</option>
+                  <option value="processing-pipeline">🔄 Processing Pipeline</option>
+                  <option value="llm-analysis">🤖 LLM Analysis</option>
+                  <option value="results-table">📋 Results Table</option>
                 </select>
               </div>
               <div>

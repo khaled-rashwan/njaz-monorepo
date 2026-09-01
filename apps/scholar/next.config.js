@@ -1,5 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+    experimental: {
+        serverComponentsExternalPackages: ['pdf-parse', 'pdfjs-dist'],
+    },
     transpilePackages: ['@njaz/ui-components', '@njaz/shared-auth', 'aws-amplify', '@aws-amplify'],
     images: {
         domains: ['localhost'],

@@ -29,7 +29,7 @@ export function HeadingBlock({ block, isFocused, onContentChange, onFocus }: Blo
     const content = (block.content || { text: '', level: 2 }) as HeadingContent;
     const lastTextRef = useRef(content.text || '');
 
-    const { language } = useLanguage();
+    const { language, t } = useLanguage();
     const blocks = useEditorStore((state) => state.blocks);
     const focusBlock = useEditorStore((state) => state.focusBlock);
     const counterMap = buildCounterMap(blocks);
@@ -37,6 +37,12 @@ export function HeadingBlock({ block, isFocused, onContentChange, onFocus }: Blo
     const headingStyles = useEditorStore((state) => state.document?.metadata?.headingStyles) || {};
     const headingNumbers = calculateHeadingNumbers(blocks, headingStyles);
     const headingNumber = headingNumbers.get(block.id);
+
+    const isReferencesHeading = content.level === 1 && (content.text || '').trim().toLowerCase() === 'references';
+    const referencesHidden = useEditorStore((state) => !!state.document?.metadata?.referencesHidden);
+    const literatureItems = useEditorStore((state) => state.literatureItems);
+    const refBlocks = blocks.filter(b => b.type === 'REFERENCE');
+    const sortedRefBlocks = [...refBlocks].sort((a, b) => a.orderIndex - b.orderIndex);
 
     // Keep DOM in sync with external changes, but avoid resetting while typing
     useEffect(() => {
@@ -135,43 +141,102 @@ export function HeadingBlock({ block, isFocused, onContentChange, onFocus }: Blo
             )}
 
             {/* Heading text & numbering */}
-            <div className="flex-1 flex items-baseline gap-2 min-w-0">
-                {headingNumber && (
-                    <span className={`text-amber-500 font-semibold select-none flex-shrink-0 ${HEADING_STYLES[content.level] || HEADING_STYLES[2]}`}>
-                        {headingNumber}
-                    </span>
-                )}
-                {isFocused ? (
-                    <div
-                        key="edit"
-                        ref={editorRef}
-                        contentEditable
-                        suppressContentEditableWarning
-                        onInput={handleInput}
-                        onFocus={onFocus}
-                        dir="auto"
-                        className={`
-                            flex-1 outline-none text-white py-1 rounded transition-colors
-                            ${HEADING_STYLES[content.level] || HEADING_STYLES[2]}
-                            empty:before:content-[attr(data-placeholder)] empty:before:text-slate-600
-                            empty:before:font-normal
-                        `}
-                        data-placeholder={`Heading ${content.level}`}
-                    />
-                ) : (
-                    <div
-                        key="preview"
-                        onClick={onFocus}
-                        dir="auto"
-                        className={`
-                            flex-1 outline-none text-white py-1 rounded transition-colors cursor-text
-                            ${HEADING_STYLES[content.level] || HEADING_STYLES[2]}
-                        `}
-                    >
-                        {content.text ? renderContent(content.text) : (
-                            <span className="text-slate-600 italic select-none">
-                                Heading {content.level}
-                            </span>
+            <div className="flex-1 flex flex-col min-w-0">
+                <div className="flex items-baseline gap-2 min-w-0">
+                    {headingNumber && (
+                        <span className={`text-amber-500 font-semibold select-none flex-shrink-0 ${HEADING_STYLES[content.level] || HEADING_STYLES[2]}`}>
+                            {headingNumber}
+                        </span>
+                    )}
+                    {isFocused ? (
+                        <div
+                            key="edit"
+                            ref={editorRef}
+                            contentEditable
+                            suppressContentEditableWarning
+                            onInput={handleInput}
+                            onFocus={onFocus}
+                            dir="auto"
+                            className={`
+                                flex-1 outline-none text-white py-1 rounded transition-colors
+                                ${HEADING_STYLES[content.level] || HEADING_STYLES[2]}
+                                empty:before:content-[attr(data-placeholder)] empty:before:text-slate-600
+                                empty:before:font-normal
+                            `}
+                            data-placeholder={`Heading ${content.level}`}
+                        />
+                    ) : (
+                        <div
+                            key="preview"
+                            onClick={onFocus}
+                            dir="auto"
+                            className={`
+                                flex-1 outline-none text-white py-1 rounded transition-colors cursor-text
+                                ${HEADING_STYLES[content.level] || HEADING_STYLES[2]}
+                            `}
+                        >
+                            {content.text ? renderContent(content.text) : (
+                                <span className="text-slate-600 italic select-none">
+                                    Heading {content.level}
+                                </span>
+                            )}
+                        </div>
+                    )}
+                </div>
+
+                {isReferencesHeading && (
+                    <div className="mt-4 pl-4 space-y-2 border-l-2 border-slate-800">
+                        {referencesHidden ? (
+                            <div className="text-xs text-slate-500 italic flex items-center gap-1.5 py-1">
+                                <span>👁️‍🗨️</span>
+                                <span>{t('(References list is hidden)', '(قائمة المراجع مخفية)')}</span>
+                            </div>
+                        ) : (
+                            <>
+                                {sortedRefBlocks.map((refBlock, idx) => {
+                                    const linkedItem = literatureItems.find(item => item.id === refBlock.content?.literatureItemId);
+                                    if (!linkedItem) return null;
+                                    let authorsList: any[] = [];
+                                    const rawAuthors = linkedItem.authors;
+                                    if (typeof rawAuthors === 'string') {
+                                        try { authorsList = JSON.parse(rawAuthors); } catch { authorsList = []; }
+                                    } else if (Array.isArray(rawAuthors)) {
+                                        authorsList = rawAuthors;
+                                    }
+
+                                    const formattedAuthors = (() => {
+                                        const names = authorsList
+                                            .map(a => {
+                                                if (typeof a === 'string') return a.trim();
+                                                if (a && typeof a === 'object') return (a.name || '').trim();
+                                                return '';
+                                            })
+                                            .filter(name => name && name.toLowerCase() !== 'unknown' && name.toLowerCase() !== 'unknown author');
+                                        if (names.length === 0) return 'Unknown Author';
+                                        return names.join(', ');
+                                    })();
+
+                                    return (
+                                        <div key={refBlock.id} className="flex items-start gap-2.5 text-xs text-slate-400">
+                                            <span className="font-mono font-bold text-slate-500 w-6 flex-shrink-0 text-right">
+                                                [{idx + 1}]
+                                            </span>
+                                            <div className="flex-1">
+                                                <span>{formattedAuthors}, </span>
+                                                <span className="font-semibold text-slate-350">"{linkedItem.title}"</span>
+                                                {linkedItem.journal && <span>, {linkedItem.journal}</span>}
+                                                {linkedItem.year && <span> ({linkedItem.year})</span>}
+                                                <span>.</span>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                                {sortedRefBlocks.length === 0 && (
+                                    <div className="text-xs text-slate-600 italic py-1">
+                                        {t('No references cited yet.', 'لا توجد مراجع مقتبسة بعد.')}
+                                    </div>
+                                )}
+                            </>
                         )}
                     </div>
                 )}

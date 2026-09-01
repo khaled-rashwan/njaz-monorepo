@@ -15,7 +15,7 @@ export type BlockType =
 
 export type DocumentStatus = 'draft' | 'review' | 'published';
 
-export type LiteratureSource = 'openalex' | 'semantic_scholar' | 'crossref' | 'isbn_books' | 'manual';
+export type LiteratureSource = 'openalex' | 'semantic_scholar' | 'crossref' | 'isbn_books' | 'ieee_xplore' | 'figshare' | 'manual';
 
 export type ExecutionStatus = 'pending' | 'running' | 'completed' | 'failed' | 'timeout';
 
@@ -232,7 +232,14 @@ export type ResearchBlockType =
     | 'literature-survey'
     | 'dataset'
     | 'analysis-result'
-    | 'notes';
+    | 'notes'
+    | 'workflow-pipeline'
+    | 'statistical-analysis'
+    | 'simulation-engine'
+    | 'literature-search'
+    | 'processing-pipeline'
+    | 'llm-analysis'
+    | 'results-table';
 
 export interface CanvasSourceMetadata {
     blockId: string;
@@ -248,6 +255,35 @@ export interface ResearchBlockData {
     content: any;
     projectId: string;
     createdAt?: string;
+}
+
+export interface WorkflowPipelineNodeData {
+    pipelineVersion: 'V1' | 'V3';
+    status: 'idle' | 'queued' | 'extracting' | 'success' | 'failed';
+    inputs?: { query?: string; corpusId?: string; criteriaJson?: string };
+    outputs?: { masterCsvPath?: string; confidenceAverage?: number; extractedPapers?: any[] };
+    errorLogs?: string;
+}
+
+export interface StatisticalAnalysisNodeData {
+    schema?: Record<string, string>;
+    datasetPath?: string;
+    resultCsvPath?: string;
+    codeSource?: string;
+    status?: 'idle' | 'running' | 'success' | 'failed';
+    result?: any;
+}
+
+export interface SimulationNodeData {
+    status?: 'idle' | 'running' | 'success' | 'failed';
+    trajectoryDataS3Key?: string;
+    snapshotDelta?: number;
+    averageDelta?: number;
+    trajectoryPoints?: any[];
+    parameters?: {
+        timescale?: number;
+        assetConfig?: string;
+    };
 }
 
 export interface CanvasLayout {

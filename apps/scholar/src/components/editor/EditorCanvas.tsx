@@ -75,7 +75,7 @@ export function EditorCanvas() {
     };
 
     const filteredBlocks = filterBlocksForDocument(blocks, document);
-    const sortedBlocks = sortByOrder(filteredBlocks);
+    const sortedBlocks = sortByOrder(filteredBlocks).filter(b => b.type !== 'REFERENCE');
 
     if (!document) return null;
 

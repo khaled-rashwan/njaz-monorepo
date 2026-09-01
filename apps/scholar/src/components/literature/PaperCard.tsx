@@ -14,6 +14,9 @@ const SOURCE_BADGES: Record<string, { label: string; color: string }> = {
     openalex: { label: 'OpenAlex', color: 'text-orange-400 bg-orange-500/10 border-orange-500/20' },
     semantic_scholar: { label: 'S2', color: 'text-blue-400 bg-blue-500/10 border-blue-500/20' },
     crossref: { label: 'CrossRef', color: 'text-green-400 bg-green-500/10 border-green-500/20' },
+    ieee_xplore: { label: 'IEEE Xplore', color: 'text-amber-400 bg-amber-500/10 border-amber-500/20' },
+    isbn_books: { label: 'Books', color: 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20' },
+    figshare: { label: 'Figshare', color: 'text-pink-400 bg-pink-500/10 border-pink-500/20' },
     manual: { label: 'Manual', color: 'text-slate-400 bg-slate-500/10 border-slate-500/20' },
 };
 

@@ -176,4 +176,49 @@ export const scholarSchema = {
             allow.groups(['admins']),
             allow.groups(['scholar-access']),
         ]),
+
+    ScholarWorkflowJob: a
+        .model({
+            projectId: a.id().required(),
+            pipelineVersion: a.string().required(),
+            status: a.enum(['idle', 'queued', 'running', 'completed', 'failed']),
+            inputs: a.json(),
+            outputs: a.json(),
+            errorLogs: a.string(),
+        })
+        .authorization((allow) => [
+            allow.owner(),
+            allow.groups(['admins']),
+            allow.groups(['scholar-access']),
+        ]),
+
+    ScholarAnalysisArtifact: a
+        .model({
+            projectId: a.id().required(),
+            name: a.string().required(),
+            description: a.string(),
+            s3Key: a.string().required(),
+            format: a.string().required(),
+            metadata: a.json(),
+        })
+        .authorization((allow) => [
+            allow.owner(),
+            allow.groups(['admins']),
+            allow.groups(['scholar-access']),
+        ]),
+
+    ScholarSimulationTrajectory: a
+        .model({
+            projectId: a.id().required(),
+            name: a.string().required(),
+            snapshotDelta: a.float(),
+            trajectoryDataS3Key: a.string(),
+            parameters: a.json(),
+            metadata: a.json(),
+        })
+        .authorization((allow) => [
+            allow.owner(),
+            allow.groups(['admins']),
+            allow.groups(['scholar-access']),
+        ]),
 };

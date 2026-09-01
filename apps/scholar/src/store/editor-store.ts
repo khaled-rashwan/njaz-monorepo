@@ -36,6 +36,7 @@ interface EditorState {
     updateDocumentAbstract: (abstract: string) => void;
     updateDocumentKeywords: (keywords: string) => void;
     toggleHeadingNumbering: () => void;
+    toggleReferencesVisibility: () => Promise<void>;
     setHeadingStyle: (style: 'none' | 'ordered' | 'unordered') => void;
     setHeadingLevelStyle: (level: number, style: string) => void;
 
@@ -54,6 +55,7 @@ interface EditorState {
     addLiteratureItem: (item: Omit<ScholarLiteratureItem, 'owner' | 'createdAt' | 'updatedAt' | 'id'> & { id?: string }) => Promise<string>;
     addLiteratureItemsBulk: (items: (Omit<ScholarLiteratureItem, 'owner' | 'createdAt' | 'updatedAt' | 'id'> & { id?: string })[]) => Promise<string[]>;
     removeLiteratureItem: (itemId: string) => Promise<void>;
+    updateLiteratureItem: (itemId: string, updates: Partial<Omit<ScholarLiteratureItem, 'id' | 'owner' | 'createdAt' | 'updatedAt'>>) => Promise<void>;
     loadLiteratureItems: (projectId: string) => Promise<void>;
 
     // Actions — Figures
@@ -618,6 +620,26 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         }
     },
 
+    toggleReferencesVisibility: async () => {
+        const { document, saveDocument } = get();
+        if (!document) return;
+        const currentMeta = document.metadata || {};
+        const isHidden = !(currentMeta as any).referencesHidden;
+        const updatedMeta = {
+            ...(currentMeta as any),
+            referencesHidden: isHidden
+        };
+        
+        set({
+            document: {
+                ...document,
+                metadata: updatedMeta
+            },
+            isDirty: true
+        });
+        await saveDocument();
+    },
+
     updateDocumentTitle: (title: string) => {
         const { document } = get();
         if (!document) return;
@@ -768,12 +790,41 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     },
 
     updateBlockContent: (blockId: string, content: any) => {
-        const { blocks } = get();
+        const { blocks, document, documents } = get();
+        const updatedBlocks = blocks.map(b =>
+            b.id === blockId ? { ...b, content } : b
+        );
+        
+        let extraStateUpdates: any = {};
+        
+        if (document) {
+            const oldBlock = blocks.find(b => b.id === blockId);
+            const isNowHeading1 = oldBlock?.type === 'HEADING' && content && content.level === 1;
+            const wasHeading1 = oldBlock && oldBlock.type === 'HEADING' && oldBlock.content?.level === 1;
+            
+            if (isNowHeading1 || wasHeading1) {
+                const sorted = sortByOrder(updatedBlocks);
+                const heading1Ids = sorted
+                    .filter(b => b.type === 'HEADING' && b.content?.level === 1)
+                    .map(b => b.id);
+                
+                const currentMeta = document.metadata || {};
+                const updatedMeta = {
+                    ...currentMeta,
+                    sections: heading1Ids
+                };
+                
+                extraStateUpdates = {
+                    document: { ...document, metadata: updatedMeta },
+                    documents: documents.map(d => d.id === document.id ? { ...d, metadata: updatedMeta } : d)
+                };
+            }
+        }
+
         set({
-            blocks: blocks.map(b =>
-                b.id === blockId ? { ...b, content } : b
-            ),
+            blocks: updatedBlocks,
             isDirty: true,
+            ...extraStateUpdates
         });
     },
 
@@ -788,11 +839,35 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     },
 
     deleteBlock: async (blockId: string) => {
-        const { blocks } = get();
-        const filtered = blocks.filter(b => b.id !== blockId);
+        const { blocks, document, documents } = get();
+        const block = blocks.find(b => b.id === blockId);
+        if (block?.type === 'HEADING' && (block.content?.text || '').trim().toLowerCase() === 'references') {
+            console.warn('The References section is mandatory and cannot be deleted.');
+            return;
+        }
 
-        // Optimistic update
-        set({ blocks: filtered, isDirty: true, focusedBlockId: null });
+        const filtered = blocks.filter(b => b.id !== blockId);
+        
+        let extraStateUpdates: any = {};
+        if (document && block && block.type === 'HEADING' && block.content?.level === 1) {
+            const sorted = sortByOrder(filtered);
+            const heading1Ids = sorted
+                .filter(b => b.type === 'HEADING' && b.content?.level === 1)
+                .map(b => b.id);
+            
+            const currentMeta = document.metadata || {};
+            const updatedMeta = {
+                ...currentMeta,
+                sections: heading1Ids
+            };
+            
+            extraStateUpdates = {
+                document: { ...document, metadata: updatedMeta },
+                documents: documents.map(d => d.id === document.id ? { ...d, metadata: updatedMeta } : d)
+            };
+        }
+
+        set({ blocks: filtered, isDirty: true, focusedBlockId: null, ...extraStateUpdates });
 
         try {
             await client.models.ScholarBlock.delete({ id: blockId });
@@ -928,31 +1003,90 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
             // 5. Generate new orderIndex values for REFERENCE blocks
             const nonRefBlocks = activeBlocks.filter(b => b.type !== 'REFERENCE');
-            const sortedNonRef = sortByOrder(nonRefBlocks);
-            const refHeading = sortedNonRef.find(b => 
+            let sortedNonRef = sortByOrder(nonRefBlocks);
+            
+            let refHeading = sortedNonRef.find(b => 
                 b.type === 'HEADING' && 
                 b.content?.level === 1 && 
                 (b.content?.text || '').trim().toLowerCase() === 'references'
             );
-            const lastNonRef = sortedNonRef[sortedNonRef.length - 1];
-            let baseOrder = refHeading ? refHeading.orderIndex : (lastNonRef ? lastNonRef.orderIndex : 0);
+
+            const activeDoc = get().document;
+            const masterDocId = getMasterDocId(get().documents, activeDoc);
+
+            if (!refHeading) {
+                // Automatically create References heading at the end
+                const lastBlock = sortedNonRef[sortedNonRef.length - 1];
+                const newHeadingId = uuidv4();
+                const newHeadingOrder = lastBlock ? lastBlock.orderIndex + 1.0 : 1.0;
+                
+                const newHeadingBlock: ScholarBlock = {
+                    id: newHeadingId,
+                    documentId: masterDocId,
+                    type: 'HEADING',
+                    content: { text: 'References', level: 1 },
+                    metadata: {},
+                    parentId: null,
+                    orderIndex: newHeadingOrder
+                };
+
+                await client.models.ScholarBlock.create({
+                    id: newHeadingBlock.id,
+                    documentId: newHeadingBlock.documentId,
+                    type: newHeadingBlock.type,
+                    content: JSON.stringify(newHeadingBlock.content),
+                    metadata: JSON.stringify(newHeadingBlock.metadata),
+                    orderIndex: newHeadingBlock.orderIndex
+                });
+
+                activeBlocks.push(newHeadingBlock as any);
+                sortedNonRef.push(newHeadingBlock as any);
+                sortedNonRef = sortByOrder(sortedNonRef);
+                refHeading = newHeadingBlock as any;
+            }
+
+            // Find the next level 1 heading after References heading
+            const refHeadingIdx = sortedNonRef.findIndex(b => b.id === refHeading!.id);
+            let nextHeading = sortedNonRef.slice(refHeadingIdx + 1).find(b => b.type === 'HEADING' && b.content?.level === 1);
 
             const updatedBlocks = [...activeBlocks];
             const updatesToPersist: { id: string; orderIndex: number }[] = [];
 
-            citedIds.forEach((id, idx) => {
-                const newOrder = baseOrder + 1.0 + idx;
-                const blockIndex = updatedBlocks.findIndex(b => b.id === id);
-                if (blockIndex !== -1) {
-                    updatedBlocks[blockIndex] = {
-                        ...updatedBlocks[blockIndex],
-                        orderIndex: newOrder
-                    };
-                    updatesToPersist.push({ id, orderIndex: newOrder });
-                }
-            });
+            const totalRefs = citedIds.length;
+            const refHeadingOrder = refHeading!.orderIndex;
 
-            if (updatesToPersist.length > 0) {
+            if (totalRefs > 0) {
+                if (nextHeading) {
+                    const interval = nextHeading.orderIndex - refHeadingOrder;
+                    const step = interval / (totalRefs + 1);
+                    citedIds.forEach((id, idx) => {
+                        const newOrder = refHeadingOrder + step * (idx + 1);
+                        const blockIndex = updatedBlocks.findIndex(b => b.id === id);
+                        if (blockIndex !== -1) {
+                            updatedBlocks[blockIndex] = {
+                                ...updatedBlocks[blockIndex],
+                                orderIndex: newOrder
+                            };
+                            updatesToPersist.push({ id, orderIndex: newOrder });
+                        }
+                    });
+                } else {
+                    // No next heading, references are at the end
+                    citedIds.forEach((id, idx) => {
+                        const newOrder = refHeadingOrder + 1.0 + idx;
+                        const blockIndex = updatedBlocks.findIndex(b => b.id === id);
+                        if (blockIndex !== -1) {
+                            updatedBlocks[blockIndex] = {
+                                ...updatedBlocks[blockIndex],
+                                orderIndex: newOrder
+                            };
+                            updatesToPersist.push({ id, orderIndex: newOrder });
+                        }
+                    });
+                }
+            }
+
+            if (updatesToPersist.length > 0 || !refHeading) {
                 set({ blocks: updatedBlocks, isDirty: true });
                 await Promise.all(updatesToPersist.map(u => 
                     client.models.ScholarBlock.update({
@@ -1083,6 +1217,39 @@ export const useEditorStore = create<EditorState>((set, get) => ({
             await client.models.ScholarLiteratureItem.delete({ id: itemId });
         } catch (error: any) {
             set({ literatureItems, error: error.message });
+        }
+    },
+
+    updateLiteratureItem: async (itemId: string, updates: Partial<Omit<ScholarLiteratureItem, 'id' | 'owner' | 'createdAt' | 'updatedAt'>>) => {
+        const { literatureItems } = get();
+        const itemToUpdate = literatureItems.find(i => i.id === itemId);
+        if (!itemToUpdate) return;
+
+        const updatedItem = { ...itemToUpdate, ...updates } as ScholarLiteratureItem;
+        set({
+            literatureItems: literatureItems.map(i => i.id === itemId ? updatedItem : i),
+            isDirty: true
+        });
+
+        try {
+            const authorsStr = typeof updates.authors === 'string' 
+                ? updates.authors 
+                : (updates.authors ? JSON.stringify(updates.authors) : undefined);
+            const metadataStr = typeof updates.fullMetadata === 'string' 
+                ? updates.fullMetadata 
+                : (updates.fullMetadata ? JSON.stringify(updates.fullMetadata) : undefined);
+
+            const updatePayload: any = {
+                id: itemId,
+                ...updates
+            };
+            if (authorsStr !== undefined) updatePayload.authors = authorsStr;
+            if (metadataStr !== undefined) updatePayload.fullMetadata = metadataStr;
+
+            await client.models.ScholarLiteratureItem.update(updatePayload);
+        } catch (error: any) {
+            console.error("Failed to update literature item in DB:", error);
+            set({ error: error.message });
         }
     },
 
@@ -1391,6 +1558,82 @@ export const useEditorStore = create<EditorState>((set, get) => ({
                         format: 'markdown',
                     },
                 });
+                break;
+            case 'workflow-pipeline':
+                const papers = researchBlock.content?.outputs?.extractedPapers || [];
+                let paperText = `### Literature Extraction: ${researchBlock.title}\n\n`;
+                if (papers.length === 0) {
+                    paperText += `No papers extracted or pipeline has not been executed yet.`;
+                } else {
+                    papers.forEach((p: any) => {
+                        paperText += `* **${p.title}** (${p.authors}, ${p.year})\n  * *Quote:* "${p.verbatim_quote}"\n  * *Confidence:* ${Math.round(p.confidence_score * 100)}%\n\n`;
+                    });
+                }
+                newBlocks.push({
+                    type: 'TEXT',
+                    content: { text: paperText, format: 'markdown' },
+                });
+                break;
+            case 'statistical-analysis':
+                newBlocks.push({
+                    type: 'TEXT',
+                    content: {
+                        text: `### Statistical Analysis Parameters & Code\n\n\`\`\`python\n${researchBlock.content?.codeSource || ''}\n\`\`\``,
+                        format: 'markdown'
+                    }
+                });
+                break;
+            case 'simulation-engine':
+                const simParams = researchBlock.content?.parameters || {};
+                const maxD = researchBlock.content?.snapshotDelta || 0;
+                const avgD = researchBlock.content?.averageDelta || 0;
+                newBlocks.push({
+                    type: 'TEXT',
+                    content: {
+                        text: `### Simulation Run: ${researchBlock.title}\n* **Asset Config:** ${simParams.assetConfig || 'N/A'}\n* **Timescale:** ${simParams.timescale || 1} min\n* **Tracking Anomaly (Max Delta):** ${maxD}\n* **Average Anomaly Delta:** ${avgD}`,
+                        format: 'markdown'
+                    }
+                });
+                break;
+            case 'processing-pipeline':
+                newBlocks.push({
+                    type: 'TEXT',
+                    content: {
+                        text: `### Data Processing Pipeline: ${researchBlock.title}\n* **Papers Processed:** ${researchBlock.content?.processedPapers || 0}\n* **Duplicates Removed:** ${researchBlock.content?.duplicatesRemoved || 0}\n* **Texts Extracted:** ${researchBlock.content?.textsExtracted || 0}`,
+                        format: 'markdown'
+                    }
+                });
+                break;
+            case 'llm-analysis':
+                newBlocks.push({
+                    type: 'TEXT',
+                    content: {
+                        text: `### LLM Research Analysis: ${researchBlock.title}\n* **Research Prompt:** "${researchBlock.content?.prompt || ''}"\n\n#### Synthesis/Summary:\n${researchBlock.content?.resultSummary || 'No analysis performed yet.'}`,
+                        format: 'markdown'
+                    }
+                });
+                break;
+            case 'results-table':
+                if (researchBlock.content?.columns && researchBlock.content?.rows) {
+                    newBlocks.push({
+                        type: 'TABLE',
+                        content: {
+                            headers: researchBlock.content.columns,
+                            rows: researchBlock.content.rows.map((row: any) =>
+                                researchBlock.content.columns.map((col: string) => row[col] || '')
+                            ),
+                            caption: researchBlock.content.summary || researchBlock.title || 'LLM Analysis Results Table',
+                        },
+                    });
+                } else {
+                    newBlocks.push({
+                        type: 'TEXT',
+                        content: {
+                            text: `### Results Table: ${researchBlock.title}\n*No data generated yet. Run the connected analysis node first.*`,
+                            format: 'markdown'
+                        }
+                    });
+                }
                 break;
         }
 

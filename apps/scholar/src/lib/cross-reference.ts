@@ -10,6 +10,7 @@
 
 import { ScholarBlock, BlockType } from '@/types';
 import { sortByOrder } from './fractional-index';
+import { useEditorStore } from '@/store/editor-store';
 
 // Pattern to match cross-reference tags (including comma-separated lists of IDs)
 const REF_PATTERN = /\[\[ref:([a-f0-9-,\s]+)\]\]/g;
@@ -180,6 +181,61 @@ export function resolveRef(
     if (!label) {
         return `[${entry.counter}]`;
     }
+    if (entry.type === 'HEADING') {
+        try {
+            const state = useEditorStore.getState();
+            const allBlocks = state.blocks || [];
+            const docObj = state.document;
+            const headingStyles = docObj?.metadata?.headingStyles;
+            const headingNumbers = calculateHeadingNumbers(allBlocks, headingStyles);
+            
+            const headingBlock = allBlocks.find(b => b.id === blockId);
+            if (headingBlock) {
+                const level = headingBlock.content?.level || 2;
+                const selfPrefix = headingNumbers.get(blockId);
+                
+                if (selfPrefix && selfPrefix.trim()) {
+                    let formattedCounter = selfPrefix.trim().replace(/\.$/, '');
+                    
+                    // If it is a sub-section (level > 1), prepend the parent level 1 heading prefix if not already present
+                    if (level > 1) {
+                        const sortedBlocks = [...allBlocks].sort((a, b) => a.orderIndex - b.orderIndex);
+                        const headingIdx = sortedBlocks.findIndex(b => b.id === blockId);
+                        
+                        // Find the closest preceding Heading 1
+                        let parentHeading1 = null;
+                        for (let i = headingIdx - 1; i >= 0; i--) {
+                            if (sortedBlocks[i].type === 'HEADING' && sortedBlocks[i].content?.level === 1) {
+                                parentHeading1 = sortedBlocks[i];
+                                break;
+                            }
+                        }
+                        
+                        if (parentHeading1) {
+                            const parentPrefix = headingNumbers.get(parentHeading1.id);
+                            if (parentPrefix && parentPrefix.trim()) {
+                                const parentClean = parentPrefix.trim().replace(/\.$/, '');
+                                if (!formattedCounter.startsWith(parentClean)) {
+                                    formattedCounter = `${parentClean}-${formattedCounter}`;
+                                }
+                            }
+                        }
+                    }
+                    return `${language === 'ar' ? label.ar : label.en} ${formattedCounter}`;
+                }
+            }
+        } catch (e) {
+            console.error("Failed to calculate heading number for cross reference:", e);
+        }
+        
+        // Fallback
+        const state = useEditorStore.getState();
+        const headingBlock = state.blocks?.find(b => b.id === blockId);
+        const level = headingBlock?.content?.level || 1;
+        const formattedCounter = level === 1 ? toRoman(entry.counter) : entry.counter.toString();
+        return `${language === 'ar' ? label.ar : label.en} ${formattedCounter}`;
+    }
+
     const formattedCounter = entry.type === 'TABLE' ? toRoman(entry.counter) : entry.counter.toString();
     return `${language === 'ar' ? label.ar : label.en} ${formattedCounter}`;
 }

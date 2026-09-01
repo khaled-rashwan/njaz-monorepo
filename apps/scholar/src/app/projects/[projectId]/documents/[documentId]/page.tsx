@@ -231,7 +231,9 @@ export default function DocumentEditorPage() {
             <div className="flex-1 flex overflow-hidden">
                 {/* Left Sidebar */}
                 {activePanel && (
-                    <div className="sidebar-panel w-64 flex-shrink-0 overflow-y-auto">
+                    <div className={`sidebar-panel flex-shrink-0 overflow-y-auto transition-all duration-200 border-r border-slate-700/30 ${
+                        activePanel === 'literature' ? 'w-80 md:w-96 lg:w-[460px]' : 'w-64 md:w-72'
+                    }`}>
                         {activePanel === 'outline' && <DocumentOutline />}
                         {activePanel === 'literature' && <LiteratureLibrary />}
                         {activePanel === 'codeRunner' && <CodeRunnerPanel />}

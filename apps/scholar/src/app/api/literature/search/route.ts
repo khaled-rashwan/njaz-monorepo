@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { searchOpenAlex, searchSemanticScholar, searchCrossRef, searchGoogleBooks } from '@/lib/literature-api';
+import { searchOpenAlex, searchSemanticScholar, searchCrossRef, searchGoogleBooks, searchIEEEXplore, parseSearchQuery, searchFigshare } from '@/lib/literature-api';
 import { ServerlessSearchManager } from '@/lib/serverless-search-manager';
 import { LiteratureSearchResult } from '@/types';
 
@@ -8,16 +8,20 @@ export async function GET(req: NextRequest) {
     const query = searchParams.get('query') || '';
     const sourcesParam = searchParams.get('sources');
     const limit = parseInt(searchParams.get('limit') || '10', 10);
+    const startYear = searchParams.get('startYear') ? parseInt(searchParams.get('startYear')!, 10) : undefined;
+    const endYear = searchParams.get('endYear') ? parseInt(searchParams.get('endYear')!, 10) : undefined;
+    const isOa = searchParams.get('isOa') === 'true';
+    const publisher = searchParams.get('publisher') || '';
 
     if (!query.trim()) {
         return NextResponse.json([]);
     }
 
     const sources = sourcesParam 
-        ? (sourcesParam.split(',') as ('openalex' | 'semantic_scholar' | 'crossref' | 'isbn_books')[])
-        : ['openalex', 'semantic_scholar', 'crossref', 'isbn_books'];
+        ? (sourcesParam.split(',') as ('openalex' | 'semantic_scholar' | 'crossref' | 'isbn_books' | 'ieee_xplore' | 'figshare')[])
+        : ['openalex', 'semantic_scholar', 'crossref', 'isbn_books', 'ieee_xplore', 'figshare'];
 
-    const cacheKey = `search:${Buffer.from(query.trim().toLowerCase()).toString('base64')}:${sources.sort().join(',')}:${limit}`;
+    const cacheKey = `search:${Buffer.from(query.trim().toLowerCase()).toString('base64')}:${sources.sort().join(',')}:${limit}:${startYear || ''}:${endYear || ''}:${isOa}:${publisher}`;
 
     // 1. Try Cache First
     const cachedData = await ServerlessSearchManager.getCache(cacheKey);
@@ -51,16 +55,22 @@ export async function GET(req: NextRequest) {
             let data: LiteratureSearchResult[] = [];
             switch (source) {
                 case 'openalex':
-                    data = await searchOpenAlex(query, limit);
+                    data = await searchOpenAlex(query, limit, startYear, endYear, isOa, publisher);
                     break;
                 case 'semantic_scholar':
-                    data = await searchSemanticScholar(query, limit);
+                    data = await searchSemanticScholar(query, limit, startYear, endYear);
                     break;
                 case 'crossref':
-                    data = await searchCrossRef(query, limit);
+                    data = await searchCrossRef(query, limit, startYear, endYear);
                     break;
                 case 'isbn_books':
                     data = await searchGoogleBooks(query, limit);
+                    break;
+                case 'ieee_xplore':
+                    data = await searchIEEEXplore(query, limit, startYear, endYear, isOa);
+                    break;
+                case 'figshare':
+                    data = await searchFigshare(query, limit);
                     break;
             }
             
@@ -82,6 +92,17 @@ export async function GET(req: NextRequest) {
         }
     }
 
+    if (publisher && publisher.toLowerCase().includes('ieee') && !sources.includes('ieee_xplore')) {
+        try {
+            console.log('[Search Route] Direct publisher filter set to IEEE. Querying IEEE Xplore directly.');
+            const ieeeResults = await searchIEEEXplore(query, limit, startYear, endYear, isOa);
+            console.log(`[Search Route] IEEE Xplore returned ${ieeeResults.length} records.`);
+            allItems.unshift(...ieeeResults);
+        } catch (ieeeErr) {
+            console.error('[Search Route] IEEE Xplore query failed:', ieeeErr);
+        }
+    }
+
     // Deduplicate by DOI
     const seen = new Map<string, LiteratureSearchResult>();
     const deduped: LiteratureSearchResult[] = [];
@@ -98,19 +119,49 @@ export async function GET(req: NextRequest) {
         }
     }
 
+    const parsed = parseSearchQuery(query);
+    const searchTarget = parsed.cleanQuery || query;
+
     const sorted = deduped.sort((a, b) => {
-        const scoreA = calculateRelevanceScore(a.title, query);
-        const scoreB = calculateRelevanceScore(b.title, query);
+        const scoreA = calculateRelevanceScore(a.title, searchTarget);
+        const scoreB = calculateRelevanceScore(b.title, searchTarget);
         if (Math.abs(scoreA - scoreB) > 0.01) {
             return scoreB - scoreA;
         }
         return (b.citationCount || 0) - (a.citationCount || 0);
     });
 
-    // Save to Cache
-    await ServerlessSearchManager.setCache(cacheKey, sorted);
+    let finalResults = sorted;
 
-    return new NextResponse(JSON.stringify(sorted), {
+    if (isOa) {
+        finalResults = finalResults.filter(item => {
+            if (item.source === 'openalex') return true; // OpenAlex results are already OA-only since we queried with is_oa:true
+            const raw = item.rawData || {};
+            const semanticOa = raw.openAccessPdf?.url || raw.isOpenAccess === true;
+            const crossrefOa = raw.link?.some((l: any) => l['content-type'] === 'application/pdf');
+            const isIEEEAccess = item.journal?.toLowerCase().includes('ieee access') || 
+                                 item.doi?.toLowerCase().includes('10.1109/access');
+            const hasPdfUrl = item.url?.includes('.pdf') || raw.link?.some((l: any) => l.url?.includes('.pdf'));
+            return !!(semanticOa || crossrefOa || isIEEEAccess || hasPdfUrl);
+        });
+    }
+
+    if (publisher) {
+        const queryPub = publisher.toLowerCase();
+        finalResults = finalResults.filter(item => {
+            const workPub = item.rawData?.primary_location?.source?.publisher || '';
+            const displaySource = item.journal || '';
+            const doiVal = item.doi || '';
+            return workPub.toLowerCase().includes(queryPub) || 
+                   displaySource.toLowerCase().includes(queryPub) ||
+                   (queryPub === 'ieee' && (doiVal.includes('10.1109') || displaySource.toLowerCase().includes('ieee')));
+        });
+    }
+
+    // Save to Cache
+    await ServerlessSearchManager.setCache(cacheKey, finalResults);
+
+    return new NextResponse(JSON.stringify(finalResults), {
         headers: {
             'Content-Type': 'application/json',
             'Cache-Control': 'public, s-maxage=86400, stale-while-revalidate=604800',

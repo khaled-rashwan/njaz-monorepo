@@ -60,13 +60,41 @@ export function createResearchBlockData(
     type: ResearchBlockData['type'],
     title: string,
     projectId: string,
-    content: any = {}
+    content: any = null
 ): ResearchBlockData {
+    let defaultContent = content;
+    if (!defaultContent || Object.keys(defaultContent).length === 0) {
+        if (type === 'workflow-pipeline') {
+            defaultContent = {
+                pipelineVersion: 'V3',
+                status: 'idle',
+                inputs: { query: '', criteriaJson: '{}' },
+                outputs: {}
+            };
+        } else if (type === 'statistical-analysis') {
+            defaultContent = {
+                schema: {},
+                datasetPath: '',
+                codeSource: 'import pandas as pd\n\n# Calculate dynamic trends vs coarse snapshots\nprint("Running statistics analysis on literature output...")',
+                status: 'idle',
+                result: {}
+            };
+        } else if (type === 'simulation-engine') {
+            defaultContent = {
+                status: 'idle',
+                parameters: { timescale: 1, assetConfig: 'BESS' },
+                trajectoryPoints: []
+            };
+        } else {
+            defaultContent = content || {};
+        }
+    }
+
     return {
         id,
         type,
         title,
-        content,
+        content: defaultContent,
         projectId,
         createdAt: new Date().toISOString(),
     };

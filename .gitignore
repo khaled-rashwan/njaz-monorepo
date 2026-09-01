@@ -69,3 +69,7 @@ apps/estebian/docs/Asmaa Sayed/
 
 # Scholar docs — private research files
 apps/scholar/docs/
+
+# Scholar Storage
+apps/scholar/storage/
+

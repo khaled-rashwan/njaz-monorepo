@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useEditorStore } from '@/store/editor-store';
 import { useLanguage } from '@/components/LanguageContext';
-import { buildCounterMap, resolveRef, calculateHeadingNumbers, filterBlocksForDocument } from '@/lib/cross-reference';
+import { buildCounterMap, resolveRef, calculateHeadingNumbers, filterBlocksForDocument, toRoman } from '@/lib/cross-reference';
 import { sortByOrder } from '@/lib/fractional-index';
 import { BlockType } from '@/types';
 
@@ -116,6 +116,7 @@ export default function DocumentPreviewPage() {
     const docId = params.documentId as string;
     const projectId = params.projectId as string;
     const { t, language, direction } = useLanguage();
+    const [isExporting, setIsExporting] = useState(false);
     
     const {
         document: doc,
@@ -242,6 +243,37 @@ export default function DocumentPreviewPage() {
         return finalParts;
     };
 
+
+    const handleSaveDocx = async () => {
+        setIsExporting(true);
+        try {
+            const { generateDocx } = await import('@/lib/docx-export');
+            const { Packer } = await import('docx');
+            const docObj = await generateDocx({
+                doc,
+                sortedBlocks,
+                literatureItems,
+                counterMap,
+                headingNumbers,
+                language,
+            });
+            const blob = await Packer.toBlob(docObj);
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `${doc.title || 'document'}.docx`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        } catch (err) {
+            console.error("Failed to export Word document:", err);
+            alert("Failed to export Word document.");
+        } finally {
+            setIsExporting(false);
+        }
+    };
+
     return (
         <div className="min-h-screen bg-slate-50 text-slate-900 print:bg-white print:p-0 flex flex-col font-serif" dir={direction}>
             {/* Top Bar for Action Buttons - Hidden in Print View */}
@@ -262,6 +294,20 @@ export default function DocumentPreviewPage() {
                 </div>
 
                 <div className="flex items-center gap-2">
+                    <button
+                        disabled={isExporting}
+                        onClick={handleSaveDocx}
+                        className="px-4 py-1.5 border border-slate-750 hover:bg-slate-800 text-slate-300 hover:text-white rounded-lg text-xs transition-colors flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed font-sans"
+                    >
+                        {isExporting ? (
+                            <div className="w-3.5 h-3.5 border-2 border-slate-400 border-t-slate-100 rounded-full animate-spin" />
+                        ) : (
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                        )}
+                        {t('Save as Word (.docx)', 'حفظ كـ Word (.docx)')}
+                    </button>
                     <button
                         onClick={() => window.print()}
                         className="px-4 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-lg text-xs transition-colors flex items-center gap-1.5 shadow font-sans"
@@ -324,11 +370,70 @@ export default function DocumentPreviewPage() {
                                             ? 'text-xl font-bold mt-6 mb-3 font-sans text-black' 
                                             : 'text-lg font-bold mt-4 mb-2 font-sans text-black';
 
+                                    const isReferencesHeading = level === 1 && (text || '').trim().toLowerCase() === 'references';
+                                    const referencesHidden = !!doc?.metadata?.referencesHidden;
+                                    const refBlocks = sortedBlocks.filter(b => b.type === 'REFERENCE');
+
                                     return (
-                                        <Tag key={block.id} id={`block-${block.id}`} className={styleClass}>
-                                            {prefix && <span className="mr-2 text-black font-semibold font-mono">{prefix}</span>}
-                                            {text}
-                                        </Tag>
+                                        <div key={block.id} className="w-full">
+                                            <Tag id={`block-${block.id}`} className={styleClass}>
+                                                {prefix && <span className="mr-2 text-black font-semibold font-mono">{prefix}</span>}
+                                                {text}
+                                            </Tag>
+                                            {isReferencesHeading && !referencesHidden && (
+                                                <div className="mt-4 pl-4 space-y-3 border-l-2 border-slate-200">
+                                                    {refBlocks.map((refBlock, idx) => {
+                                                        const linkedItem = literatureItems.find(item => item.id === refBlock.content?.literatureItemId);
+                                                        if (!linkedItem) return null;
+
+                                                        let authorsList: any[] = [];
+                                                        const rawAuthors = linkedItem.authors;
+                                                        if (typeof rawAuthors === 'string') {
+                                                            try { authorsList = JSON.parse(rawAuthors); } catch { authorsList = []; }
+                                                        } else if (Array.isArray(rawAuthors)) {
+                                                            authorsList = rawAuthors;
+                                                        }
+
+                                                        const formattedAuthors = (() => {
+                                                            const names = authorsList
+                                                                .map(a => {
+                                                                    if (typeof a === 'string') return a.trim();
+                                                                    if (a && typeof a === 'object') return (a.name || '').trim();
+                                                                    return '';
+                                                                })
+                                                                .filter(name => name && name.toLowerCase() !== 'unknown' && name.toLowerCase() !== 'unknown author');
+                                                            if (names.length === 0) return 'Unknown Author';
+                                                            return names.join(', ');
+                                                        })();
+
+                                                        return (
+                                                            <div key={refBlock.id} id={`block-${refBlock.id}`} className="flex items-start gap-3 my-2 text-[14px] text-slate-800 print:text-black leading-relaxed font-sans">
+                                                                <span className="font-mono font-bold select-none text-slate-900 w-8 flex-shrink-0 text-right">
+                                                                    [{idx + 1}]
+                                                                </span>
+                                                                <div className="flex-1 text-left">
+                                                                    <span>{formattedAuthors}, </span>
+                                                                    <span className="font-semibold">"{linkedItem.title}"</span>
+                                                                    {linkedItem.journal && <span>, {linkedItem.journal}</span>}
+                                                                    {linkedItem.year && <span> ({linkedItem.year})</span>}
+                                                                    <span>.</span>
+                                                                    {linkedItem.url && (
+                                                                        <a 
+                                                                            href={linkedItem.url} 
+                                                                            target="_blank" 
+                                                                            rel="noreferrer"
+                                                                            className="ml-2 text-blue-600 underline print:text-black print:no-underline break-all text-xs"
+                                                                        >
+                                                                            {linkedItem.url}
+                                                                        </a>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            )}
+                                        </div>
                                     );
                                 }
 
@@ -378,7 +483,7 @@ export default function DocumentPreviewPage() {
                                         <div key={block.id} id={`block-${block.id}`} className="my-6 w-full overflow-x-auto">
                                             {content.caption && (
                                                 <p className="text-center text-xs font-semibold text-slate-800 mb-2 italic print:text-black font-sans">
-                                                    {t('Table', 'جدول')} {tableNumber}: {content.caption}
+                                                    {t('Table', 'جدول')} {toRoman(tableNumber)}: {content.caption}
                                                 </p>
                                             )}
                                             <table className="min-w-full border-collapse border border-slate-300 text-sm font-sans mx-auto">
@@ -445,47 +550,7 @@ export default function DocumentPreviewPage() {
                                 }
 
                                 case 'REFERENCE': {
-                                    const refIndex = sortedBlocks.filter(b => b.type === 'REFERENCE').findIndex(b => b.id === block.id) + 1;
-                                    const linkedItem = literatureItems.find(item => item.id === content.literatureItemId);
-                                    
-                                    if (!linkedItem) return null;
-
-                                    let authorsList: any[] = [];
-                                    const rawAuthors = linkedItem.authors;
-                                    if (typeof rawAuthors === 'string') {
-                                        try {
-                                            authorsList = JSON.parse(rawAuthors);
-                                        } catch (e) {
-                                            authorsList = [];
-                                        }
-                                    } else if (Array.isArray(rawAuthors)) {
-                                        authorsList = rawAuthors;
-                                    }
-
-                                    return (
-                                        <div key={block.id} id={`block-${block.id}`} className="flex items-start gap-3 my-2 text-[14px] text-slate-800 print:text-black leading-relaxed font-sans">
-                                            <span className="font-mono font-bold select-none text-slate-900 w-8 flex-shrink-0 text-right">
-                                                [{refIndex}]
-                                            </span>
-                                            <div className="flex-1">
-                                                <span>{authorsList.map(a => a.name).join(', ') || 'Unknown Author'}, </span>
-                                                <span className="font-semibold">"{linkedItem.title}"</span>
-                                                {linkedItem.journal && <span>, {linkedItem.journal}</span>}
-                                                {linkedItem.year && <span> ({linkedItem.year})</span>}
-                                                <span>.</span>
-                                                {linkedItem.url && (
-                                                    <a 
-                                                        href={linkedItem.url} 
-                                                        target="_blank" 
-                                                        rel="noopener noreferrer" 
-                                                        className="ml-2 text-blue-600 underline print:text-black print:no-underline break-all text-xs"
-                                                    >
-                                                        {linkedItem.url}
-                                                    </a>
-                                                )}
-                                            </div>
-                                        </div>
-                                    );
+                                    return null;
                                 }
 
                                 case 'DIVIDER':

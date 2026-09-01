@@ -36,6 +36,13 @@ export default function ScholarLandingPage() {
                         >
                             {t('Go to Workspace', 'الذهاب إلى مساحة العمل')}
                         </Link>
+                        <Link 
+                            href="/survey" 
+                            className="futuristic-btn px-8 py-3 text-base border border-amber-500/30 text-amber-300 hover:bg-amber-500/10 w-full sm:w-auto flex items-center justify-center gap-2"
+                        >
+                            <span>🔬</span>
+                            <span>{t('Literature Survey Workbench', 'بيئة تحليل ومسح الأدبيات')}</span>
+                        </Link>
                     </div>
                 </div>
 

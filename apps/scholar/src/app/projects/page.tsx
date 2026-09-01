@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { getCurrentUser } from 'aws-amplify/auth';
 import { useRouter } from 'next/navigation';
 import { useLanguage, LanguageSwitcher } from '@/components/LanguageContext';
@@ -138,15 +139,24 @@ export default function WorkspaceDashboard() {
                                 {t(`${projects.length} project${projects.length !== 1 ? 's' : ''}`, `${projects.length} مشروع`)}
                             </p>
                         </div>
-                        <button
-                            onClick={() => setShowCreateModal(true)}
-                            className="futuristic-btn-primary flex items-center gap-2 text-sm"
-                        >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                            </svg>
-                            {t('New Project', 'مشروع جديد')}
-                        </button>
+                        <div className="flex items-center gap-3">
+                            <Link
+                                href="/survey"
+                                className="futuristic-btn flex items-center gap-2 text-sm border border-amber-500/30 text-amber-300 hover:bg-amber-500/10"
+                            >
+                                <span>🔬</span>
+                                <span>{t('Survey Workbench', 'مصفوفة المسح الأدبي')}</span>
+                            </Link>
+                            <button
+                                onClick={() => setShowCreateModal(true)}
+                                className="futuristic-btn-primary flex items-center gap-2 text-sm"
+                            >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                </svg>
+                                {t('New Project', 'مشروع جديد')}
+                            </button>
+                        </div>
                     </div>
 
                     {/* Projects Grid */}

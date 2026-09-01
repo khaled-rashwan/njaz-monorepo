@@ -4,6 +4,7 @@ export function PhaseNode({ data, selected }: { data: any, selected: boolean }) 
     return (
         <div className={`p-4 rounded-xl border-2 transition-all w-64 bg-slate-900/90 backdrop-blur-md
             ${selected ? 'border-amber-400 shadow-[0_0_20px_rgba(251,191,36,0.2)]' : 'border-slate-700/50 shadow-lg'}
+            ${data.isHidden ? 'opacity-40 blur-[1px]' : ''}
         `}>
             {data.hasInput && (
                 <Handle 
