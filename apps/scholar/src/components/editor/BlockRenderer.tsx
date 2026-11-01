@@ -70,8 +70,13 @@ export function BlockRenderer({
     const { t } = useLanguage();
     const [copied, setCopied] = useState(false);
     const [showInsertMenu, setShowInsertMenu] = useState(false);
-    const { addBlock, moveBlockUp, moveBlockDown } = useEditorStore();
+    const { addBlock, moveBlockUp, moveBlockDown, document: doc, setActivePanel, addComment } = useEditorStore();
     const Component = BLOCK_COMPONENTS[block.type];
+
+    const blockComments = Array.isArray(doc?.metadata?.comments)
+        ? doc.metadata.comments.filter((c: any) => c.blockId === block.id)
+        : [];
+    const openBlockComments = blockComments.filter((c: any) => c.status === 'open' || c.status === 'in_progress');
 
     const isCrossReferenceable = ['FIGURE', 'TABLE', 'EQUATION', 'CODE', 'HEADING', 'REFERENCE'].includes(block.type);
 
@@ -177,9 +182,40 @@ export function BlockRenderer({
                 );
             })()}
 
+            {/* Comment Indicator Badge */}
+            {openBlockComments.length > 0 && (
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        setActivePanel('comments');
+                    }}
+                    className="absolute top-1 right-1 px-2 py-0.5 rounded-full bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 text-[10px] font-semibold flex items-center gap-1 z-10 transition-colors shadow-sm"
+                    title={t('View comments on this block', 'عرض التعليقات على هذا البلوك')}
+                >
+                    <span>💬</span>
+                    <span>{openBlockComments.length}</span>
+                </button>
+            )}
+
             {/* Actions (right side) */}
             {isFocused && (
                 <div className="absolute -right-8 top-1 flex flex-col gap-1 animate-slide-in">
+                    {/* Add Comment Button */}
+                    <button
+                        onClick={async (e) => {
+                            e.stopPropagation();
+                            setActivePanel('comments');
+                            const commentText = prompt(t('Enter comment or issue for this block:', 'أدخل تعليقاً أو ملاحظة لهذا البلوك:'));
+                            if (commentText && commentText.trim()) {
+                                await addComment(commentText.trim(), block.id);
+                            }
+                        }}
+                        className="p-1 rounded text-slate-600 hover:text-amber-400 hover:bg-amber-500/10 transition-colors"
+                        title={t('Add comment / issue', 'إضافة تعليق أو ملاحظة')}
+                    >
+                        <span className="text-xs">💬</span>
+                    </button>
+
                     {isCrossReferenceable && (
                         <button
                             onClick={handleCopyRef}

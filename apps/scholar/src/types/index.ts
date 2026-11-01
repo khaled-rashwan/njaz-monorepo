@@ -88,6 +88,36 @@ export interface BlockMetadata {
 }
 
 // ============================================
+// Comment & Issues Types
+// ============================================
+
+export type CommentStatus = 'open' | 'in_progress' | 'resolved';
+
+export interface AICommentAssessment {
+    evaluatedAt: string;
+    isValid: boolean;
+    verdict: 'valid' | 'invalid' | 'already_resolved' | 'needs_clarification';
+    analysis: string;
+    suggestedFix?: string;
+    canAutoResolve?: boolean;
+}
+
+export interface DocumentComment {
+    id: string;
+    documentId: string;
+    blockId?: string;
+    blockSnippet?: string;
+    author?: string;
+    text: string;
+    status: CommentStatus;
+    aiAssessment?: AICommentAssessment;
+    createdAt: string;
+    updatedAt?: string;
+    resolvedAt?: string;
+    resolvedBy?: string;
+}
+
+// ============================================
 // Document-level Types
 // ============================================
 

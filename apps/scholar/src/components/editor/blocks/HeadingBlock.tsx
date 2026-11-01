@@ -194,8 +194,14 @@ export function HeadingBlock({ block, isFocused, onContentChange, onFocus }: Blo
                         ) : (
                             <>
                                 {sortedRefBlocks.map((refBlock, idx) => {
-                                    const linkedItem = literatureItems.find(item => item.id === refBlock.content?.literatureItemId);
+                                    let refContent: any = refBlock.content;
+                                    if (typeof refContent === 'string') {
+                                        try { refContent = JSON.parse(refContent); } catch { refContent = {}; }
+                                    }
+                                    const litId = refContent?.literatureItemId;
+                                    const linkedItem = literatureItems.find(item => item.id === litId);
                                     if (!linkedItem) return null;
+
                                     let authorsList: any[] = [];
                                     const rawAuthors = linkedItem.authors;
                                     if (typeof rawAuthors === 'string') {
@@ -216,6 +222,10 @@ export function HeadingBlock({ block, isFocused, onContentChange, onFocus }: Blo
                                         return names.join(', ');
                                     })();
 
+                                    const title = linkedItem.title || 'Untitled';
+                                    const year = linkedItem.year ? ` (${linkedItem.year})` : '';
+                                    const journal = linkedItem.journal ? `, ${linkedItem.journal}` : '';
+
                                     return (
                                         <div key={refBlock.id} className="flex items-start gap-2.5 text-xs text-slate-400">
                                             <span className="font-mono font-bold text-slate-500 w-6 flex-shrink-0 text-right">
@@ -223,9 +233,9 @@ export function HeadingBlock({ block, isFocused, onContentChange, onFocus }: Blo
                                             </span>
                                             <div className="flex-1">
                                                 <span>{formattedAuthors}, </span>
-                                                <span className="font-semibold text-slate-350">"{linkedItem.title}"</span>
-                                                {linkedItem.journal && <span>, {linkedItem.journal}</span>}
-                                                {linkedItem.year && <span> ({linkedItem.year})</span>}
+                                                <span className="font-semibold text-slate-350">"{title}"</span>
+                                                {journal && <span>{journal}</span>}
+                                                {year && <span>{year}</span>}
                                                 <span>.</span>
                                             </div>
                                         </div>

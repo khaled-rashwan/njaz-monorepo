@@ -1,8 +1,9 @@
 import { create } from 'zustand';
 import { v4 as uuidv4 } from 'uuid';
-import { ScholarDocument, ScholarBlock, BlockType, BlockMetadata, ScholarLiteratureItem, ScholarFigure, ResearchBlockData, ResearchBlockType, CanvasLayout } from '@/types';
+import { ScholarDocument, ScholarBlock, BlockType, BlockMetadata, ScholarLiteratureItem, ScholarFigure, ResearchBlockData, ResearchBlockType, CanvasLayout, DocumentComment, AICommentAssessment } from '@/types';
 import { generateOrderAtEnd, generateOrderAfter, generateOrderAtStart, sortByOrder, needsRebalancing, rebalanceOrders } from '@/lib/fractional-index';
 import { parseCanvasLayout, createResearchBlockData } from '@/lib/canvas-layout';
+import { buildCounterMap, toRoman, calculateHeadingNumbers } from '@/lib/cross-reference';
 import { client } from '@/lib/amplify-client';
 import { uploadData, remove } from 'aws-amplify/storage';
 interface EditorState {
@@ -21,7 +22,7 @@ interface EditorState {
     error: string | null;
 
     // Sidebar state
-    activePanel: 'outline' | 'literature' | 'codeRunner' | null;
+    activePanel: 'outline' | 'literature' | 'codeRunner' | 'comments' | null;
     inspectorOpen: boolean;
 
     // Actions — Document
@@ -39,6 +40,14 @@ interface EditorState {
     toggleReferencesVisibility: () => Promise<void>;
     setHeadingStyle: (style: 'none' | 'ordered' | 'unordered') => void;
     setHeadingLevelStyle: (level: number, style: string) => void;
+
+    // Actions — Document Comments & Issues
+    addComment: (text: string, blockId?: string) => Promise<string>;
+    updateComment: (commentId: string, updates: Partial<DocumentComment>) => void;
+    deleteComment: (commentId: string) => void;
+    clearResolvedComments: () => void;
+    verifyCommentWithAI: (commentId: string) => Promise<void>;
+    checkResolutionWithAI: (commentId: string) => Promise<void>;
 
     // Actions — Blocks
     addBlock: (type: BlockType, afterBlockId?: string, customId?: string) => Promise<string>;
@@ -72,7 +81,7 @@ interface EditorState {
     loadCanvasLayout: (projectId: string) => void;
 
     // Actions — UI
-    setActivePanel: (panel: 'outline' | 'literature' | 'codeRunner' | null) => void;
+    setActivePanel: (panel: 'outline' | 'literature' | 'codeRunner' | 'comments' | null) => void;
     toggleInspector: () => void;
 
     // Helpers
@@ -1710,6 +1719,453 @@ export const useEditorStore = create<EditorState>((set, get) => ({
             canvasLayout: layout,
             researchBlocks: layout.researchBlocks || [],
         });
+    },
+
+    // ============================================
+    // DOCUMENT COMMENTS & ISSUES
+    // ============================================
+
+    addComment: async (text: string, blockId?: string) => {
+        const { document, blocks } = get();
+        if (!document) throw new Error('No active document');
+
+        let blockSnippet: string | undefined;
+        if (blockId) {
+            const b = blocks.find(x => x.id === blockId);
+            if (b) {
+                const counterMap = buildCounterMap(blocks);
+                const headingStyles = document.metadata?.headingStyles;
+                const headingNumbers = calculateHeadingNumbers(blocks, headingStyles);
+
+                if (b.type === 'HEADING') {
+                    const sorted = sortByOrder(blocks);
+                    let sIndex = 0;
+                    let subIndex = 0;
+                    let targetLabel = 'Sec I';
+                    for (const item of sorted) {
+                        if (item.type === 'HEADING') {
+                            if (item.content?.level === 1) {
+                                sIndex++;
+                                subIndex = 0;
+                                if (item.id === b.id) {
+                                    targetLabel = `Sec ${toRoman(sIndex)}`;
+                                    break;
+                                }
+                            } else {
+                                subIndex++;
+                                if (item.id === b.id) {
+                                    const letter = String.fromCharCode(64 + subIndex);
+                                    targetLabel = `Sec ${toRoman(sIndex || 1)} ${letter}`;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    const title = (b.content?.text || '').trim();
+                    blockSnippet = title ? `${targetLabel} - ${title}` : targetLabel;
+                } else if (b.type === 'EQUATION') {
+                    const counterInfo = counterMap.get(b.id);
+                    const label = b.content?.label ? ` (${b.content.label})` : '';
+                    blockSnippet = `eq ${counterInfo?.counter || 1}${label}`;
+                } else if (b.type === 'TABLE') {
+                    const counterInfo = counterMap.get(b.id);
+                    const cap = (b.content?.caption || '').trim();
+                    blockSnippet = `Table ${toRoman(counterInfo?.counter || 1)}${cap ? `: ${cap.substring(0, 25)}` : ''}`;
+                } else if (b.type === 'FIGURE') {
+                    const counterInfo = counterMap.get(b.id);
+                    const cap = (b.content?.caption || '').trim();
+                    blockSnippet = `Figure ${counterInfo?.counter || 1}${cap ? `: ${cap.substring(0, 25)}` : ''}`;
+                } else if (b.type === 'CODE') {
+                    const counterInfo = counterMap.get(b.id);
+                    blockSnippet = `Code ${counterInfo?.counter || 1}`;
+                } else if (b.type === 'REFERENCE') {
+                    const counterInfo = counterMap.get(b.id);
+                    const key = b.content?.citationKey || b.content?.formattedCitation || '';
+                    blockSnippet = `Ref [${counterInfo?.counter || 1}] ${key ? `(${key.substring(0, 15)})` : ''}`.trim();
+                } else {
+                    const txt = (b.content?.text || '').trim();
+                    blockSnippet = txt.length > 30 ? `"${txt.substring(0, 30)}..."` : txt ? `"${txt}"` : 'Paragraph';
+                }
+            }
+        }
+
+        const newComment: DocumentComment = {
+            id: uuidv4(),
+            documentId: document.id,
+            blockId,
+            blockSnippet,
+            text,
+            status: 'open',
+            createdAt: new Date().toISOString(),
+        };
+
+        const currentMeta = (document.metadata as any) || {};
+        const comments: DocumentComment[] = Array.isArray(currentMeta.comments) ? [...currentMeta.comments] : [];
+        comments.unshift(newComment);
+
+        const updatedMeta = { ...currentMeta, comments };
+
+        set({
+            document: { ...document, metadata: updatedMeta },
+            isDirty: true,
+        });
+
+        return newComment.id;
+    },
+
+    updateComment: (commentId: string, updates: Partial<DocumentComment>) => {
+        const { document } = get();
+        if (!document) return;
+
+        const currentMeta = (document.metadata as any) || {};
+        const comments: DocumentComment[] = Array.isArray(currentMeta.comments) ? [...currentMeta.comments] : [];
+        const index = comments.findIndex(c => c.id === commentId);
+        if (index === -1) return;
+
+        comments[index] = {
+            ...comments[index],
+            ...updates,
+            updatedAt: new Date().toISOString(),
+            ...(updates.status === 'resolved' && !comments[index].resolvedAt ? { resolvedAt: new Date().toISOString() } : {}),
+            ...(updates.status && updates.status !== 'resolved' ? { resolvedAt: undefined } : {})
+        };
+
+        const updatedMeta = { ...currentMeta, comments };
+        set({
+            document: { ...document, metadata: updatedMeta },
+            isDirty: true,
+        });
+    },
+
+    deleteComment: (commentId: string) => {
+        const { document } = get();
+        if (!document) return;
+
+        const currentMeta = (document.metadata as any) || {};
+        const comments: DocumentComment[] = Array.isArray(currentMeta.comments) ? [...currentMeta.comments] : [];
+        const filtered = comments.filter(c => c.id !== commentId);
+
+        const updatedMeta = { ...currentMeta, comments: filtered };
+        set({
+            document: { ...document, metadata: updatedMeta },
+            isDirty: true,
+        });
+    },
+
+    clearResolvedComments: () => {
+        const { document } = get();
+        if (!document) return;
+
+        const currentMeta = (document.metadata as any) || {};
+        const comments: DocumentComment[] = Array.isArray(currentMeta.comments) ? [...currentMeta.comments] : [];
+        const remaining = comments.filter(c => c.status !== 'resolved');
+
+        const updatedMeta = { ...currentMeta, comments: remaining };
+        set({
+            document: { ...document, metadata: updatedMeta },
+            isDirty: true,
+        });
+    },
+
+    verifyCommentWithAI: async (commentId: string) => {
+        const { document, blocks } = get();
+        if (!document) return;
+
+        const currentMeta = (document.metadata as any) || {};
+        const comments: DocumentComment[] = Array.isArray(currentMeta.comments) ? [...currentMeta.comments] : [];
+        const comment = comments.find(c => c.id === commentId);
+        if (!comment) return;
+
+        let targetContent = '';
+        if (comment.blockId) {
+            const sorted = sortByOrder(blocks);
+            const blockIndex = sorted.findIndex(b => b.id === comment.blockId);
+            const targetBlock = sorted[blockIndex];
+
+            if (targetBlock) {
+                if (targetBlock.type === 'HEADING') {
+                    // Collect all blocks in this section until reaching the next heading of equal or higher hierarchy
+                    const targetLevel = targetBlock.content?.level || 1;
+                    const sectionBlocks: ScholarBlock[] = [targetBlock];
+
+                    for (let i = blockIndex + 1; i < sorted.length; i++) {
+                        const b = sorted[i];
+                        if (b.type === 'HEADING') {
+                            const bLevel = b.content?.level || 1;
+                            // Stop if reaching another section of equal or higher level
+                            if (bLevel <= targetLevel) {
+                                break;
+                            }
+                        }
+                        sectionBlocks.push(b);
+                    }
+
+                    // Format content cleanly for AI
+                    targetContent = sectionBlocks.map(b => {
+                        if (b.type === 'HEADING') {
+                            return `\n## [Heading] ${b.content?.text || 'Untitled'}\n`;
+                        } else if (b.type === 'TEXT') {
+                            return b.content?.text || '';
+                        } else if (b.type === 'EQUATION') {
+                            return `[Equation ${b.content?.label ? `(${b.content.label})` : ''}]: ${b.content?.latex || ''}`;
+                        } else if (b.type === 'FIGURE') {
+                            return `[Figure: ${b.content?.caption || 'Figure'} (Image omitted)]`;
+                        } else if (b.type === 'TABLE') {
+                            const caption = b.content?.caption ? `[Table: ${b.content.caption}]\n` : '[Table]\n';
+                            const headers = (b.content?.headers || []).join(' | ');
+                            const separator = (b.content?.headers || []).map(() => '---').join(' | ');
+                            const rows = (b.content?.rows || []).map((row: string[]) => row.join(' | ')).join('\n');
+                            return `${caption}| ${headers} |\n| ${separator} |\n${rows ? rows.split('\n').map(r => `| ${r} |`).join('\n') : ''}`;
+                        } else if (b.type === 'CODE') {
+                            return `\`\`\`${b.content?.language || ''}\n${b.content?.code || ''}\n\`\`\``;
+                        }
+                        return '';
+                    }).filter(Boolean).join('\n\n');
+                } else {
+                    // Non-heading block: provide the block itself plus its enclosing section context
+                    let parentHeading: ScholarBlock | null = null;
+                    for (let i = blockIndex - 1; i >= 0; i--) {
+                        if (sorted[i].type === 'HEADING') {
+                            parentHeading = sorted[i];
+                            break;
+                        }
+                    }
+
+                    const blockText = typeof targetBlock.content === 'string' 
+                        ? targetBlock.content 
+                        : targetBlock.type === 'FIGURE'
+                        ? `[Figure caption: ${targetBlock.content?.caption || 'Figure'}]`
+                        : JSON.stringify(targetBlock.content);
+
+                    targetContent = parentHeading 
+                        ? `Section: ${parentHeading.content?.text || ''}\n\nTarget Element:\n${blockText}`
+                        : blockText;
+                }
+            }
+        } else {
+            // General paper context: abstract + title
+            targetContent = `Title: ${document.title}\nAbstract: ${document.abstract || 'N/A'}`;
+        }
+
+        const prompt = `You are an expert academic reviewer and editor. 
+Please assess the following comment/issue made on an academic paper.
+
+COMMENT/ISSUE:
+"${comment.text}"
+
+REFERENCED SECTION / CONTENT:
+"""
+${targetContent}
+"""
+
+Please analyze this carefully:
+1. Is this critique/comment academically valid and correct based on the provided text?
+2. Explain the assessment clearly and give actionable recommendations for the author.
+3. If applicable, recommend specific text adjustments or additions.
+
+Format your response strictly as JSON with this exact shape:
+{
+  "isValid": true,
+  "verdict": "valid",
+  "analysis": "Explanation of whether the comment is justified and why...",
+  "suggestedFix": "Concrete suggestion or sentence to add..."
+}
+Verdict must be one of: "valid", "invalid", "already_resolved", "needs_clarification". Return ONLY the JSON object.`;
+
+        try {
+            const res = await fetch('/api/llm', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    prompt,
+                    contextText: `Paper Title: ${document.title}\nReferenced Block: ${comment.blockSnippet || 'Whole Document'}`
+                })
+            });
+
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                throw new Error(err.error || 'Failed to analyze comment with AI');
+            }
+
+            const data = await res.json();
+            let parsedAssessment: any = null;
+            try {
+                // Remove markdown json code fences if present
+                const cleaned = (data.result || '').replace(/```json/g, '').replace(/```/g, '').trim();
+                parsedAssessment = JSON.parse(cleaned);
+            } catch {
+                parsedAssessment = {
+                    isValid: true,
+                    verdict: 'valid',
+                    analysis: data.result || 'Analysis completed.',
+                    suggestedFix: ''
+                };
+            }
+
+            const assessment: AICommentAssessment = {
+                evaluatedAt: new Date().toISOString(),
+                isValid: Boolean(parsedAssessment.isValid),
+                verdict: parsedAssessment.verdict || 'valid',
+                analysis: parsedAssessment.analysis || 'Analysis completed.',
+                suggestedFix: parsedAssessment.suggestedFix || '',
+                canAutoResolve: parsedAssessment.verdict === 'already_resolved',
+            };
+
+            get().updateComment(commentId, { aiAssessment: assessment });
+        } catch (err: any) {
+            console.error('AI Comment Verification Error:', err);
+            throw err;
+        }
+    },
+
+    checkResolutionWithAI: async (commentId: string) => {
+        const { document, blocks } = get();
+        if (!document) return;
+
+        const currentMeta = (document.metadata as any) || {};
+        const comments: DocumentComment[] = Array.isArray(currentMeta.comments) ? [...currentMeta.comments] : [];
+        const comment = comments.find(c => c.id === commentId);
+        if (!comment) return;
+
+        let targetContent = '';
+        if (comment.blockId) {
+            const sorted = sortByOrder(blocks);
+            const blockIndex = sorted.findIndex(b => b.id === comment.blockId);
+            const targetBlock = sorted[blockIndex];
+
+            if (targetBlock) {
+                if (targetBlock.type === 'HEADING') {
+                    // Collect all blocks in this section until reaching the next heading of equal or higher hierarchy
+                    const targetLevel = targetBlock.content?.level || 1;
+                    const sectionBlocks: ScholarBlock[] = [targetBlock];
+
+                    for (let i = blockIndex + 1; i < sorted.length; i++) {
+                        const b = sorted[i];
+                        if (b.type === 'HEADING') {
+                            const bLevel = b.content?.level || 1;
+                            if (bLevel <= targetLevel) {
+                                break;
+                            }
+                        }
+                        sectionBlocks.push(b);
+                    }
+
+                    // Format content cleanly for AI (including figure captions and equations)
+                    targetContent = sectionBlocks.map(b => {
+                        if (b.type === 'HEADING') {
+                            return `\n## [Heading] ${b.content?.text || 'Untitled'}\n`;
+                        } else if (b.type === 'TEXT') {
+                            return b.content?.text || '';
+                        } else if (b.type === 'EQUATION') {
+                            return `[Equation ${b.content?.label ? `(${b.content.label})` : ''}]: ${b.content?.latex || ''}`;
+                        } else if (b.type === 'FIGURE') {
+                            return `[Figure: ${b.content?.caption || 'Figure'} (Image omitted)]`;
+                        } else if (b.type === 'TABLE') {
+                            const caption = b.content?.caption ? `[Table: ${b.content.caption}]\n` : '[Table]\n';
+                            const headers = (b.content?.headers || []).join(' | ');
+                            const separator = (b.content?.headers || []).map(() => '---').join(' | ');
+                            const rows = (b.content?.rows || []).map((row: string[]) => row.join(' | ')).join('\n');
+                            return `${caption}| ${headers} |\n| ${separator} |\n${rows ? rows.split('\n').map(r => `| ${r} |`).join('\n') : ''}`;
+                        } else if (b.type === 'CODE') {
+                            return `\`\`\`${b.content?.language || ''}\n${b.content?.code || ''}\n\`\`\``;
+                        }
+                        return '';
+                    }).filter(Boolean).join('\n\n');
+                } else {
+                    let parentHeading: ScholarBlock | null = null;
+                    for (let i = blockIndex - 1; i >= 0; i--) {
+                        if (sorted[i].type === 'HEADING') {
+                            parentHeading = sorted[i];
+                            break;
+                        }
+                    }
+
+                    const blockText = typeof targetBlock.content === 'string' 
+                        ? targetBlock.content 
+                        : targetBlock.type === 'FIGURE'
+                        ? `[Figure caption: ${targetBlock.content?.caption || 'Figure'}]`
+                        : JSON.stringify(targetBlock.content);
+
+                    targetContent = parentHeading 
+                        ? `Section: ${parentHeading.content?.text || ''}\n\nTarget Element:\n${blockText}`
+                        : blockText;
+                }
+            }
+        } else {
+            targetContent = `Title: ${document.title}\nAbstract: ${document.abstract || 'N/A'}`;
+        }
+
+        const prompt = `You are an expert academic editor verifying if an issue has been resolved in a research paper.
+
+ISSUE/COMMENT TO CHECK:
+"${comment.text}"
+
+CURRENT CONTENT IN THE PAPER:
+"""
+${targetContent}
+"""
+
+Evaluate whether the current content satisfactorily addresses and resolves the issue raised in the comment.
+Format your response strictly as JSON:
+{
+  "isResolved": true,
+  "verdict": "already_resolved",
+  "analysis": "Explanation of how the text resolves or still falls short of resolving the issue...",
+  "suggestedFix": "Any remaining adjustments if not fully resolved..."
+}
+Verdict must be either "already_resolved" or "valid" (if still unresolved). Return ONLY the JSON object.`;
+
+        try {
+            const res = await fetch('/api/llm', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    prompt,
+                    contextText: `Paper Title: ${document.title}`
+                })
+            });
+
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                throw new Error(err.error || 'Failed to check resolution with AI');
+            }
+
+            const data = await res.json();
+            let parsed: any = null;
+            try {
+                const cleaned = (data.result || '').replace(/```json/g, '').replace(/```/g, '').trim();
+                parsed = JSON.parse(cleaned);
+            } catch {
+                parsed = {
+                    isResolved: false,
+                    verdict: 'valid',
+                    analysis: data.result || 'Review completed.',
+                    suggestedFix: ''
+                };
+            }
+
+            const assessment: AICommentAssessment = {
+                evaluatedAt: new Date().toISOString(),
+                isValid: !parsed.isResolved,
+                verdict: parsed.isResolved ? 'already_resolved' : 'valid',
+                analysis: parsed.analysis || 'Resolution check completed.',
+                suggestedFix: parsed.suggestedFix || '',
+                canAutoResolve: Boolean(parsed.isResolved),
+            };
+
+            const updates: Partial<DocumentComment> = {
+                aiAssessment: assessment,
+            };
+
+            if (parsed.isResolved) {
+                updates.status = 'resolved';
+            }
+
+            get().updateComment(commentId, updates);
+        } catch (err: any) {
+            console.error('AI Resolution Check Error:', err);
+            throw err;
+        }
     },
 
     // ============================================

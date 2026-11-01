@@ -10,8 +10,10 @@ import { useEditorStore } from '@/store/editor-store';
 import { EditorCanvas } from '@/components/editor/EditorCanvas';
 import { InspectorPanel } from '@/components/editor/InspectorPanel';
 import { LiteratureLibrary } from '@/components/literature/LiteratureLibrary';
+import { CommentsPanel } from '@/components/editor/CommentsPanel';
 
 import { calculateHeadingNumbers, filterBlocksForDocument } from '@/lib/cross-reference';
+import { duplicateScholarProject } from '@/lib/duplicate-project';
 
 export default function DocumentEditorPage() {
     const params = useParams();
@@ -80,6 +82,27 @@ export default function DocumentEditorPage() {
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, []);
+
+    const [isDuplicatingProject, setIsDuplicatingProject] = useState(false);
+
+    const handleDuplicateProject = async () => {
+        if (useEditorStore.getState().isDirty) {
+            await useEditorStore.getState().saveDocument();
+        }
+        setIsDuplicatingProject(true);
+        try {
+            const currentDocTitle = useEditorStore.getState().document?.title || 'Research Paper';
+            const copyTitle = `${currentDocTitle} (Copy)`;
+            const newProjId = await duplicateScholarProject(projectId, copyTitle);
+            alert(t('Project duplicated successfully! Redirecting...', 'تم نسخ المشروع بنجاح! جارٍ التحويل...'));
+            router.push(`/projects/${newProjId}`);
+        } catch (err: any) {
+            console.error('Failed to duplicate project from document editor:', err);
+            alert(t('Failed to duplicate project: ', 'فشل في نسخ المشروع: ') + (err?.message || 'Error'));
+        } finally {
+            setIsDuplicatingProject(false);
+        }
+    };
 
     const handlePrintPreview = async () => {
         if (useEditorStore.getState().isDirty) {
@@ -201,26 +224,60 @@ export default function DocumentEditorPage() {
                         {t('Print', 'طباعة')}
                     </button>
 
+                    {/* Duplicate Project Button */}
+                    <button
+                        onClick={handleDuplicateProject}
+                        disabled={isDuplicatingProject}
+                        className="futuristic-btn-ghost py-1.5 px-2.5 text-xs flex items-center gap-1.5 text-slate-300 hover:text-cyan-300 border-slate-700/40 hover:border-cyan-500/40 transition-colors"
+                        title={t('Duplicate project to preserve status before making edits', 'تكرار المشروع لحفظ حالته قبل التعديل')}
+                    >
+                        {isDuplicatingProject ? (
+                            <>
+                                <div className="w-3 h-3 border-2 border-cyan-400/30 border-t-cyan-400 rounded-full animate-spin" />
+                                <span>{t('Duplicating...', 'جارٍ النسخ...')}</span>
+                            </>
+                        ) : (
+                            <>
+                                <span>📑</span>
+                                <span>{t('Duplicate', 'نسخ')}</span>
+                            </>
+                        )}
+                    </button>
+
                     {/* Panel Toggles */}
                     <div className="flex items-center rounded-lg border border-slate-700/40 bg-slate-800/50 p-0.5">
                         {([
                             { key: 'outline' as const, icon: '≡', label: 'Outline' },
+                            { key: 'comments' as const, icon: '💬', label: 'Comments & Issues' },
                             { key: 'literature' as const, icon: '📚', label: 'Literature' },
                             { key: 'codeRunner' as const, icon: '▶', label: 'Code' },
-                        ]).map(panel => (
-                            <button
-                                key={panel.key}
-                                onClick={() => setActivePanel(activePanel === panel.key ? null : panel.key)}
-                                className={`px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                                    activePanel === panel.key
-                                        ? 'bg-amber-500/15 text-amber-400'
-                                        : 'text-slate-500 hover:text-slate-300'
-                                }`}
-                                title={panel.label}
-                            >
-                                {panel.icon}
-                            </button>
-                        ))}
+                        ]).map(panel => {
+                            const openIssuesCount = panel.key === 'comments'
+                                ? (Array.isArray(document?.metadata?.comments)
+                                    ? document.metadata.comments.filter((c: any) => c.status === 'open' || c.status === 'in_progress').length
+                                    : 0)
+                                : 0;
+
+                            return (
+                                <button
+                                    key={panel.key}
+                                    onClick={() => setActivePanel(activePanel === panel.key ? null : panel.key)}
+                                    className={`relative px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors flex items-center gap-1 ${
+                                        activePanel === panel.key
+                                            ? 'bg-amber-500/15 text-amber-400'
+                                            : 'text-slate-500 hover:text-slate-300'
+                                    }`}
+                                    title={panel.label}
+                                >
+                                    <span>{panel.icon}</span>
+                                    {openIssuesCount > 0 && (
+                                        <span className="w-4 h-4 rounded-full bg-amber-500 text-slate-950 font-bold text-[10px] flex items-center justify-center">
+                                            {openIssuesCount > 9 ? '9+' : openIssuesCount}
+                                        </span>
+                                    )}
+                                </button>
+                            );
+                        })}
                     </div>
 
                     <LanguageSwitcher />
@@ -232,9 +289,14 @@ export default function DocumentEditorPage() {
                 {/* Left Sidebar */}
                 {activePanel && (
                     <div className={`sidebar-panel flex-shrink-0 overflow-y-auto transition-all duration-200 border-r border-slate-700/30 ${
-                        activePanel === 'literature' ? 'w-80 md:w-96 lg:w-[460px]' : 'w-64 md:w-72'
+                        activePanel === 'literature' 
+                            ? 'w-80 md:w-96 lg:w-[460px]' 
+                            : activePanel === 'comments'
+                            ? 'w-80 md:w-96 lg:w-[420px]'
+                            : 'w-64 md:w-72'
                     }`}>
                         {activePanel === 'outline' && <DocumentOutline />}
+                        {activePanel === 'comments' && <CommentsPanel />}
                         {activePanel === 'literature' && <LiteratureLibrary />}
                         {activePanel === 'codeRunner' && <CodeRunnerPanel />}
                     </div>

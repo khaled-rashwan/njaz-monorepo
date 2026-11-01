@@ -235,7 +235,11 @@ export async function generateDocx({
                 if (isReferencesHeading && !referencesHidden) {
                     const refBlocks = sortedBlocks.filter(b => b.type === 'REFERENCE');
                     refBlocks.forEach((refBlock, idx) => {
-                        const linkedItem = literatureItems.find(item => item.id === refBlock.content?.literatureItemId);
+                        let refContent: any = refBlock.content;
+                        if (typeof refContent === 'string') {
+                            try { refContent = JSON.parse(refContent); } catch { refContent = {}; }
+                        }
+                        const linkedItem = literatureItems.find(item => item.id === refContent?.literatureItemId);
                         if (!linkedItem) return;
 
                         let authorsList: any[] = [];

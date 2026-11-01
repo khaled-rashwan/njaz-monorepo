@@ -34,6 +34,7 @@ import Link from 'next/link';
 import { client } from '@/lib/amplify-client';
 import { v4 as uuidv4 } from 'uuid';
 import { searchAllSources } from '@/lib/literature-api';
+import { duplicateScholarProject } from '@/lib/duplicate-project';
 
 const formatAuthors = (authors?: any[] | null) => {
   if (!authors || !Array.isArray(authors)) return 'Unknown Authors';
@@ -161,6 +162,27 @@ export function ProjectCanvas({ projectId }: { projectId: string }) {
   const [manualYear, setManualYear] = useState('');
   const [manualDoi, setManualDoi] = useState('');
   const [manualUrl, setManualUrl] = useState('');
+
+  // Duplicate project state
+  const [isDuplicatingProject, setIsDuplicatingProject] = useState(false);
+
+  const handleDuplicateProject = async () => {
+    if (isDirty) {
+      await saveDocument();
+    }
+    setIsDuplicatingProject(true);
+    try {
+      const copyTitle = `${activeDocument?.title || 'Research Project'} (Copy)`;
+      const newProjId = await duplicateScholarProject(projectId, copyTitle);
+      alert(t('Project duplicated successfully! Redirecting to the copy...', 'تم نسخ المشروع بنجاح! جارٍ الانتقال إلى النسخة...'));
+      router.push(`/projects/${newProjId}`);
+    } catch (err: any) {
+      console.error('Failed to duplicate project from canvas:', err);
+      alert(t('Failed to duplicate project: ', 'فشل في تكرار المشروع: ') + (err?.message || 'Error'));
+    } finally {
+      setIsDuplicatingProject(false);
+    }
+  };
 
   // Load canvas layout on mount
   useEffect(() => {
@@ -2483,6 +2505,26 @@ export function ProjectCanvas({ projectId }: { projectId: string }) {
               Save
             </button>
           </div>
+
+          {/* Duplicate Project (Reserve Status) Button */}
+          <button
+            onClick={handleDuplicateProject}
+            disabled={isDuplicatingProject}
+            className="futuristic-btn-ghost flex items-center gap-1.5 bg-slate-900/80 backdrop-blur-md text-[11px] font-medium text-slate-300 hover:text-cyan-300 border border-slate-700/40 hover:border-cyan-500/40 p-1 px-2.5 rounded-lg shadow-md transition-all"
+            title={t('Duplicate project to preserve status before making edits', 'تكرار المشروع لحفظ حالته قبل التعديل')}
+          >
+            {isDuplicatingProject ? (
+              <>
+                <div className="w-3 h-3 border-2 border-cyan-400/30 border-t-cyan-400 rounded-full animate-spin" />
+                <span>{t('Duplicating...', 'جارٍ النسخ...')}</span>
+              </>
+            ) : (
+              <>
+                <span>📑</span>
+                <span>{t('Duplicate Project', 'تكرار المشروع')}</span>
+              </>
+            )}
+          </button>
         </div>
 
         <button

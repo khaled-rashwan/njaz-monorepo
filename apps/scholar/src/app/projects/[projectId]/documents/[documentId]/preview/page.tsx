@@ -386,7 +386,11 @@ export default function DocumentPreviewPage() {
                                             {isReferencesHeading && !referencesHidden && (
                                                 <div className="mt-4 pl-4 space-y-3 border-l-2 border-slate-200">
                                                     {refBlocks.map((refBlock, idx) => {
-                                                        const linkedItem = literatureItems.find(item => item.id === refBlock.content?.literatureItemId);
+                                                        let refContent: any = refBlock.content;
+                                                        if (typeof refContent === 'string') {
+                                                            try { refContent = JSON.parse(refContent); } catch { refContent = {}; }
+                                                        }
+                                                        const linkedItem = literatureItems.find(item => item.id === refContent?.literatureItemId);
                                                         if (!linkedItem) return null;
 
                                                         let authorsList: any[] = [];
