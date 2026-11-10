@@ -23,6 +23,12 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Setup Mock Amplify Outputs for CI
+        run: |
+          echo '{}' > amplify_outputs.json
+          echo '{}' > apps/scholar/amplify_outputs.json
+          echo '{}' > apps/estebian/amplify_outputs.json
+
       - name: Run Unit Tests
         run: npm test
 
