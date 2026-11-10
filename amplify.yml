@@ -43,6 +43,7 @@ applications:
               trigger_app "DASHBOARD" "$WEBHOOK_DASHBOARD"
               trigger_app "LANDING" "$WEBHOOK_LANDING"
               trigger_app "ESTEBIAN" "$WEBHOOK_ESTEBIAN"
+              trigger_app "SCHOLAR" "$WEBHOOK_SCHOLAR"
       artifacts:
         baseDirectory: .
         files:
@@ -142,3 +143,25 @@ applications:
           - .next/cache/**/*
           - node_modules/**/*
     appRoot: apps/dev
+
+  # --- SCHOLAR ---
+  - frontend:
+      phases:
+        preBuild:
+          commands:
+            - cd ../.. && npm ci
+            - cd apps/scholar
+            - npx ampx generate outputs --branch $AWS_BRANCH --app-id $AMPLIFY_BACKEND_APP_ID
+            - node ../../scripts/sync-assets.js
+        build:
+          commands:
+            - npm run build
+      artifacts:
+        baseDirectory: .next
+        files:
+          - '**/*'
+      cache:
+        paths:
+          - .next/cache/**/*
+          - node_modules/**/*
+    appRoot: apps/scholar

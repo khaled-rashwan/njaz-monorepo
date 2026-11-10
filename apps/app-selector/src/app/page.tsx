@@ -20,9 +20,10 @@ import { getLandingUrl, getAppUrl } from '@njaz/shared-auth';
 
 // Quick actions for the dashboard
 const quickActions = [
+    { id: 'new-research', label: 'Paper', icon: '📄', color: 'gold' as const, appId: 'scholar', path: '/projects' },
     { id: 'new-survey', label: 'Survey', icon: '📝', color: 'purple' as const, appId: 'estebian', path: '/' },
-    { id: 'new-controller', label: 'Tuner', icon: '⚙️', color: 'gold' as const, appId: 'pid', path: '/' },
     { id: 'new-project', label: 'Project', icon: '📁', color: 'cyan' as const, appId: 'dev', path: '/contact' },
+    { id: 'new-controller', label: 'Tuner', icon: '⚙️', color: 'gold' as const, appId: 'pid', path: '/' },
     { id: 'upload-design', label: 'Design', icon: '🎨', color: 'green' as const, appId: 'interior', path: '/' },
 ];
 
