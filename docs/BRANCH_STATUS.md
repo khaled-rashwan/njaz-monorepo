@@ -39,6 +39,7 @@ njaz/
 │   ├── landing/           # Main marketing and public landing site
 │   └── scholar/           # Scholar research and document creation app
 ├── docs/                  # Project documentation & operational briefs
+│   ├── architecture/      # Project brief & Cognito auth design notes
 │   └── BRANCH_STATUS.md   # Git branch status & monorepo conventions
 ├── packages/              # Shared monorepo packages and libraries
 │   ├── estebian-data/     # Survey schema, entities, and data models

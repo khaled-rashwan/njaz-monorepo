@@ -73,3 +73,9 @@ apps/scholar/docs/
 # Scholar Storage
 apps/scholar/storage/
 
+
+# Archives, drivers & local logs
+*.zip
+error_log.txt
+**/amplify_outputs.json
+
