@@ -1,5 +1,7 @@
 # Njaz Platform
 
+[![CI](https://github.com/khaled-rashwan/njaz-monorepo/actions/workflows/ci.yml/badge.svg)](https://github.com/khaled-rashwan/njaz-monorepo/actions/workflows/ci.yml)
+
 **A TypeScript monorepo for academic research tooling: a research‑writing workspace (Scholar), a psychometric survey & statistics suite (Estebian), and a developer‑services portal, all on one shared AWS Amplify Gen2 backend with single sign‑on.**
 
 Njaz (نجاز, "achievement") targets graduate students and researchers, especially Arabic‑speaking ones. The apps are RTL‑aware and bilingual (Arabic/English), and they cover the path from literature review to survey design, statistical analysis, and the final report.
