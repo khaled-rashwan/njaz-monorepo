@@ -27,7 +27,7 @@ export default function RootLayout({
     return (
         <html lang="en" dir="ltr" suppressHydrationWarning>
             <head>
-                <title>Scholar | Njaz — Academic Writing Platform</title>
+                <title>Scholar | Njaz — Academic Writing & Research Platform</title>
                 <meta name="description" content="Block-based academic writing with AI co-authoring, literature survey, and sandboxed code execution." />
                 <meta name="keywords" content="academic writing, research, literature review, block editor, AI writing, scholar, njaz" />
                 <meta name="theme-color" content="#f59e0b" />
