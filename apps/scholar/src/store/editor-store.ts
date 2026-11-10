@@ -1915,7 +1915,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
                             const headers = (b.content?.headers || []).join(' | ');
                             const separator = (b.content?.headers || []).map(() => '---').join(' | ');
                             const rows = (b.content?.rows || []).map((row: string[]) => row.join(' | ')).join('\n');
-                            return `${caption}| ${headers} |\n| ${separator} |\n${rows ? rows.split('\n').map(r => `| ${r} |`).join('\n') : ''}`;
+                            return `${caption}| ${headers} |\n| ${separator} |\n${rows ? rows.split('\n').map((r: string) => `| ${r} |`).join('\n') : ''}`;
                         } else if (b.type === 'CODE') {
                             return `\`\`\`${b.content?.language || ''}\n${b.content?.code || ''}\n\`\`\``;
                         }
@@ -2065,7 +2065,7 @@ Verdict must be one of: "valid", "invalid", "already_resolved", "needs_clarifica
                             const headers = (b.content?.headers || []).join(' | ');
                             const separator = (b.content?.headers || []).map(() => '---').join(' | ');
                             const rows = (b.content?.rows || []).map((row: string[]) => row.join(' | ')).join('\n');
-                            return `${caption}| ${headers} |\n| ${separator} |\n${rows ? rows.split('\n').map(r => `| ${r} |`).join('\n') : ''}`;
+                            return `${caption}| ${headers} |\n| ${separator} |\n${rows ? rows.split('\n').map((r: string) => `| ${r} |`).join('\n') : ''}`;
                         } else if (b.type === 'CODE') {
                             return `\`\`\`${b.content?.language || ''}\n${b.content?.code || ''}\n\`\`\``;
                         }
