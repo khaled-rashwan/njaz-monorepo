@@ -53,7 +53,8 @@ export function parseERTextToRuns(
             const resolvedText = resolveRef(refContent, counterMap, language);
             runs.push(new TextRun({
                 text: resolvedText,
-                bold: true,
+                bold,
+                italics,
                 font,
                 size,
                 color: "000000",
@@ -673,15 +674,7 @@ export async function generateEngineeringReviewDocx({
                         new Paragraph({
                             alignment: AlignmentType.CENTER,
                             spacing: { before: 80, after: 200 },
-                            children: [
-                                new TextRun({
-                                    text: `Figure ${figureNumber}. ${content.caption}`,
-                                    italics: true,
-                                    size: 22, // 11 pt
-                                    font: 'Times New Roman',
-                                    color: "000000",
-                                })
-                            ]
+                            children: parseERTextToRuns(`Figure ${figureNumber}. ${content.caption}`, counterMap, language, { size: 22, italic: true }),
                         })
                     );
                 }
@@ -700,59 +693,47 @@ export async function generateEngineeringReviewDocx({
                         new Paragraph({
                             alignment: AlignmentType.CENTER,
                             spacing: { before: 200, after: 80 },
-                            children: [
-                                new TextRun({
-                                    text: `Table ${tableNumber}. ${content.caption}`,
-                                    italics: true,
-                                    size: 22, // 11 pt
-                                    font: 'Times New Roman',
-                                    color: "000000",
-                                })
-                            ]
+                            children: parseERTextToRuns(`Table ${tableNumber}. ${content.caption}`, counterMap, language, { size: 22, italic: true }),
                         })
                     );
                 }
 
-                if (headers.length > 0) {
-                    const tableRows = [
-                        new TableRow({
-                            tableHeader: true,
-                            children: headers.map((h: string) => new TableCell({
-                                margins: { top: 80, bottom: 80, left: 100, right: 100 },
-                                children: [
-                                    new Paragraph({
-                                        alignment: AlignmentType.LEFT,
-                                        children: [
-                                            new TextRun({
-                                                text: h,
-                                                bold: true,
-                                                size: 20, // 10 pt
-                                                font: 'Times New Roman',
-                                            })
-                                        ]
-                                    })
-                                ]
-                            }))
-                        }),
-                        ...rows.map((row: string[], rIdx: number) => new TableRow({
-                            children: row.map((cell: string) => new TableCell({
-                                margins: { top: 60, bottom: 60, left: 100, right: 100 },
-                                shading: rIdx % 2 === 1 ? { fill: "F8FAFC", type: ShadingType.CLEAR } : undefined,
-                                children: [
-                                    new Paragraph({
-                                        alignment: AlignmentType.LEFT,
-                                        children: [
-                                            new TextRun({
-                                                text: cell,
-                                                size: 20, // 10 pt
-                                                font: 'Times New Roman',
-                                            })
-                                        ]
-                                    })
-                                ]
-                            }))
-                        }))
-                    ];
+                if (headers.length > 0 || rows.length > 0) {
+                    const tableRows: TableRow[] = [];
+
+                    if (headers.length > 0) {
+                        tableRows.push(
+                            new TableRow({
+                                tableHeader: true,
+                                children: headers.map((h: string) => new TableCell({
+                                    margins: { top: 80, bottom: 80, left: 100, right: 100 },
+                                    children: [
+                                        new Paragraph({
+                                            alignment: AlignmentType.LEFT,
+                                            children: parseERTextToRuns(h, counterMap, language, { size: 20, bold: true }),
+                                        })
+                                    ]
+                                }))
+                            })
+                        );
+                    }
+
+                    rows.forEach((row: string[], rIdx: number) => {
+                        tableRows.push(
+                            new TableRow({
+                                children: row.map((cell: string) => new TableCell({
+                                    margins: { top: 60, bottom: 60, left: 100, right: 100 },
+                                    shading: rIdx % 2 === 1 ? { fill: "F8FAFC", type: ShadingType.CLEAR } : undefined,
+                                    children: [
+                                        new Paragraph({
+                                            alignment: AlignmentType.LEFT,
+                                            children: parseERTextToRuns(cell, counterMap, language, { size: 20 }),
+                                        })
+                                    ]
+                                }))
+                            })
+                        );
+                    });
 
                     sections.push(
                         new Table({
