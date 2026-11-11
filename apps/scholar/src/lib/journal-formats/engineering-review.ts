@@ -138,6 +138,52 @@ export function toSuperscript(str: string): string {
 }
 
 /**
+ * Formats a single affiliation line according to the journal template:
+ * "Department Name, Faculty Name, University Name, Address"
+ * Combines all structured fields (department, faculty, institution, and address/country)
+ * so that adding an address does NOT overwrite the department or university.
+ */
+export function formatAffiliationText(aff: AffiliationInfo): string {
+    if (!aff) return '';
+
+    const parts: string[] = [];
+
+    if (aff.department?.trim()) {
+        parts.push(aff.department.trim());
+    }
+
+    if (aff.faculty?.trim()) {
+        parts.push(aff.faculty.trim());
+    }
+
+    if (aff.institution?.trim()) {
+        parts.push(aff.institution.trim());
+    }
+
+    // Address part can come from address, city, country, or legacy fullAddress field
+    const addressCandidate = (aff.address || aff.fullAddress || [aff.city, aff.country].filter(Boolean).join(', '))?.trim();
+
+    if (addressCandidate) {
+        // If the addressCandidate is not already an exact duplicate of a previous part, append it
+        const alreadyIncluded = parts.some(p => p.toLowerCase() === addressCandidate.toLowerCase());
+        if (!alreadyIncluded) {
+            // Also avoid duplicate substrings if user already typed the institution in the address box
+            const isFullDuplication = parts.length > 0 && addressCandidate.toLowerCase().includes(parts[parts.length - 1].toLowerCase());
+            if (!isFullDuplication) {
+                parts.push(addressCandidate);
+            }
+        }
+    }
+
+    // If neither department, faculty, nor institution was provided, fallback to the address candidate
+    if (parts.length === 0) {
+        return (aff.fullAddress || aff.address || aff.institution || '').trim();
+    }
+
+    return parts.join(', ');
+}
+
+/**
  * Validates document metadata against Engineering Review journal requirements
  */
 export function validateEngineeringReview(
@@ -294,6 +340,7 @@ export function createInitialEngineeringReviewMetadata(
             institution: 'University of Rijeka',
             city: 'Rijeka',
             country: 'Croatia',
+            address: 'Vukovarska 58, 51000 Rijeka, Croatia',
             fullAddress: 'Vukovarska 58, 51000 Rijeka, Croatia'
         }
     ];

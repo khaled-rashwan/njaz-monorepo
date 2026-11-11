@@ -15,7 +15,8 @@ import {
     validateEngineeringReview,
     createInitialEngineeringReviewMetadata,
     ENGINEERING_REVIEW_SPECS,
-    countWords
+    countWords,
+    formatAffiliationText
 } from '@/lib/journal-formats';
 
 interface JournalMetadataModalProps {
@@ -214,6 +215,7 @@ export function JournalMetadataModal({ isOpen, onClose, initialFormatId }: Journ
                 institution: '',
                 city: '',
                 country: '',
+                address: '',
                 fullAddress: '',
             }
         ]);
@@ -702,11 +704,24 @@ export function JournalMetadataModal({ isOpen, onClose, initialFormatId }: Journ
                                                     </label>
                                                     <input
                                                         type="text"
-                                                        value={aff.fullAddress || ''}
-                                                        onChange={(e) => handleUpdateAffiliation(idx, { fullAddress: e.target.value })}
-                                                        placeholder="Vukovarska 58, 51000 Rijeka, Croatia"
+                                                        value={aff.address || aff.fullAddress || ''}
+                                                        onChange={(e) => handleUpdateAffiliation(idx, { address: e.target.value, fullAddress: e.target.value })}
+                                                        placeholder="e.g., Cairo, Egypt"
                                                         className="futuristic-input text-xs w-full"
                                                     />
+                                                </div>
+
+                                                {/* Live Formatted Line Preview */}
+                                                <div className="md:col-span-3">
+                                                    <div className="p-2.5 rounded-lg bg-slate-950/70 border border-slate-800 text-[11px] flex items-center gap-2">
+                                                        <span className="w-4 h-4 rounded-full bg-amber-500/20 text-amber-400 font-mono font-bold text-[10px] flex items-center justify-center flex-shrink-0">
+                                                            {aff.number}
+                                                        </span>
+                                                        <span className="text-slate-400 font-medium whitespace-nowrap text-[10px] uppercase tracking-wider">{t('Formatted Output:', 'السطر النهائي في البحث:')}</span>
+                                                        <span className="text-amber-200 font-serif italic truncate">
+                                                            {formatAffiliationText(aff) || t('(Please fill in institution and address details)', '(يرجى إدخال اسم المؤسسة والعنوان)')}
+                                                        </span>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>

@@ -10,7 +10,8 @@ import { BlockType } from '@/types';
 import { JournalFormatId, EngineeringReviewMetadata } from '@/types/journal';
 import {
     validateEngineeringReview,
-    createInitialEngineeringReviewMetadata
+    createInitialEngineeringReviewMetadata,
+    formatAffiliationText
 } from '@/lib/journal-formats';
 import { JournalMetadataModal } from '@/components/journal/JournalMetadataModal';
 import { FormatSelectorDropdown } from '@/components/journal/FormatSelectorDropdown';
@@ -454,7 +455,7 @@ export default function DocumentPreviewPage() {
                             <div className="text-[10pt] text-center text-slate-800 font-serif mb-5 space-y-0.5">
                                 {journalMeta?.affiliations && journalMeta.affiliations.length > 0 ? (
                                     journalMeta.affiliations.map((aff, idx) => {
-                                        const fullAddr = aff.fullAddress || [aff.department, aff.faculty, aff.institution, aff.city, aff.country].filter(Boolean).join(', ');
+                                        const fullAddr = formatAffiliationText(aff);
                                         return (
                                             <p key={aff.id || idx}>
                                                 <sup className="text-[8pt] mr-1">{aff.number}</sup>

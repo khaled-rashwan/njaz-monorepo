@@ -7,7 +7,7 @@ import {
 } from "docx";
 import { ScholarBlock, ScholarDocument, ScholarLiteratureItem, BlockType } from '@/types';
 import { EngineeringReviewMetadata, AuthorInfo, AffiliationInfo } from '@/types/journal';
-import { createInitialEngineeringReviewMetadata } from './engineering-review';
+import { createInitialEngineeringReviewMetadata, formatAffiliationText } from './engineering-review';
 import { resolveRef } from '../cross-reference';
 import { latexToDocxMath } from '../latex-to-omml';
 
@@ -197,7 +197,7 @@ export async function generateEngineeringReviewDocx({
 
     // 3. Affiliations: 10 pt regular, Centered, 10 pt spacing after
     affiliations.forEach((aff, i) => {
-        const fullAddr = aff.fullAddress || [aff.department, aff.faculty, aff.institution, aff.city, aff.country].filter(Boolean).join(', ');
+        const fullAddr = formatAffiliationText(aff);
         sections.push(
             new Paragraph({
                 alignment: AlignmentType.CENTER,

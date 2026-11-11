@@ -25,7 +25,8 @@ export interface AffiliationInfo {
     institution: string; // University or Institute Name
     city?: string;
     country?: string;
-    fullAddress?: string; // Formatted "Department Name, Faculty Name, University Name, Address"
+    address?: string;    // Postal Address, City, Country (e.g. "Cairo, Egypt")
+    fullAddress?: string; // Formatted full string / legacy fallback
 }
 
 export interface ReviewerSuggestion {
