@@ -492,7 +492,11 @@ export async function generateEngineeringReviewDocx({
                         let refStr = `${formattedAuthors}, “${linkedItem.title},”`;
                         if (linkedItem.journal) refStr += ` ${linkedItem.journal}`;
                         if (linkedItem.year) refStr += `, ${linkedItem.year}`;
-                        if (linkedItem.doi) refStr += `, doi: ${linkedItem.doi}`;
+                        if (linkedItem.doi) {
+                            // Strip any leading url prefixes to output pure DOI: 10.xxxx/...
+                            const cleanDoi = linkedItem.doi.replace(/^https?:\/\/doi\.org\//i, '').replace(/^doi:\s*/i, '').trim();
+                            refStr += `, doi:${cleanDoi}`;
+                        }
                         refStr += '.';
 
                         sections.push(
@@ -512,14 +516,6 @@ export async function generateEngineeringReviewDocx({
                                         font: 'Times New Roman',
                                         size: 20, // 10 pt
                                     }),
-                                    ...(linkedItem.url ? [
-                                        new TextRun({
-                                            text: ` [Online]. Available: ${linkedItem.url}`,
-                                            font: 'Times New Roman',
-                                            size: 18,
-                                            color: '0000EE',
-                                        })
-                                    ] : [])
                                 ]
                             })
                         );

@@ -24,7 +24,30 @@ import {
     XmlComponent,
     BuilderElement,
     createMathBase,
+    createMathAccentCharacter,
 } from 'docx';
+
+/**
+ * Custom accent component for OMML (m:acc) supporting accents like \dot, \ddot, \hat, \bar, \tilde, \vec, etc.
+ * Enclosing the base expression in <m:acc> prevents empty-box placeholders when subscripts or superscripts are attached.
+ */
+export class MathAccent extends XmlComponent {
+    constructor(options: {
+        accent?: string;
+        children: readonly any[];
+    }) {
+        super('m:acc');
+        const accPrChildren: XmlComponent[] = [];
+        if (options.accent) {
+            accPrChildren.push(createMathAccentCharacter({ accent: options.accent }));
+        }
+        this.root.push(new BuilderElement({
+            name: 'm:accPr',
+            children: accPrChildren,
+        }));
+        this.root.push(createMathBase({ children: options.children }));
+    }
+}
 
 /**
  * Custom delimiter component for OMML (m:d) supporting arbitrary opening
@@ -514,8 +537,26 @@ export function parseLatexTokens(latex: string, fontStyle: MathFontStyle = null)
             // \mathrm, \text, \textrm, \operatorname, \mathit, \textit, etc.
             if (['mathrm', 'text', 'textrm', 'operatorname', 'mathit', 'textit', 'mathsf', 'textsf', 'mathtt', 'texttt'].includes(cmdName)) {
                 const arg = readArg();
-                const innerParsed = parseLatexTokens(arg, null);
-                const wrapped = wrapWithSuperSub(innerParsed);
+                // For \text{...}, emit regular MathRun with leading/trailing spaces preserved
+                if (['text', 'textrm'].includes(cmdName)) {
+                    // Prepend/append a space so text doesn't run into neighbouring operators
+                    const displayText = ` ${arg.trim()} `;
+                    const textNode = new MathRun(displayText);
+                    const wrapped = wrapWithSuperSub([textNode]);
+                    children.push(...wrapped);
+                } else {
+                    const innerParsed = parseLatexTokens(arg, null);
+                    const wrapped = wrapWithSuperSub(innerParsed);
+                    children.push(...wrapped);
+                }
+                continue;
+            }
+
+            // \middle delimiter (e.g. \middle|, \middle\vert, \middle/)
+            if (cmdName === 'middle') {
+                const delimChar = parseDelimChar();
+                const run = new MathRun(delimChar || '|');
+                const wrapped = wrapWithSuperSub([run]);
                 children.push(...wrapped);
                 continue;
             }
@@ -530,8 +571,12 @@ export function parseLatexTokens(latex: string, fontStyle: MathFontStyle = null)
                 };
                 const accent = accentMap[cmdName] || '';
                 const parsedInner = parseLatexTokens(arg, fontStyle);
-                children.push(...parsedInner);
-                children.push(new MathRun(accent));
+                const accentNode = new MathAccent({
+                    accent,
+                    children: parsedInner,
+                });
+                const wrapped = wrapWithSuperSub([accentNode]);
+                children.push(...wrapped);
                 continue;
             }
 
