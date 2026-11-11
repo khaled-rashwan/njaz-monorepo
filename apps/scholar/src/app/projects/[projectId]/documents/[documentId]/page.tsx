@@ -14,6 +14,8 @@ import { CommentsPanel } from '@/components/editor/CommentsPanel';
 
 import { calculateHeadingNumbers, filterBlocksForDocument } from '@/lib/cross-reference';
 import { duplicateScholarProject } from '@/lib/duplicate-project';
+import { JournalMetadataModal } from '@/components/journal/JournalMetadataModal';
+import { FormatSelectorDropdown } from '@/components/journal/FormatSelectorDropdown';
 
 export default function DocumentEditorPage() {
     const params = useParams();
@@ -24,6 +26,7 @@ export default function DocumentEditorPage() {
     const [userId, setUserId] = useState<string | null>(null);
     const [authChecking, setAuthChecking] = useState(true);
     const [isNavigating, setIsNavigating] = useState(false);
+    const [isJournalModalOpen, setIsJournalModalOpen] = useState(false);
 
     const {
         document,
@@ -212,6 +215,9 @@ export default function DocumentEditorPage() {
                         </button>
                     </div>
 
+                    {/* Target Journal Format Selector */}
+                    <FormatSelectorDropdown onOpenConfigModal={() => setIsJournalModalOpen(true)} />
+
                     {/* Print Preview Button */}
                     <button
                         onClick={handlePrintPreview}
@@ -308,6 +314,12 @@ export default function DocumentEditorPage() {
                 {/* Right Inspector */}
                 <InspectorPanel />
             </div>
+
+            {/* Journal Format & Metadata Modal */}
+            <JournalMetadataModal
+                isOpen={isJournalModalOpen}
+                onClose={() => setIsJournalModalOpen(false)}
+            />
         </div>
     );
 }

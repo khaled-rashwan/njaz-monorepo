@@ -320,3 +320,6 @@ export interface CanvasLayout {
     nodePositions: { id: string; position: { x: number; y: number } }[];
     researchBlocks: ResearchBlockData[];
 }
+
+export * from './journal';
+

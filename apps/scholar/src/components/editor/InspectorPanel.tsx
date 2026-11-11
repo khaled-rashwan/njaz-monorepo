@@ -1,13 +1,17 @@
 'use client';
 
+import React, { useState } from 'react';
 import { useEditorStore } from '@/store/editor-store';
 import { useLanguage } from '@/components/LanguageContext';
 import { BlockType } from '@/types';
 import { buildCounterMap, resolveRef } from '@/lib/cross-reference';
+import { validateEngineeringReview } from '@/lib/journal-formats';
+import { JournalMetadataModal } from '@/components/journal/JournalMetadataModal';
 
 export function InspectorPanel() {
     const { t } = useLanguage();
     const { blocks, focusedBlockId, inspectorOpen, toggleInspector, document: doc, setHeadingStyle } = useEditorStore();
+    const [isJournalModalOpen, setIsJournalModalOpen] = useState(false);
     const focusedBlock = blocks.find(b => b.id === focusedBlockId);
 
     if (!inspectorOpen) {
@@ -27,6 +31,52 @@ export function InspectorPanel() {
     }
 
     const counterMap = buildCounterMap(blocks);
+
+    const renderJournalSettings = () => {
+        const journalFormatting = doc?.metadata?.journalFormatting;
+        const formatId = journalFormatting?.formatId || 'engineering-review';
+        const validation = validateEngineeringReview(doc || ({} as any));
+
+        return (
+            <div className="space-y-3 p-4 bg-amber-500/[0.04] border-b border-amber-500/15">
+                <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-semibold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
+                        <span>📰</span> {t('Target Journal Format', 'تنسيق المجلة المستهدفة')}
+                    </h4>
+                    <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                        {formatId === 'engineering-review' ? 'Engineering Review' : formatId}
+                    </span>
+                </div>
+
+                <p className="text-[11px] text-slate-300 leading-relaxed">
+                    {formatId === 'engineering-review'
+                        ? t('Faculty of Engineering, Univ. of Rijeka (IEEE citations, 11pt TNR, 2-col info header)', 'كلية الهندسة، جامعة رييكا (اقتباسات IEEE، خط 11pt TNR، ترويسة بيانات بعمودين)')
+                        : t('Standard academic layout', 'تنسيق أكاديمي عام')}
+                </p>
+
+                {formatId === 'engineering-review' && (
+                    <div className={`p-2 rounded text-[11px] border flex items-center justify-between ${
+                        validation.isValid
+                            ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
+                            : 'bg-amber-500/10 border-amber-500/30 text-amber-300'
+                    }`}>
+                        <span>{validation.isValid ? t('✓ Submission Ready', '✓ جاهز للإرسال') : t('⚠️ Missing Details', '⚠️ بيانات ناقصة')}</span>
+                        <span className="text-[10px] font-mono">{validation.issues.length} {t('notices', 'تنبيهات')}</span>
+                    </div>
+                )}
+
+                <button
+                    onClick={() => setIsJournalModalOpen(true)}
+                    className="w-full py-1.5 px-2 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 rounded-lg text-xs font-semibold transition-colors flex items-center justify-center gap-1.5"
+                >
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                    {t('Configure Authors & Metadata', 'ضبط المؤلفين وبيانات المجلة')}
+                </button>
+            </div>
+        );
+    };
 
     const renderDocumentSettings = () => {
         const headingStyles = doc?.metadata?.headingStyles || {};
@@ -81,6 +131,9 @@ export function InspectorPanel() {
                     </svg>
                 </button>
             </div>
+
+            {/* Target Journal Format Settings */}
+            {renderJournalSettings()}
 
             {/* Document Settings is always at the top of the inspector */}
             {renderDocumentSettings()}
@@ -221,6 +274,11 @@ export function InspectorPanel() {
                     </p>
                 </div>
             )}
+            {/* Journal Metadata Configuration Modal */}
+            <JournalMetadataModal
+                isOpen={isJournalModalOpen}
+                onClose={() => setIsJournalModalOpen(false)}
+            />
         </div>
     );
 }

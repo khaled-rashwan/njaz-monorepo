@@ -36,6 +36,8 @@ interface EditorState {
     updateDocumentTitle: (title: string) => void;
     updateDocumentAbstract: (abstract: string) => void;
     updateDocumentKeywords: (keywords: string) => void;
+    updateJournalMetadata: (journalMeta: any) => void;
+    setDocumentFormat: (formatId: string) => void;
     toggleHeadingNumbering: () => void;
     toggleReferencesVisibility: () => Promise<void>;
     setHeadingStyle: (style: 'none' | 'ordered' | 'unordered') => void;
@@ -671,6 +673,46 @@ export const useEditorStore = create<EditorState>((set, get) => ({
                 metadata: {
                     ...metadata,
                     keywords,
+                }
+            },
+            isDirty: true
+        });
+    },
+
+    updateJournalMetadata: (journalMeta: any) => {
+        const { document } = get();
+        if (!document) return;
+        const metadata = document.metadata || {};
+        const currentJournal = metadata.journalFormatting || {};
+        set({
+            document: {
+                ...document,
+                metadata: {
+                    ...metadata,
+                    journalFormatting: {
+                        ...currentJournal,
+                        ...journalMeta,
+                    }
+                }
+            },
+            isDirty: true
+        });
+    },
+
+    setDocumentFormat: (formatId: string) => {
+        const { document } = get();
+        if (!document) return;
+        const metadata = document.metadata || {};
+        const currentJournal = metadata.journalFormatting || {};
+        set({
+            document: {
+                ...document,
+                metadata: {
+                    ...metadata,
+                    journalFormatting: {
+                        ...currentJournal,
+                        formatId,
+                    }
                 }
             },
             isDirty: true

@@ -99,6 +99,7 @@ export async function generateDocx({
     counterMap,
     headingNumbers,
     language,
+    format,
 }: {
     doc: ScholarDocument;
     sortedBlocks: ScholarBlock[];
@@ -106,7 +107,22 @@ export async function generateDocx({
     counterMap: Map<string, { type: BlockType; counter: number }>;
     headingNumbers: Map<string, string>;
     language: 'en' | 'ar';
+    format?: string;
 }): Promise<Document> {
+    // Check if target format is Engineering Review
+    const targetFormat = format || doc.metadata?.journalFormatting?.formatId;
+    if (targetFormat === 'engineering-review') {
+        const { generateEngineeringReviewDocx } = await import('./journal-formats/engineering-review-docx');
+        return generateEngineeringReviewDocx({
+            doc,
+            sortedBlocks,
+            literatureItems,
+            counterMap,
+            headingNumbers,
+            language,
+        });
+    }
+
     const isArabic = language === 'ar';
     const align = isArabic ? AlignmentType.RIGHT : AlignmentType.LEFT;
 
