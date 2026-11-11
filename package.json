@@ -19,7 +19,9 @@
     "build:scholar": "npm run sync-assets && npm run sync-amplify && turbo run build --filter=scholar",
     "sync-amplify": "node scripts/sync-amplify-config.js",
     "sync-assets": "node scripts/sync-assets.js",
-    "amplify:sandbox": "cd packages/shared-backend && npx ampx sandbox"
+    "amplify:sandbox": "cd packages/shared-backend && npx ampx sandbox",
+    "amplify:outputs:test": "npx ampx generate outputs --app-id d2bbfu5dw3ra3 --branch test --out-dir packages/shared-backend && npm run sync-amplify",
+    "amplify:outputs:main": "npx ampx generate outputs --app-id d2bbfu5dw3ra3 --branch main --out-dir packages/shared-backend && npm run sync-amplify"
   },
   "devDependencies": {
     "@aws-sdk/client-dynamodb": "^3.0.0",

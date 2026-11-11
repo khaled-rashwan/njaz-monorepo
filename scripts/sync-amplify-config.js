@@ -13,6 +13,7 @@ const ROOT = path.resolve(__dirname, '..');
 
 const SOURCE = path.join(ROOT, 'packages/shared-backend/amplify_outputs.json');
 const TARGETS = [
+    path.join(ROOT, 'amplify_outputs.json'),
     path.join(ROOT, 'apps/landing/amplify_outputs.json'),
     path.join(ROOT, 'apps/app-selector/amplify_outputs.json'),
     path.join(ROOT, 'apps/estebian/amplify_outputs.json'),
