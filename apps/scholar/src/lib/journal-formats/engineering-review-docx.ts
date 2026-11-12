@@ -261,7 +261,7 @@ export async function generateEngineeringReviewDocx({
             spacing: { before: 20, after: 20 },
             children: [
                 new TextRun({
-                    text: `Received: ${history.receivedDate || new Date().toLocaleDateString('en-GB')}`,
+                    text: `Received: ${history.receivedDate || '—'}`,
                     size: 18,
                     font: 'Times New Roman',
                     color: "000000",
@@ -492,7 +492,8 @@ export async function generateEngineeringReviewDocx({
                                 'network', 'operator', 'association', 'corporation', 'commission',
                                 'organization', 'department', 'agency', 'committee', 'council',
                                 'institute', 'society', 'center', 'centre', 'group', 'entso-e',
-                                'nerc', 'ieee', 'epri', 'ucte'
+                                'nerc', 'ieee', 'epri', 'ucte', 'union for the co-ordination',
+                                'transmission of electricity', 'co-ordination of transmission'
                             ];
 
                             const formatted = names.map(rawName => {
@@ -501,12 +502,17 @@ export async function generateEngineeringReviewDocx({
                                     return trimmed;
                                 }
 
+                                // Special case: institutional author abbreviated inappropriately
+                                if (/^u\.?\s*f\.?\s*t\.?\s*c\.?\s*o\.?\s*t\.?\s*o\.?\s*electricity$/i.test(trimmed)) {
+                                    return 'Union for the Co-ordination of Transmission of Electricity';
+                                }
+
                                 // If formatted as 'Surname, Given'
                                 if (trimmed.includes(',')) {
                                     const [surnamePart, givenPart] = trimmed.split(',', 2);
                                     const surname = surnamePart.trim();
                                     const givenTokens = (givenPart || '').trim().split(/\s+/).filter(Boolean);
-                                    const initials = givenTokens.map(g => {
+                                    const initials = givenTokens.map((g: string) => {
                                         const clean = g.replace(/[^a-zA-Z]/g, '');
                                         return clean ? `${clean[0].toUpperCase()}.` : '';
                                     }).filter(Boolean);
@@ -517,10 +523,10 @@ export async function generateEngineeringReviewDocx({
                                 if (parts.length <= 1) return trimmed;
                                 const surname = parts[parts.length - 1];
                                 const given = parts.slice(0, parts.length - 1);
-                                const initials = given.map(g => {
+                                const initials = given.map((g: string) => {
                                     if (g.includes('-')) {
-                                        const subparts = g.split('-').map(s => s.replace(/[^a-zA-Z]/g, '')).filter(Boolean);
-                                        const subInitials = subparts.map(s => `${s[0].toUpperCase()}.`);
+                                        const subparts = g.split('-').map((s: string) => s.replace(/[^a-zA-Z]/g, '')).filter(Boolean);
+                                        const subInitials = subparts.map((s: string) => `${s[0].toUpperCase()}.`);
                                         return subInitials.length > 0 ? subInitials.join('-') : '';
                                     }
                                     const clean = g.replace(/[^a-zA-Z]/g, '');
@@ -579,24 +585,56 @@ export async function generateEngineeringReviewDocx({
                             return matchYear ? parseInt(matchYear[1]) : undefined;
                         })();
 
-                        let refStr = `${formattedAuthors}, “${linkedItem.title},”`;
+                        // Clean title braces (e.g. BibTeX artifacts like {SSCOED})
+                        const cleanTitle = (linkedItem.title || '').replace(/[{}]/g, '');
+
+                        // Extract volume, issue, pages from raw metadata if available
+                        const biblio = (linkedItem as any).rawData?.biblio || (linkedItem as any).biblio;
+                        let biblioStr = '';
+                        if (biblio) {
+                            const { volume, issue, first_page, last_page } = biblio;
+                            if (volume) biblioStr += `, vol. ${volume}`;
+                            if (issue) biblioStr += `, no. ${issue}`;
+                            if (first_page && last_page && first_page !== last_page) {
+                                biblioStr += `, pp. ${first_page}–${last_page}`;
+                            } else if (first_page) {
+                                // If page looks like an article number
+                                if (/^[A-Za-z0-9_-]{5,}$/.test(first_page)) {
+                                    biblioStr += `, Art. no. ${first_page}`;
+                                } else {
+                                    biblioStr += `, pp. ${first_page}`;
+                                }
+                            }
+                        }
+
+                        let refStr = `${formattedAuthors}, “${cleanTitle},”`;
                         if (formattedVenue) refStr += ` ${formattedVenue}`;
+                        if (biblioStr) refStr += biblioStr;
                         if (resolvedYear) refStr += `, ${resolvedYear}`;
 
-                        // Check DOI validity: only output doi: prefix if valid DOI (starts with 10.)
+                        // Check DOI or ISBN validity
+                        let hasDoiOrIsbn = false;
                         if (linkedItem.doi) {
                             const rawDoi = linkedItem.doi.replace(/^https?:\/\/doi\.org\//i, '').replace(/^doi:\s*/i, '').trim();
                             if (rawDoi.startsWith('10.') && rawDoi.includes('/')) {
                                 refStr += `, doi:${rawDoi}`;
+                                hasDoiOrIsbn = true;
                             } else if (rawDoi) {
                                 // If it's an ISBN (e.g. 10 or 13 digits) or other identifier, output ISBN
                                 const cleanDigits = rawDoi.replace(/[-\s]/g, '');
                                 if (/^(?:97[89])?\d{9}[\dX]$/i.test(cleanDigits)) {
                                     refStr += `, ISBN: ${rawDoi}`;
+                                    hasDoiOrIsbn = true;
                                 }
                             }
                         }
-                        refStr += '.';
+
+                        // For reports/items without DOI or ISBN, preserve online URL if available
+                        if (!hasDoiOrIsbn && linkedItem.url) {
+                            refStr += `. [Online]. Available: ${linkedItem.url}`;
+                        } else {
+                            refStr += '.';
+                        }
 
                         sections.push(
                             new Paragraph({

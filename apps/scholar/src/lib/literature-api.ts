@@ -111,7 +111,7 @@ export async function searchOpenAlex(
             filterStr = `&filter=${filters.join(',')}`;
         }
 
-        const url = `https://api.openalex.org/works?search=${encodeURIComponent(searchVal)}${filterStr}&per_page=${limit}&select=id,title,authorships,publication_year,primary_location,cited_by_count,doi,abstract_inverted_index`;
+        const url = `https://api.openalex.org/works?search=${encodeURIComponent(searchVal)}${filterStr}&per_page=${limit}&select=id,title,authorships,publication_year,primary_location,cited_by_count,doi,abstract_inverted_index,biblio`;
         const res = await fetch(url, {
             headers: { 'User-Agent': 'Scholar/1.0 (mailto:support@njaz.org)' },
         });

@@ -15,13 +15,28 @@ import { useEditorStore } from '@/store/editor-store';
 // Pattern to match cross-reference tags (including comma-separated lists of IDs)
 const REF_PATTERN = /\[\[ref:([a-f0-9-,\s]+)\]\]/g;
 
-// Human-readable labels for block types
-const TYPE_LABELS: Partial<Record<BlockType, { en: string; ar: string }>> = {
-    FIGURE: { en: 'Figure', ar: 'شكل' },
-    TABLE: { en: 'Table', ar: 'جدول' },
-    EQUATION: { en: 'Equation', ar: 'معادلة' },
-    CODE: { en: 'Code', ar: 'كود' },
-    HEADING: { en: 'Section', ar: 'قسم' },
+// Human-readable labels for block types (singular & plural)
+const TYPE_LABELS: Partial<Record<BlockType, { singular: { en: string; ar: string }; plural: { en: string; ar: string } }>> = {
+    FIGURE: {
+        singular: { en: 'Figure', ar: 'شكل' },
+        plural: { en: 'Figures', ar: 'الأشكال' }
+    },
+    TABLE: {
+        singular: { en: 'Table', ar: 'جدول' },
+        plural: { en: 'Tables', ar: 'الجداول' }
+    },
+    EQUATION: {
+        singular: { en: 'Equation', ar: 'معادلة' },
+        plural: { en: 'Equations', ar: 'المعادلات' }
+    },
+    CODE: {
+        singular: { en: 'Code', ar: 'كود' },
+        plural: { en: 'Code', ar: 'أكواد' }
+    },
+    HEADING: {
+        singular: { en: 'Section', ar: 'قسم' },
+        plural: { en: 'Sections', ar: 'أقسام' }
+    },
 };
 
 /**
@@ -147,27 +162,56 @@ export function resolveRef(
 ): string {
     if (blockId.includes(',')) {
         const ids = blockId.split(',').map(id => id.trim()).filter(Boolean);
-        const refNumbers: number[] = [];
-        const nonRefTexts: string[] = [];
+        const entries = ids.map(id => ({ id, entry: counterMap.get(id) })).filter(item => item.entry !== undefined);
+        
+        if (entries.length === 0) return `[??]`;
 
-        for (const id of ids) {
-            const entry = counterMap.get(id);
-            if (!entry) continue;
-            if (entry.type === 'REFERENCE') {
-                refNumbers.push(entry.counter);
-            } else {
-                nonRefTexts.push(resolveRef(id, counterMap, language));
+        // Group by type
+        const typeGroups = new Map<BlockType, { id: string; counter: number }[]>();
+        for (const item of entries) {
+            const t = item.entry!.type;
+            if (!typeGroups.has(t)) {
+                typeGroups.set(t, []);
             }
+            typeGroups.get(t)!.push({ id: item.id, counter: item.entry!.counter });
         }
 
-        const resolvedParts = [];
-        if (refNumbers.length > 0) {
-            resolvedParts.push(`[${formatRangeNumbers(refNumbers)}]`);
-        }
-        if (nonRefTexts.length > 0) {
-            resolvedParts.push(...nonRefTexts);
-        }
-        return resolvedParts.join(', ');
+        const formattedGroups: string[] = [];
+
+        Array.from(typeGroups.entries()).forEach(([type, items]) => {
+            if (type === 'REFERENCE') {
+                const refNums = items.map(i => i.counter);
+                formattedGroups.push(`[${formatRangeNumbers(refNums)}]`);
+                return;
+            }
+
+            const labelConfig = TYPE_LABELS[type];
+            if (!labelConfig) {
+                formattedGroups.push(...items.map(i => resolveRef(i.id, counterMap, language)));
+                return;
+            }
+
+            if (items.length === 1) {
+                formattedGroups.push(resolveRef(items[0].id, counterMap, language));
+                return;
+            }
+
+            // Multiple items of the same type (e.g. EQUATION, FIGURE, TABLE)
+            const prefix = language === 'ar' ? labelConfig.plural.ar : labelConfig.plural.en;
+            const uniqueSortedNums = Array.from(new Set(items.map(i => i.counter))).sort((a, b) => a - b);
+            
+            // Format numbers: 2 numbers -> "6 and 7", 3+ consecutive -> "6–8", non-consecutive -> "6, 7 and 9"
+            let numStr = '';
+            if (uniqueSortedNums.length === 2) {
+                numStr = `${uniqueSortedNums[0]} and ${uniqueSortedNums[1]}`;
+            } else {
+                numStr = formatRangeNumbers(uniqueSortedNums).replace(/, ([^,]+)$/, ' and $1');
+            }
+
+            formattedGroups.push(`${prefix} ${numStr}`);
+        });
+
+        return formattedGroups.join(', ');
     }
 
     const entry = counterMap.get(blockId);
@@ -181,6 +225,7 @@ export function resolveRef(
     if (!label) {
         return `[${entry.counter}]`;
     }
+    const singularLabel = language === 'ar' ? label.singular.ar : label.singular.en;
     if (entry.type === 'HEADING') {
         try {
             const state = useEditorStore.getState();
@@ -221,7 +266,7 @@ export function resolveRef(
                             }
                         }
                     }
-                    return `${language === 'ar' ? label.ar : label.en} ${formattedCounter}`;
+                    return `${singularLabel} ${formattedCounter}`;
                 }
             }
         } catch (e) {
@@ -233,11 +278,11 @@ export function resolveRef(
         const headingBlock = state.blocks?.find(b => b.id === blockId);
         const level = headingBlock?.content?.level || 1;
         const formattedCounter = level === 1 ? toRoman(entry.counter) : entry.counter.toString();
-        return `${language === 'ar' ? label.ar : label.en} ${formattedCounter}`;
+        return `${singularLabel} ${formattedCounter}`;
     }
 
     const formattedCounter = entry.counter.toString();
-    return `${language === 'ar' ? label.ar : label.en} ${formattedCounter}`;
+    return `${singularLabel} ${formattedCounter}`;
 }
 
 /**
