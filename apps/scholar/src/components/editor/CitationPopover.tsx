@@ -479,6 +479,17 @@ export function CitationPopover({ onSelect, onClose }: CitationPopoverProps) {
                         </button>
                     </div>
 
+                    {activeTab === 'internal' && (
+                        <div className="flex items-center justify-between px-1 py-1 text-[11px] text-slate-400">
+                            <span>{t('Click checkboxes or rows to select multiple references:', 'اضغط على المربعات أو الصفوف لتحديد عدة مراجع:')}</span>
+                            {selectedIds.length > 0 && (
+                                <span className="font-semibold text-amber-400">
+                                    {selectedIds.length} {t('selected', 'محدد')}
+                                </span>
+                            )}
+                        </div>
+                    )}
+
                     {/* Search Form */}
                     {activeTab !== 'manual' && activeTab !== 'bulk' && (
                         <form onSubmit={activeTab === 'external' ? handleExternalSearch : e => e.preventDefault()} className="relative">
@@ -524,13 +535,9 @@ export function CitationPopover({ onSelect, onClose }: CitationPopoverProps) {
                                         <div
                                             key={block.id}
                                             onClick={() => {
-                                                if (selectedIds.length > 0) {
-                                                    setSelectedIds(prev => 
-                                                        prev.includes(block.id) ? prev.filter(id => id !== block.id) : [...prev, block.id]
-                                                    );
-                                                } else {
-                                                    onSelect(block.id);
-                                                }
+                                                setSelectedIds(prev => 
+                                                    prev.includes(block.id) ? prev.filter(id => id !== block.id) : [...prev, block.id]
+                                                );
                                             }}
                                             className={`w-full p-2.5 text-left rounded-lg border transition-all flex items-start gap-3 cursor-pointer select-none ${
                                                 isSelected 
@@ -556,6 +563,17 @@ export function CitationPopover({ onSelect, onClose }: CitationPopoverProps) {
                                                 <p className="text-xs font-medium truncate text-slate-200">{displayTitle || `${block.type} Block`}</p>
                                                 <p className="text-[10px] text-slate-500 font-mono mt-0.5">{block.id.substring(0, 8)}...</p>
                                             </div>
+                                            <button
+                                                type="button"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    onSelect(block.id);
+                                                }}
+                                                title={t('Insert only this reference', 'إدراج هذا المرجع فقط')}
+                                                className="text-[10px] px-2 py-1 rounded bg-slate-800/70 hover:bg-amber-500 hover:text-slate-950 text-slate-400 transition-colors"
+                                            >
+                                                {t('Insert', 'إدراج')}
+                                            </button>
                                         </div>
                                     );
                                 })}
