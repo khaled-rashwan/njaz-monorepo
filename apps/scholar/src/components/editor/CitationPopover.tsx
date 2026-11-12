@@ -10,7 +10,7 @@ import { BlockType, LiteratureSearchResult } from '@/types';
 import { parseBibTeX, parseRIS, parseDOIs, parseTextCitations, cleanRawCitation } from '@/lib/citation-parsers';
 
 interface CitationPopoverProps {
-    onSelect: (blockId: string) => void;
+    onSelect: (blockId: string | string[]) => void;
     onClose: () => void;
 }
 
@@ -20,6 +20,7 @@ export function CitationPopover({ onSelect, onClose }: CitationPopoverProps) {
     
     const [searchQuery, setSearchQuery] = useState('');
     const [activeTab, setActiveTab] = useState<'internal' | 'external' | 'manual' | 'bulk'>('internal');
+    const [selectedIds, setSelectedIds] = useState<string[]>([]);
     
     // External search states
     const [externalResults, setExternalResults] = useState<LiteratureSearchResult[]>([]);
@@ -517,13 +518,37 @@ export function CitationPopover({ onSelect, onClose }: CitationPopoverProps) {
                                         displayTitle = block.content.title || block.content.caption || block.content.text || '';
                                     }
 
+                                    const isSelected = selectedIds.includes(block.id);
+
                                     return (
-                                        <button
+                                        <div
                                             key={block.id}
-                                            type="button"
-                                            onClick={() => onSelect(block.id)}
-                                            className="w-full p-2.5 text-left rounded-lg border border-transparent hover:border-slate-800 hover:bg-slate-800/20 text-slate-350 hover:text-white transition-all flex items-start gap-3"
+                                            onClick={() => {
+                                                if (selectedIds.length > 0) {
+                                                    setSelectedIds(prev => 
+                                                        prev.includes(block.id) ? prev.filter(id => id !== block.id) : [...prev, block.id]
+                                                    );
+                                                } else {
+                                                    onSelect(block.id);
+                                                }
+                                            }}
+                                            className={`w-full p-2.5 text-left rounded-lg border transition-all flex items-start gap-3 cursor-pointer select-none ${
+                                                isSelected 
+                                                    ? 'border-amber-500/50 bg-amber-500/10 text-white' 
+                                                    : 'border-transparent hover:border-slate-800 hover:bg-slate-800/20 text-slate-350 hover:text-white'
+                                            }`}
                                         >
+                                            <input
+                                                type="checkbox"
+                                                checked={isSelected}
+                                                onChange={(e) => {
+                                                    e.stopPropagation();
+                                                    setSelectedIds(prev => 
+                                                        prev.includes(block.id) ? prev.filter(id => id !== block.id) : [...prev, block.id]
+                                                    );
+                                                }}
+                                                className="mt-1 h-3.5 w-3.5 rounded border-slate-700 bg-slate-900 text-amber-500 focus:ring-0 cursor-pointer"
+                                            />
                                             <span className="font-mono text-xs font-semibold text-emerald-400 flex-shrink-0 bg-emerald-500/5 px-2 py-0.5 rounded border border-emerald-500/10">
                                                 {refDisplay}
                                             </span>
@@ -531,7 +556,7 @@ export function CitationPopover({ onSelect, onClose }: CitationPopoverProps) {
                                                 <p className="text-xs font-medium truncate text-slate-200">{displayTitle || `${block.type} Block`}</p>
                                                 <p className="text-[10px] text-slate-500 font-mono mt-0.5">{block.id.substring(0, 8)}...</p>
                                             </div>
-                                        </button>
+                                        </div>
                                     );
                                 })}
 
@@ -769,6 +794,34 @@ export function CitationPopover({ onSelect, onClose }: CitationPopoverProps) {
                         )
                     )}
                 </div>
+
+                {/* Bulk selection action bar */}
+                {selectedIds.length > 0 && (
+                    <div className="p-3 bg-slate-900 border-t border-slate-800 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                            <span className="text-xs text-amber-400 font-medium">
+                                {selectedIds.length} {t('selected', 'محدد')}
+                            </span>
+                            <button
+                                type="button"
+                                onClick={() => setSelectedIds([])}
+                                className="text-[11px] text-slate-500 hover:text-slate-300 underline"
+                            >
+                                {t('Clear', 'إلغاء التحديد')}
+                            </button>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => onSelect(selectedIds)}
+                            className="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-semibold text-xs transition-colors flex items-center gap-1.5"
+                        >
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                            </svg>
+                            {t('Insert Combined Reference', 'إدراج مرجع مجمع')}
+                        </button>
+                    </div>
+                )}
             </div>
         </div>
     );

@@ -72,11 +72,12 @@ export function TableBlock({ block, isFocused, onContentChange, onFocus }: Block
         }
     };
 
-    const handleSelectCitation = (blockId: string) => {
+    const handleSelectCitation = (blockId: string | string[]) => {
         setShowCitationPopover(false);
         if (!citationTarget) return;
         const { rowIdx, colIdx } = citationTarget;
         const currentVal = content.rows[rowIdx][colIdx];
+        const idString = Array.isArray(blockId) ? blockId.join(',') : blockId;
         const triggerPattern = /\[\[(?!ref:)/g;
         let lastIdx = -1;
         let match;
@@ -84,7 +85,7 @@ export function TableBlock({ block, isFocused, onContentChange, onFocus }: Block
             lastIdx = match.index;
         }
         if (lastIdx !== -1) {
-            const newVal = currentVal.substring(0, lastIdx) + `[[ref:${blockId}]]` + currentVal.substring(lastIdx + 2);
+            const newVal = currentVal.substring(0, lastIdx) + `[[ref:${idString}]]` + currentVal.substring(lastIdx + 2);
             updateCell(rowIdx, colIdx, newVal);
         }
         setCitationTarget(null);

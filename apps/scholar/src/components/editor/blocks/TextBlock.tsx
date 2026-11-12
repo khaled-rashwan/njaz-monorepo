@@ -191,10 +191,12 @@ export function TextBlock({ block, isFocused, onContentChange, onFocus }: BlockP
         }
     };
 
-    const handleSelectCitation = (blockId: string) => {
+    const handleSelectCitation = (blockId: string | string[]) => {
         setShowCitationPopover(false);
         const currentText = content.text || '';
         
+        const idString = Array.isArray(blockId) ? blockId.join(',') : blockId;
+
         // Find the index of the trigger "[["
         const triggerPattern = /\[\[(?!ref:)/g;
         let lastIdx = -1;
@@ -203,7 +205,7 @@ export function TextBlock({ block, isFocused, onContentChange, onFocus }: BlockP
             lastIdx = match.index;
         }
         if (lastIdx !== -1) {
-            const newText = currentText.substring(0, lastIdx) + `[[ref:${blockId}]]` + currentText.substring(lastIdx + 2);
+            const newText = currentText.substring(0, lastIdx) + `[[ref:${idString}]]` + currentText.substring(lastIdx + 2);
             
             // 1. Update text state
             onContentChange({
@@ -217,7 +219,7 @@ export function TextBlock({ block, isFocused, onContentChange, onFocus }: BlockP
                     editorRef.current.innerHTML = textToHtml(newText, counterMap, language);
                     editorRef.current.focus();
                     
-                    const span = editorRef.current.querySelector(`[data-ref-id="${blockId}"]`);
+                    const span = editorRef.current.querySelector(`[data-ref-id="${idString}"]`);
                     if (span) {
                         const range = document.createRange();
                         const sel = window.getSelection();
