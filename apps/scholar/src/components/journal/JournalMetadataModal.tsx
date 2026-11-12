@@ -80,9 +80,9 @@ export function JournalMetadataModal({ isOpen, onClose, initialFormatId }: Journ
                 fullAddress: 'Vukovarska 58, 51000 Rijeka, Croatia'
             }
         ]);
-        setReceivedDate(existing.articleHistory?.receivedDate || new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }));
-        setRevisedDate(existing.articleHistory?.revisedDate || '');
-        setAcceptedDate(existing.articleHistory?.acceptedDate || '');
+        setReceivedDate(existing.articleHistory?.receivedDate || '—');
+        setRevisedDate(existing.articleHistory?.revisedDate || '—');
+        setAcceptedDate(existing.articleHistory?.acceptedDate || '—');
         
         const kw = existing.keywords && existing.keywords.length > 0
             ? existing.keywords
@@ -120,16 +120,16 @@ export function JournalMetadataModal({ isOpen, onClose, initialFormatId }: Journ
             authors,
             affiliations,
             articleHistory: {
-                receivedDate: receivedDate.trim() || undefined,
-                revisedDate: revisedDate.trim() || undefined,
-                acceptedDate: acceptedDate.trim() || undefined,
+                receivedDate: receivedDate.trim() || '—',
+                revisedDate: revisedDate.trim() || '—',
+                acceptedDate: acceptedDate.trim() || '—',
             },
             keywords: keywordsList,
             doi: '10.36978/ed.xxxx',
-            volume: '44',
-            issue: '3',
-            year: `${new Date().getFullYear()}`,
-            pages: '1-10',
+            volume: '—',
+            issue: '—',
+            year: '—',
+            pages: '—',
             suggestedReviewers: reviewers.filter(r => r.name.trim()),
         };
 

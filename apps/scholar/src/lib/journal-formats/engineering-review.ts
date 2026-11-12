@@ -377,16 +377,16 @@ export function createInitialEngineeringReviewMetadata(
         authors: defaultAuthors,
         affiliations: defaultAffiliations,
         articleHistory: {
-            receivedDate: formatDate(today),
-            revisedDate: '',
-            acceptedDate: '',
+            receivedDate: '—',
+            revisedDate: '—',
+            acceptedDate: '—',
         },
         keywords,
         doi: '10.36978/ed.xxxx',
-        volume: '44',
-        issue: '3',
-        year: `${today.getFullYear()}`,
-        pages: '1-10',
+        volume: '—',
+        issue: '—',
+        year: '—',
+        pages: '—',
         suggestedReviewers: defaultReviewers,
     };
 }

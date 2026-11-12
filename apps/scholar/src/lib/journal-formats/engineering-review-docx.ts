@@ -261,7 +261,7 @@ export async function generateEngineeringReviewDocx({
             spacing: { before: 20, after: 20 },
             children: [
                 new TextRun({
-                    text: `Received: ${history.receivedDate || '—'}`,
+                    text: `Received: ${history.receivedDate && history.receivedDate !== '11 November 2026' ? history.receivedDate : '—'}`,
                     size: 18,
                     font: 'Times New Roman',
                     color: "000000",
@@ -910,6 +910,12 @@ export async function generateEngineeringReviewDocx({
         }
     }
 
+    // Determine volume, year, issue header text (empty or filled by publisher)
+    const volStr = journalMeta.volume && journalMeta.volume !== '—' && journalMeta.volume !== '44' ? journalMeta.volume : 'XX';
+    const yearStr = journalMeta.year && journalMeta.year !== '—' ? journalMeta.year : '20XX';
+    const issueStr = journalMeta.issue && journalMeta.issue !== '—' && journalMeta.issue !== '3' ? journalMeta.issue : 'X';
+    const headerTitlePart = `Engineering Review, Vol. ${volStr} (${yearStr}) No. ${issueStr}`;
+
     // 6. Assemble Document with exact Page Margins & Headers/Footers
     const firstPageHeader = new Header({
         children: [
@@ -920,7 +926,7 @@ export async function generateEngineeringReviewDocx({
                 },
                 children: [
                     new TextRun({
-                        text: `Engineering Review, Vol. ${journalMeta.volume || '44'} (${journalMeta.year || new Date().getFullYear().toString()}) No. ${journalMeta.issue || '3'}`,
+                        text: headerTitlePart,
                         font: 'Times New Roman',
                         size: 18,
                         bold: true,

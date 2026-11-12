@@ -415,7 +415,7 @@ export default function DocumentPreviewPage() {
                         <div className="border-b border-black pb-1 mb-6 flex items-end justify-between text-[9pt] font-serif text-black leading-tight">
                             <div>
                                 <span className="font-bold">Engineering Review</span>
-                                <span>, Vol. {journalMeta?.volume || '44'} ({journalMeta?.year || new Date().getFullYear()}) No. {journalMeta?.issue || '3'}</span>
+                                <span>, Vol. {journalMeta?.volume && journalMeta.volume !== '—' && journalMeta.volume !== '44' ? journalMeta.volume : 'XX'} ({journalMeta?.year && journalMeta.year !== '—' ? journalMeta.year : '20XX'}) No. {journalMeta?.issue && journalMeta.issue !== '—' && journalMeta.issue !== '3' ? journalMeta.issue : 'X'}</span>
                             </div>
                             <div>
                                 <span>DOI: {journalMeta?.doi || '10.36978/ed.xxxx'}</span>
@@ -482,7 +482,7 @@ export default function DocumentPreviewPage() {
 
                                         <div className="text-[9pt] space-y-0.5 pt-1">
                                             <span className="font-bold italic block">Article history:</span>
-                                            <p>Received: {journalMeta?.articleHistory?.receivedDate || '—'}</p>
+                                            <p>Received: {journalMeta?.articleHistory?.receivedDate && journalMeta.articleHistory.receivedDate !== '11 November 2026' ? journalMeta.articleHistory.receivedDate : '—'}</p>
                                             <p>Received in revised form: {journalMeta?.articleHistory?.revisedDate || '—'}</p>
                                             <p>Accepted: {journalMeta?.articleHistory?.acceptedDate || '—'}</p>
                                         </div>
