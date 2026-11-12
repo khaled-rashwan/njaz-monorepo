@@ -421,7 +421,7 @@ export async function generateDocx({
                             spacing: { before: 120, after: 60 },
                             children: [
                                 new TextRun({
-                                    text: `${isArabic ? 'جدول' : 'Table'} ${toRoman(tableNumber)}: ${content.caption}`,
+                                    text: `${isArabic ? 'جدول' : 'Table'} ${tableNumber}: ${content.caption}`,
                                     bold: true,
                                     italics: true,
                                     size: 18,

@@ -1812,7 +1812,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
                 } else if (b.type === 'TABLE') {
                     const counterInfo = counterMap.get(b.id);
                     const cap = (b.content?.caption || '').trim();
-                    blockSnippet = `Table ${toRoman(counterInfo?.counter || 1)}${cap ? `: ${cap.substring(0, 25)}` : ''}`;
+                    blockSnippet = `Table ${counterInfo?.counter || 1}${cap ? `: ${cap.substring(0, 25)}` : ''}`;
                 } else if (b.type === 'FIGURE') {
                     const counterInfo = counterMap.get(b.id);
                     const cap = (b.content?.caption || '').trim();

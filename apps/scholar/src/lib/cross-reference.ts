@@ -236,7 +236,7 @@ export function resolveRef(
         return `${language === 'ar' ? label.ar : label.en} ${formattedCounter}`;
     }
 
-    const formattedCounter = entry.type === 'TABLE' ? toRoman(entry.counter) : entry.counter.toString();
+    const formattedCounter = entry.counter.toString();
     return `${language === 'ar' ? label.ar : label.en} ${formattedCounter}`;
 }
 
